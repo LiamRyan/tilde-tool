@@ -24,6 +24,8 @@ namespace Tildetool
 
       public HotCommandWindow()
       {
+         Width = System.Windows.SystemParameters.PrimaryScreenWidth;
+
          InitializeComponent();
          _AnimateIn();
 
@@ -118,25 +120,8 @@ namespace Tildetool
 
          if (!_FadedIn && _Text.Length == 1)
             _AnimateTextIn();
-
-         double rootWidth = CommandEntry.ActualWidth + CommandEntry.Margin.Left + CommandEntry.Margin.Right + CommandBox.Margin.Left + CommandBox.Margin.Right;
-         if (rootWidth > RootFrame.Width)
-         {
-            if (_StoryboardFit != null)
-            {
-               _StoryboardFit.Stop();
-               _StoryboardFit.Remove();
-            }
-            _StoryboardFit = new Storyboard();
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = rootWidth;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
-            _StoryboardFit.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.WidthProperty));
-            _StoryboardFit.Begin(this, HandoffBehavior.SnapshotAndReplace);
-         }
+         if (_FadedIn && _Text.Length == 0)
+            _AnimateTextOut();
 
          //
          System.Action command;
@@ -189,9 +174,9 @@ namespace Tildetool
          {
             var myDoubleAnimation = new DoubleAnimation();
             myDoubleAnimation.From = 40.0;
-            myDoubleAnimation.To = 300.0;
+            myDoubleAnimation.To = Width;
             myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 2.5, EasingMode = EasingMode.EaseOut };
             _StoryboardFit.Children.Add(myDoubleAnimation);
             Storyboard.SetTarget(myDoubleAnimation, RootFrame);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.WidthProperty));
@@ -202,24 +187,46 @@ namespace Tildetool
          _StoryboardFit.Begin(this);
       }
 
-      private Storyboard? _StoryboardTextIn;
+      private Storyboard? _StoryboardTextFade;
       void _AnimateTextIn()
       {
          _FadedIn = true;
 
-         _StoryboardTextIn = new Storyboard();
+         _StoryboardTextFade = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
             myDoubleAnimation.From = 0.0;
             myDoubleAnimation.To = 1.0;
             myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
-            _StoryboardTextIn.Children.Add(myDoubleAnimation);
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
             Storyboard.SetTarget(myDoubleAnimation, CommandBox);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 
-         _StoryboardTextIn.Completed += (sender, e) => { _StoryboardTextIn.Remove(); _StoryboardTextIn = null; };
-         _StoryboardTextIn.Begin(this);
+         _StoryboardTextFade.Completed += (sender, e) => { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Begin(this);
+      }
+      void _AnimateTextOut()
+      {
+         _FadedIn = false;
+
+         if (_StoryboardTextFade != null)
+         {
+            _StoryboardTextFade.Stop();
+            _StoryboardTextFade.Remove();
+         }
+         _StoryboardTextFade = new Storyboard();
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.To = 0.0;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandBox);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
+
+         _StoryboardTextFade.Completed += (sender, e) => { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Begin(this);
       }
 
       private Storyboard? _StoryboardCommand;
@@ -241,21 +248,14 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = 1.0;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.7f));
+            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.2f))));
+            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
+            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromPercent(1.0)));
             _StoryboardCommand.Children.Add(myDoubleAnimation);
             Storyboard.SetTarget(myDoubleAnimation, RootFrame);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
-         }
-         {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = CommandEntry.ActualWidth + CommandEntry.Margin.Left + CommandEntry.Margin.Right + CommandBox.Margin.Left + CommandBox.Margin.Right;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 5.0, EasingMode = EasingMode.EaseOut };
-            _StoryboardCommand.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.WidthProperty));
          }
          {
             var flashAnimation = new ColorAnimationUsingKeyFrames();
