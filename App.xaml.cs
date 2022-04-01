@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using Hardcodet.Wpf.TaskbarNotification;
+using Tildetool.Hotcommand;
 
 namespace Tildetool
 {
@@ -29,6 +30,8 @@ namespace Tildetool
       protected override void OnStartup(StartupEventArgs e)
       {
          AppNotifyIcon = (TaskbarIcon)FindResource("AppNotifyIcon");
+
+         HotcommandManager.Instance.Load();
 
          Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);

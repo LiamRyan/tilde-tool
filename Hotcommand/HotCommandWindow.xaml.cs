@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Tildetool.Hotcommand;
 
 namespace Tildetool
 {
@@ -30,15 +31,10 @@ namespace Tildetool
          _AnimateIn();
 
          //
-         _Commands["MINI"] = _CmdMinigolf;
-         _Commands["DOC"] = _CmdDocuments;
-
-         //
-         DataTemplate template = Resources["CommandOption"] as DataTemplate;
-
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
          _MediaPlayer.Play();
 
+         //DataTemplate? template = Resources["CommandOption"] as DataTemplate;
          //ContentControl ctrl = new ContentControl();
          //ctrl.ContentTemplate = template;
          //Grid.SetRow(ctrl, 1);
@@ -124,34 +120,30 @@ namespace Tildetool
             _AnimateTextOut();
 
          //
-         System.Action command;
-         if (_Commands.TryGetValue(_Text, out command))
+         Tildetool.Hotcommand.Hotcommand? command;
+         if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
          {
-            command();
+            try
+            {
+               System.Diagnostics.Process process = new System.Diagnostics.Process();
+               System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+               startInfo.FileName = command.FileName;
+               startInfo.Arguments = command.Arguments;
+               startInfo.WorkingDirectory = command.WorkingDirectory;
+               process.StartInfo = startInfo;
+               process.Start();
+            }
+            catch (Exception ex)
+            {
+               Console.WriteLine(ex.ToString());
+               Cancel();
+               return;
+            }
+
             _AnimateCommand();
             _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
             _MediaPlayer.Play();
          }
-      }
-
-      Dictionary<string, System.Action> _Commands = new Dictionary<string, Action>();
-      void _CmdMinigolf()
-      {
-         System.Diagnostics.Process process = new System.Diagnostics.Process();
-         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-         startInfo.FileName = "C:\\dev\\minigolf\\example\\minigolfBlast_DEBUG.exe";
-         startInfo.WorkingDirectory = "C:\\dev\\minigolf\\example\\";
-         process.StartInfo = startInfo;
-         process.Start();
-      }
-      void _CmdDocuments()
-      {
-         System.Diagnostics.Process process = new System.Diagnostics.Process();
-         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-         startInfo.FileName = "explorer.exe";
-         startInfo.Arguments = "D:\\Documents\\";
-         process.StartInfo = startInfo;
-         process.Start();
       }
 
       #region Animation
