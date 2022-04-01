@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Tildetool": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
