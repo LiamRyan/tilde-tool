@@ -21,6 +21,13 @@ namespace Tildetool
    /// </summary>
    public partial class HotCommandWindow : Window
    {
+      #region Events
+
+      public delegate void PopupEvent(object sender);
+      public event PopupEvent? OnFinish;
+
+      #endregion
+
       MediaPlayer _MediaPlayer = new MediaPlayer();
 
       public HotCommandWindow()
@@ -54,10 +61,11 @@ namespace Tildetool
       {
          if (_Finished)
             return;
-         _Finished = true;
          _AnimateCancel();
          _MediaPlayer.Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
          _MediaPlayer.Play();
+         _Finished = true;
+         OnFinish?.Invoke(this);
       }
 
       string _Text = "";
@@ -227,6 +235,7 @@ namespace Tildetool
          if (_Finished)
             return;
          _Finished = true;
+         OnFinish?.Invoke(this);
 
          _StoryboardCommand = new Storyboard();
          {

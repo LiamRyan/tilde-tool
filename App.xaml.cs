@@ -79,6 +79,7 @@ namespace Tildetool
          if (_HotCommandWindow == null)
          {
             _HotCommandWindow = new HotCommandWindow();
+            _HotCommandWindow.OnFinish += (sender) => { if (_HotCommandWindow == sender) _HotCommandWindow = null; };
             _HotCommandWindow.Closing += (sender, e) => { _HotCommandWindow = null; };
 
             _HotCommandWindow.Show();
