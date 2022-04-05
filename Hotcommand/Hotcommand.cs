@@ -9,8 +9,7 @@ namespace Tildetool.Hotcommand
    public class Hotcommand
    {
       public string Tag { get; set; }
-      public string FileName { get; set; }
-      public string? WorkingDirectory { get; set; }
-      public string? Arguments { get; set; }
+
+      public HotcommandSpawn[] Spawns { get; set; }
    }
 }

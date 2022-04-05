@@ -114,12 +114,16 @@ namespace Tildetool.Hotcommand
             Data = new HotcommandData();
             Data.Hotcommand = new Hotcommand[]
                {
-                  new Hotcommand { Tag = "MINI",
-                                   FileName = "C:\\dev\\minigolf\\example\\minigolfBlast_DEBUG.exe",
-                                   WorkingDirectory = "C:\\dev\\minigolf\\example\\" },
-                  new Hotcommand { Tag = "DOC",
-                                   FileName = "explorer.exe",
-                                   Arguments = "D:\\Documents" },
+                  new Hotcommand {
+                     Tag = "MINI",
+                     Spawns = new HotcommandSpawn[] { new HotcommandSpawn {
+                        FileName = "C:\\dev\\minigolf\\example\\minigolfBlast_DEBUG.exe",
+                        WorkingDirectory = "C:\\dev\\minigolf\\example\\" } } },
+                  new Hotcommand {
+                     Tag = "DOC",
+                     Spawns = new HotcommandSpawn[] { new HotcommandSpawn {
+                        FileName = "explorer.exe",
+                        Arguments = "D:\\Documents" } } },
                };
             Save();
             WatchFile();

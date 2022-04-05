@@ -9,10 +9,13 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Diagnostics;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Tildetool.Hotcommand;
+using System.Runtime.InteropServices;
+using System.Timers;
 
 namespace Tildetool
 {
@@ -27,6 +30,13 @@ namespace Tildetool
       public event PopupEvent? OnFinish;
 
       #endregion
+
+      [DllImport("user32.dll", SetLastError = true)]
+      static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
+
+      private const int SWP_NOSIZE = 0x0001;
+      private const int SWP_NOZORDER = 0x0004;
+      private const int SWP_SHOWWINDOW = 0x0040;
 
       MediaPlayer _MediaPlayer = new MediaPlayer();
 
@@ -51,6 +61,10 @@ namespace Tildetool
          t.Bottom = OptionGrid.Children.Count > 0 ? 10 : 0;
          OptionGrid.Margin = t;
       }
+      protected override void OnClosed(EventArgs e)
+      {
+         base.OnClosed(e);
+      }
       protected override void OnLostFocus(RoutedEventArgs e)
       {
          base.OnLostFocus(e);
@@ -66,6 +80,37 @@ namespace Tildetool
          _MediaPlayer.Play();
          _Finished = true;
          OnFinish?.Invoke(this);
+      }
+
+      Timer? _SpawnTimer = null;
+      Dictionary<HotcommandSpawn, Process> _SpawnProcess = new Dictionary<HotcommandSpawn, Process>();
+      void WaitForSpawn()
+      {
+         _SpawnTimer = new Timer();
+         _SpawnTimer.Interval = 125;
+         _SpawnTimer.Elapsed += (s, e) =>
+         {
+            //
+            Dictionary<HotcommandSpawn, Process> spawnProcess = new Dictionary<HotcommandSpawn, Process>();
+            foreach (var entry in _SpawnProcess)
+               if (entry.Key.WindowX != null && entry.Key.WindowY != null)
+               {
+                  if (entry.Value.MainWindowHandle != IntPtr.Zero)
+                     SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, entry.Key.WindowX.Value, entry.Key.WindowY.Value, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+                  else
+                     spawnProcess[entry.Key] = entry.Value;
+               }
+            _SpawnProcess = spawnProcess;
+
+            //
+            if (_SpawnProcess.Count == 0)
+            {
+               _SpawnTimer.Stop();
+               _SpawnTimer.Dispose();
+               _SpawnTimer = null;
+            }
+         };
+         _SpawnTimer.Start();
       }
 
       string _Text = "";
@@ -115,8 +160,17 @@ namespace Tildetool
          }
          else if (e.Key == Key.Return)
          {
+            if (_Text.Length == 0)
+            {
+               Process process = new Process();
+               ProcessStartInfo startInfo = new ProcessStartInfo();
+               startInfo.FileName = "explorer.exe";
+               startInfo.Arguments = System.AppDomain.CurrentDomain.BaseDirectory;
+               process.StartInfo = startInfo;
+               process.Start();
+            }
             e.Handled = true;
-            Dispatcher.BeginInvoke(Close);
+            Cancel();
             return;
          }
          CommandEntry.Text = _Text;
@@ -131,15 +185,24 @@ namespace Tildetool
          Tildetool.Hotcommand.Hotcommand? command;
          if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
          {
+            bool waitSpawn = false;
             try
             {
-               System.Diagnostics.Process process = new System.Diagnostics.Process();
-               System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-               startInfo.FileName = command.FileName;
-               startInfo.Arguments = command.Arguments;
-               startInfo.WorkingDirectory = command.WorkingDirectory;
-               process.StartInfo = startInfo;
-               process.Start();
+               foreach (HotcommandSpawn spawn in command.Spawns)
+               {
+                  Process process = new Process();
+                  ProcessStartInfo startInfo = new ProcessStartInfo();
+                  startInfo.FileName = spawn.FileName;
+                  startInfo.Arguments = spawn.Arguments;
+                  startInfo.WorkingDirectory = spawn.WorkingDirectory;
+                  process.StartInfo = startInfo;
+                  process.Start();
+                  if (spawn.WindowX != null && spawn.WindowY != null)
+                  {
+                     _SpawnProcess[spawn] = process;
+                     waitSpawn = true;
+                  }
+               }
             }
             catch (Exception ex)
             {
@@ -147,6 +210,9 @@ namespace Tildetool
                Cancel();
                return;
             }
+
+            if (waitSpawn)
+               WaitForSpawn();
 
             _AnimateCommand();
             _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
