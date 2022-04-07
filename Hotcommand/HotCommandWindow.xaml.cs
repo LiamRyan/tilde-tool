@@ -115,6 +115,7 @@ namespace Tildetool
       string _Text = "";
       bool _Finished = false;
       bool _FadedIn = false;
+      Tildetool.Hotcommand.Hotcommand? _Suggested = null;
 
       const string _Number = "0123456789";
       private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -130,6 +131,8 @@ namespace Tildetool
                Cancel();
                return;
          }
+
+         Tildetool.Hotcommand.Hotcommand? command;
 
          // Handle key entry.
          if (e.Key >= Key.A && e.Key <= Key.Z)
@@ -167,9 +170,16 @@ namespace Tildetool
                startInfo.UseShellExecute = true;
                process.StartInfo = startInfo;
                process.Start();
+               Cancel();
             }
+            else if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
+               Execute(command);
+            else if (_Suggested != null)
+               Execute(_Suggested);
+            else
+               Cancel();
+
             e.Handled = true;
-            Cancel();
             return;
          }
          CommandEntry.Text = _Text;
@@ -181,21 +191,35 @@ namespace Tildetool
             _AnimateTextOut();
 
          //
-         bool foundOne = false;
+         _Suggested = null;
          List<string> altCmds = new List<string>();
          if (_Text.Length > 0)
-            foreach (var c in HotcommandManager.Instance.Commands)
+         {
+            foreach (var c in HotcommandManager.Instance.QuickTags)
                if (c.Key.StartsWith(_Text))
                {
-                  if (!foundOne)
+                  if (_Suggested == null)
                   {
                      CommandPreview.Text = c.Key.Substring(_Text.Length);
-                     foundOne = true;
+                     _Suggested = c.Value;
                   }
                   else
                      altCmds.Add(c.Value.Tag);
                }
-         if (!foundOne)
+
+            foreach (var c in HotcommandManager.Instance.Commands)
+               if (c.Key.StartsWith(_Text))
+               {
+                  if (_Suggested == null)
+                  {
+                     CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     _Suggested = c.Value;
+                  }
+                  else
+                     altCmds.Add(c.Value.Tag);
+               }
+         }
+         if (_Suggested == null)
             CommandPreview.Text = "";
 
          //
@@ -229,51 +253,53 @@ namespace Tildetool
          }
 
          //
-         Tildetool.Hotcommand.Hotcommand? command;
-         if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
+         if (HotcommandManager.Instance.QuickTags.TryGetValue(_Text, out command))
+            Execute(command);
+      }
+
+      public void Execute(Tildetool.Hotcommand.Hotcommand command)
+      {
+         bool waitSpawn = false;
+         try
          {
-            bool waitSpawn = false;
-            try
+            foreach (HotcommandSpawn spawn in command.Spawns)
             {
-               foreach (HotcommandSpawn spawn in command.Spawns)
+               Process process = new Process();
+               ProcessStartInfo startInfo = new ProcessStartInfo();
+               startInfo.FileName = spawn.FileName;
+               if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
                {
-                  Process process = new Process();
-                  ProcessStartInfo startInfo = new ProcessStartInfo();
-                  startInfo.FileName = spawn.FileName;
-                  if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
-                  {
-                     foreach (string argument in spawn.ArgumentList)
-                        startInfo.ArgumentList.Add(argument);
-                  }
-                  else
-                     startInfo.Arguments = spawn.Arguments;
-                  startInfo.WorkingDirectory = spawn.WorkingDirectory;
-                  process.StartInfo = startInfo;
-                  process.Start();
-                  if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
-                  {
-                     _SpawnProcess[spawn] = process;
-                     waitSpawn = true;
-                  }
-                  else
-                     process.Dispose();
+                  foreach (string argument in spawn.ArgumentList)
+                     startInfo.ArgumentList.Add(argument);
                }
+               else
+                  startInfo.Arguments = spawn.Arguments;
+               startInfo.WorkingDirectory = spawn.WorkingDirectory;
+               process.StartInfo = startInfo;
+               process.Start();
+               if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
+               {
+                  _SpawnProcess[spawn] = process;
+                  waitSpawn = true;
+               }
+               else
+                  process.Dispose();
             }
-            catch (Exception ex)
-            {
-               Console.WriteLine(ex.ToString());
-               Cancel();
-               MessageBox.Show(ex.Message);
-               return;
-            }
-
-            if (waitSpawn)
-               WaitForSpawn();
-
-            _AnimateCommand();
-            _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-            _MediaPlayer.Play();
          }
+         catch (Exception ex)
+         {
+            Console.WriteLine(ex.ToString());
+            Cancel();
+            MessageBox.Show(ex.Message);
+            return;
+         }
+
+         if (waitSpawn)
+            WaitForSpawn();
+
+         _AnimateCommand();
+         _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
+         _MediaPlayer.Play();
       }
 
       #region Animation

@@ -25,6 +25,7 @@ namespace Tildetool.Hotcommand
 
       // Processed results
       public Dictionary<string, Hotcommand> Commands = new Dictionary<string, Hotcommand>();
+      public Dictionary<string, Hotcommand> QuickTags = new Dictionary<string, Hotcommand>();
 
       #endregion
       #region File Watcher
@@ -115,15 +116,14 @@ namespace Tildetool.Hotcommand
             Data.Hotcommand = new Hotcommand[]
                {
                   new Hotcommand {
-                     Tag = "MINI",
-                     Spawns = new HotcommandSpawn[] { new HotcommandSpawn {
-                        FileName = "C:\\dev\\minigolf\\example\\minigolfBlast_DEBUG.exe",
-                        WorkingDirectory = "C:\\dev\\minigolf\\example\\" } } },
-                  new Hotcommand {
-                     Tag = "DOC",
+                     Tag = "DOCUMENT",
                      Spawns = new HotcommandSpawn[] { new HotcommandSpawn {
                         FileName = "explorer.exe",
                         Arguments = "D:\\Documents" } } },
+               };
+            Data.QuickTag = new HotcommandQuickTag[]
+               {
+                  new HotcommandQuickTag { Tag = "DOC", Target = "DOCUMENT" },
                };
             Save();
             WatchFile();
@@ -131,8 +131,17 @@ namespace Tildetool.Hotcommand
 
          // Process it.
          Commands = new Dictionary<string, Hotcommand>();
-         foreach (Hotcommand command in Data.Hotcommand)
-            Commands[command.Tag] = command;
+         if (Data.Hotcommand != null)
+            foreach (Hotcommand command in Data.Hotcommand)
+               Commands[command.Tag] = command;
+         QuickTags = new Dictionary<string, Hotcommand>();
+         if (Data.QuickTag != null)
+            foreach (HotcommandQuickTag qtag in Data.QuickTag)
+            {
+               Hotcommand command;
+               if (Commands.TryGetValue(qtag.Target, out command))
+                  QuickTags[qtag.Tag] = command;
+            }
 
          return result;
       }
@@ -145,7 +154,7 @@ namespace Tildetool.Hotcommand
          try
          {
             string jsonString = JsonSerializer.Serialize<HotcommandData>(Data, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText("Hotcommand.json", jsonString);
+            //File.WriteAllText("Hotcommand.json", jsonString);
          }
          catch (Exception ex)
          {
