@@ -35,6 +35,7 @@ namespace Tildetool
       static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
       private const int SWP_NOSIZE = 0x0001;
+      private const int SWP_NOMOVE = 0x0001;
       private const int SWP_NOZORDER = 0x0004;
       private const int SWP_SHOWWINDOW = 0x0040;
 
@@ -50,16 +51,6 @@ namespace Tildetool
          //
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
          _MediaPlayer.Play();
-
-         //DataTemplate? template = Resources["CommandOption"] as DataTemplate;
-         //ContentControl ctrl = new ContentControl();
-         //ctrl.ContentTemplate = template;
-         //Grid.SetRow(ctrl, 1);
-         //OptionGrid.Children.Add(ctrl);
-
-         Thickness t = OptionGrid.Margin;
-         t.Bottom = OptionGrid.Children.Count > 0 ? 10 : 0;
-         OptionGrid.Margin = t;
       }
       protected override void OnClosed(EventArgs e)
       {
@@ -93,13 +84,21 @@ namespace Tildetool
             //
             Dictionary<HotcommandSpawn, Process> spawnProcess = new Dictionary<HotcommandSpawn, Process>();
             foreach (var entry in _SpawnProcess)
-               if (entry.Key.WindowX != null && entry.Key.WindowY != null)
+            {
+               if (entry.Value.MainWindowHandle != IntPtr.Zero)
                {
-                  if (entry.Value.MainWindowHandle != IntPtr.Zero)
-                     SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, entry.Key.WindowX.Value, entry.Key.WindowY.Value, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
-                  else
-                     spawnProcess[entry.Key] = entry.Value;
+                  int moveBit = (entry.Key.WindowX != null && entry.Key.WindowY != null) ? 0 : SWP_NOMOVE;
+                  int sizeBit = (entry.Key.WindowW != null && entry.Key.WindowH != null) ? 0 : SWP_NOSIZE;
+                  int wx = (entry.Key.WindowX != null) ? entry.Key.WindowX.Value : 0;
+                  int wy = (entry.Key.WindowY != null) ? entry.Key.WindowY.Value : 0;
+                  int ww = (entry.Key.WindowW != null) ? entry.Key.WindowW.Value : 0;
+                  int wh = (entry.Key.WindowH != null) ? entry.Key.WindowH.Value : 0;
+                  SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+                  entry.Value.Dispose();
                }
+               else
+                  spawnProcess[entry.Key] = entry.Value;
+            }
             _SpawnProcess = spawnProcess;
 
             //
@@ -164,8 +163,8 @@ namespace Tildetool
             {
                Process process = new Process();
                ProcessStartInfo startInfo = new ProcessStartInfo();
-               startInfo.FileName = "explorer.exe";
-               startInfo.Arguments = System.AppDomain.CurrentDomain.BaseDirectory;
+               startInfo.FileName = System.AppDomain.CurrentDomain.BaseDirectory + "\\Hotcommand.json";
+               startInfo.UseShellExecute = true;
                process.StartInfo = startInfo;
                process.Start();
             }
@@ -182,6 +181,54 @@ namespace Tildetool
             _AnimateTextOut();
 
          //
+         bool foundOne = false;
+         List<string> altCmds = new List<string>();
+         if (_Text.Length > 0)
+            foreach (var c in HotcommandManager.Instance.Commands)
+               if (c.Key.StartsWith(_Text))
+               {
+                  if (!foundOne)
+                  {
+                     CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     foundOne = true;
+                  }
+                  else
+                     altCmds.Add(c.Value.Tag);
+               }
+         if (!foundOne)
+            CommandPreview.Text = "";
+
+         //
+         {
+            DataTemplate? template = Resources["CommandOption"] as DataTemplate;
+            while (OptionGrid.Children.Count > altCmds.Count)
+               OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
+            while (OptionGrid.Children.Count < altCmds.Count)
+            {
+               ContentControl content = new ContentControl { ContentTemplate = template };
+               OptionGrid.Children.Add(content);
+               Grid.SetRow(content, OptionGrid.Children.Count);
+               content.ApplyTemplate();
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               presenter.ApplyTemplate();
+            }
+            for (int i = 0; i < altCmds.Count; i++)
+            {
+               ContentControl content = OptionGrid.Children[i] as ContentControl;
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               presenter.ApplyTemplate();
+               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+               TextBlock text = grid.FindElementByName<TextBlock>("Text");
+
+               text.Text = altCmds[i];
+            }
+
+            Thickness t = OptionGrid.Margin;
+            t.Bottom = OptionGrid.Children.Count > 0 ? 10 : 0;
+            OptionGrid.Margin = t;
+         }
+
+         //
          Tildetool.Hotcommand.Hotcommand? command;
          if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
          {
@@ -193,21 +240,30 @@ namespace Tildetool
                   Process process = new Process();
                   ProcessStartInfo startInfo = new ProcessStartInfo();
                   startInfo.FileName = spawn.FileName;
-                  startInfo.Arguments = spawn.Arguments;
+                  if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
+                  {
+                     foreach (string argument in spawn.ArgumentList)
+                        startInfo.ArgumentList.Add(argument);
+                  }
+                  else
+                     startInfo.Arguments = spawn.Arguments;
                   startInfo.WorkingDirectory = spawn.WorkingDirectory;
                   process.StartInfo = startInfo;
                   process.Start();
-                  if (spawn.WindowX != null && spawn.WindowY != null)
+                  if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
                   {
                      _SpawnProcess[spawn] = process;
                      waitSpawn = true;
                   }
+                  else
+                     process.Dispose();
                }
             }
             catch (Exception ex)
             {
                Console.WriteLine(ex.ToString());
                Cancel();
+               MessageBox.Show(ex.Message);
                return;
             }
 

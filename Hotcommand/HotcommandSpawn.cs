@@ -13,8 +13,11 @@ namespace Tildetool.Hotcommand
       public string FileName { get; set; }
       public string? WorkingDirectory { get; set; }
       public string? Arguments { get; set; }
+      public string[] ArgumentList { get; set; }
 
       public int? WindowX { get; set; }
       public int? WindowY { get; set; }
+      public int? WindowW { get; set; }
+      public int? WindowH { get; set; }
    }
 }
