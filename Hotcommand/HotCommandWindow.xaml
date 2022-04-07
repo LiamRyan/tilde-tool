@@ -14,9 +14,12 @@
         </DataTemplate>
     </Window.Resources>
     <Grid x:Name="RootFrame" Background="#CC101010" HorizontalAlignment="Left">
-        <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="10,10,10,10" Height="40" Background="#80000000" Opacity="0" HorizontalAlignment="Left" Orientation="Horizontal">
-            <TextBlock x:Name="CommandEntry" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Consolas" Foreground="White" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
-            <TextBlock x:Name="CommandPreview" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Consolas" Foreground="#7FFFFFFF" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+        <StackPanel x:Name="CommandLine" VerticalAlignment="Top" Margin="10,10,10,10" HorizontalAlignment="Left" Orientation="Horizontal">
+            <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#80000000" Opacity="0" HorizontalAlignment="Left" Orientation="Horizontal">
+                <TextBlock x:Name="CommandEntry" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Consolas" Foreground="White" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBlock x:Name="CommandPreview" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Consolas" Foreground="#7FFFFFFF" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            </StackPanel>
+            <TextBlock x:Name="CommandExpand" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Consolas" Foreground="#FFE0E0E0" FontSize="16" VerticalAlignment="Center" Margin="0,0,0,0"/>
         </StackPanel>
         <Grid x:Name="OptionGrid" Margin="0,60,0,10" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Grid.RowDefinitions>

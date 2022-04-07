@@ -192,24 +192,31 @@ namespace Tildetool
 
          //
          _Suggested = null;
+         bool suggestedFull = false;
          List<string> altCmds = new List<string>();
          if (_Text.Length > 0)
          {
+            HashSet<Tildetool.Hotcommand.Hotcommand> used = new HashSet<Tildetool.Hotcommand.Hotcommand>();
             foreach (var c in HotcommandManager.Instance.QuickTags)
-               if (c.Key.StartsWith(_Text))
+               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
                {
+                  used.Add(c.Value);
                   if (_Suggested == null)
                   {
                      CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     CommandExpand.Text = "\u2192 " + c.Value.Tag;
+                     CommandExpand.Margin = new Thickness(10, 0, 10, 0);
                      _Suggested = c.Value;
+                     suggestedFull = true;
                   }
                   else
                      altCmds.Add(c.Value.Tag);
                }
 
             foreach (var c in HotcommandManager.Instance.Commands)
-               if (c.Key.StartsWith(_Text))
+               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
                {
+                  used.Add(c.Value);
                   if (_Suggested == null)
                   {
                      CommandPreview.Text = c.Key.Substring(_Text.Length);
@@ -221,6 +228,11 @@ namespace Tildetool
          }
          if (_Suggested == null)
             CommandPreview.Text = "";
+         if (!suggestedFull)
+         {
+            CommandExpand.Text = "";
+            CommandExpand.Margin = new Thickness(0, 0, 0, 0);
+         }
 
          //
          {
