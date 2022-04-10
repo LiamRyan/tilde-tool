@@ -83,7 +83,7 @@ namespace Tildetool
       void WaitForSpawn()
       {
          _SpawnTimer = new Timer();
-         _SpawnTimer.Interval = 125;
+         _SpawnTimer.Interval = 50;
          _SpawnTimer.Elapsed += (s, e) =>
          {
             //
@@ -120,7 +120,9 @@ namespace Tildetool
       string _Text = "";
       bool _Finished = false;
       bool _FadedIn = false;
+
       Tildetool.Hotcommand.Hotcommand? _Suggested = null;
+      string _LastSuggested = "";
 
       const string _Number = "0123456789";
       private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -199,6 +201,7 @@ namespace Tildetool
          _Suggested = null;
          bool suggestedFull = false;
          List<string> altCmds = new List<string>();
+         List<string> altCmdsFull = new List<string>();
          if (_Text.Length > 0)
          {
             HashSet<Tildetool.Hotcommand.Hotcommand> used = new HashSet<Tildetool.Hotcommand.Hotcommand>();
@@ -209,13 +212,17 @@ namespace Tildetool
                   if (_Suggested == null)
                   {
                      CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     CommandExpand.Visibility = Visibility.Visible;
                      CommandExpand.Text = "\u2192 " + c.Value.Tag;
-                     CommandExpand.Margin = new Thickness(10, 0, 10, 0);
+                     _LastSuggested = c.Key;
                      _Suggested = c.Value;
                      suggestedFull = true;
                   }
                   else
-                     altCmds.Add(c.Value.Tag);
+                  {
+                     altCmds.Add(c.Key);
+                     altCmdsFull.Add(" \u2192 " + c.Value.Tag);
+               }
                }
 
             foreach (var c in HotcommandManager.Instance.Commands)
@@ -225,19 +232,20 @@ namespace Tildetool
                   if (_Suggested == null)
                   {
                      CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     _LastSuggested = c.Key;
                      _Suggested = c.Value;
                   }
                   else
+                  {
                      altCmds.Add(c.Value.Tag);
+                     altCmdsFull.Add("");
                }
          }
-         if (_Suggested == null)
-            CommandPreview.Text = "";
-         if (!suggestedFull)
-         {
-            CommandExpand.Text = "";
-            CommandExpand.Margin = new Thickness(0, 0, 0, 0);
          }
+         if (_Suggested == null)
+            CommandPreview.Text = _Text.Length == 0 ? _LastSuggested : "";
+         if (!suggestedFull && (_Suggested != null || _Text.Length != 0))
+            CommandExpand.Visibility = Visibility.Collapsed;
 
          //
          {
@@ -258,15 +266,16 @@ namespace Tildetool
                ContentControl content = OptionGrid.Children[i] as ContentControl;
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
-               StackPanel grid = VisualTreeHelper.GetChild(presenter, 0) as StackPanel;
+               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
                TextBlock text = grid.FindElementByName<TextBlock>("Text");
+               TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
 
                text.Text = altCmds[i];
+               expand.Text = altCmdsFull[i];
+               Thickness t = grid.Margin;
+               t.Bottom = (i + 1 >= altCmds.Count) ? 10 : 0;
+               grid.Margin = t;
             }
-
-            Thickness t = OptionGrid.Margin;
-            t.Bottom = OptionGrid.Children.Count > 0 ? 10 : 0;
-            OptionGrid.Margin = t;
          }
 
          //
@@ -367,6 +376,15 @@ namespace Tildetool
             Storyboard.SetTarget(myDoubleAnimation, CommandBox);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.From = 0.0;
+            myDoubleAnimation.To = 1.0;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandExpand);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
 
          _StoryboardTextFade.Completed += (sender, e) => { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
          _StoryboardTextFade.Begin(this);
@@ -387,6 +405,14 @@ namespace Tildetool
             myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
             _StoryboardTextFade.Children.Add(myDoubleAnimation);
             Storyboard.SetTarget(myDoubleAnimation, CommandBox);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.To = 0.0;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandExpand);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 

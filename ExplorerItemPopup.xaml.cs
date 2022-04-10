@@ -11,6 +11,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Runtime.InteropServices;
 using System.Windows.Media.Animation;
+using System.Diagnostics;
+using System.Timers;
 
 namespace Tildetool
 {
@@ -266,10 +268,13 @@ namespace Tildetool
 
          // Closing our window can send the child process to the back, so force it to the
          //  front manually now that we are closed.
-         if (_ResultProcess != null && _ResultProcess.MainWindowHandle != IntPtr.Zero)
+         Process process = _ResultProcess;
+         if (process != null && process.MainWindowHandle != IntPtr.Zero)
          {
-            ShowWindow(_ResultProcess.MainWindowHandle, SW_SHOW);
-            SetForegroundWindow(_ResultProcess.MainWindowHandle);
+            ShowWindow(process.MainWindowHandle, SW_SHOW);
+            SetForegroundWindow(process.MainWindowHandle);
+            process.Dispose();
+            _ResultProcess = null;
          }
       }
       void _Finish()
@@ -284,7 +289,7 @@ namespace Tildetool
          OnFinish?.Invoke(this);
       }
 
-      System.Diagnostics.Process? _ResultProcess = null;
+      Process? _ResultProcess = null;
       protected override void OnSourceInitialized(EventArgs e)
       {
          base.OnSourceInitialized(e);
@@ -295,12 +300,13 @@ namespace Tildetool
                      {
                         string folderPath, filePath;
                         GetFolderData(out folderPath, out filePath);
-                        _ResultProcess = new System.Diagnostics.Process();
-                        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                        _ResultProcess = new Process();
+                        ProcessStartInfo startInfo = new ProcessStartInfo();
                         startInfo.FileName = "cmd.exe";
                         startInfo.WorkingDirectory = folderPath;
                         _ResultProcess.StartInfo = startInfo;
                         _ResultProcess.Start();
+                        WaitForSpawn();
                      },
                      (index) =>
                      {
@@ -312,17 +318,48 @@ namespace Tildetool
                      {
                         string folderPath, filePath;
                         GetFolderData(out folderPath, out filePath);
-                        _ResultProcess = new System.Diagnostics.Process();
-                        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                        _ResultProcess = new Process();
+                        ProcessStartInfo startInfo = new ProcessStartInfo();
                         startInfo.FileName = "D:\\Program Files\\grepWin\\grepWin.exe";
                         startInfo.Arguments = folderPath;
                         _ResultProcess.StartInfo = startInfo;
                         _ResultProcess.Start();
+                        WaitForSpawn();
                      },
                    });
 
          _AnimateAppear();
       }
+
+      Timer? _SpawnTimer = null;
+      void WaitForSpawn()
+      {
+         _SpawnTimer = new Timer();
+         _SpawnTimer.Interval = 50;
+         _SpawnTimer.Elapsed += (s, e) =>
+         {
+            Process process = _ResultProcess;
+            if (process == null)
+            {
+               _SpawnTimer.Stop();
+               _SpawnTimer.Dispose();
+               _SpawnTimer = null;
+               return;
+            }
+            if (process.MainWindowHandle != IntPtr.Zero)
+            {
+               ShowWindow(process.MainWindowHandle, SW_SHOW);
+               SetForegroundWindow(process.MainWindowHandle);
+               Close();
+
+               _SpawnTimer.Stop();
+               _SpawnTimer.Dispose();
+               _SpawnTimer = null;
+            }
+         };
+         _SpawnTimer.Start();
+      }
+
       bool _Finished = false;
       public void Cancel()
       {
