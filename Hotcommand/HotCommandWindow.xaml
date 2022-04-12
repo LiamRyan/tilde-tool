@@ -8,8 +8,11 @@
         KeyDown="Window_KeyDown" Topmost="True" WindowState="Normal" SizeToContent="Height" HorizontalAlignment="Left" Left="0" Top="0">
     <Window.Resources>
         <DataTemplate x:Key="CommandOption">
-            <StackPanel VerticalAlignment="Top" Margin="10,0,10,0" Height="25" Background="#FF101010" HorizontalAlignment="Left" Orientation="Horizontal">
-                <TextBlock x:Name="Text" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
+            <StackPanel VerticalAlignment="Top" Margin="10,0,10,0" Height="25" HorizontalAlignment="Left" Orientation="Horizontal">
+                <StackPanel VerticalAlignment="Top" Margin="0,0,0,0" Height="25" Background="#FF101010" HorizontalAlignment="Left" Orientation="Horizontal">
+                    <TextBlock x:Name="Text" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                </StackPanel>
+                <TextBlock x:Name="Expand" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#6000FF56" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0"/>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>
@@ -17,8 +20,9 @@
         <Grid Background="#F0101010" VerticalAlignment="Top">
             <StackPanel x:Name="CommandLine" VerticalAlignment="Top" Margin="10,10,10,10" HorizontalAlignment="Left" Orientation="Horizontal">
                 <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#FF101010" Opacity="1" HorizontalAlignment="Left" Orientation="Horizontal">
-                    <TextBlock x:Name="CommandEntry" Text="DO" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FF00FF56" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <TextBlock x:Name="CommandPreview" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="CommandPreviewPre" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#7F00FF56" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="CommandEntry" Text="DO" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                    <TextBlock x:Name="CommandPreviewPost" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 </StackPanel>
                 <TextBlock x:Name="CommandExpand" Text="→ OPEN DOCUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#D000FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
             </StackPanel>

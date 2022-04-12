@@ -48,7 +48,8 @@ namespace Tildetool
          InitializeComponent();
          CommandBox.Opacity = 0;
          CommandEntry.Text = "";
-         CommandPreview.Text = "";
+         CommandPreviewPre.Text = "";
+         CommandPreviewPost.Text = "";
          CommandExpand.Text = "";
 
          _AnimateIn();
@@ -211,7 +212,31 @@ namespace Tildetool
                   used.Add(c.Value);
                   if (_Suggested == null)
                   {
-                     CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     int index = c.Key.IndexOf(_Text);
+                     CommandPreviewPre.Text = c.Key.Substring(0, index);
+                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
+                     CommandExpand.Visibility = Visibility.Visible;
+                     CommandExpand.Text = "\u2192 " + c.Value.Tag;
+                     _LastSuggested = c.Key;
+                     _Suggested = c.Value;
+                     suggestedFull = true;
+                  }
+                  else
+                  {
+                     altCmds.Add(c.Key);
+                     altCmdsFull.Add(" \u2192 " + c.Value.Tag);
+                  }
+               }
+
+            foreach (var c in HotcommandManager.Instance.QuickTags)
+               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+               {
+                  used.Add(c.Value);
+                  if (_Suggested == null)
+                  {
+                     int index = c.Key.IndexOf(_Text);
+                     CommandPreviewPre.Text = c.Key.Substring(0, index);
+                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
                      CommandExpand.Visibility = Visibility.Visible;
                      CommandExpand.Text = "\u2192 " + c.Value.Tag;
                      _LastSuggested = c.Key;
@@ -231,7 +256,28 @@ namespace Tildetool
                   used.Add(c.Value);
                   if (_Suggested == null)
                   {
-                     CommandPreview.Text = c.Key.Substring(_Text.Length);
+                     int index = c.Key.IndexOf(_Text);
+                     CommandPreviewPre.Text = c.Key.Substring(0, index);
+                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
+                     _LastSuggested = c.Key;
+                     _Suggested = c.Value;
+                  }
+                  else
+                  {
+                     altCmds.Add(c.Value.Tag);
+                     altCmdsFull.Add("");
+                  }
+               }
+
+            foreach (var c in HotcommandManager.Instance.Commands)
+               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+               {
+                  used.Add(c.Value);
+                  if (_Suggested == null)
+                  {
+                     int index = c.Key.IndexOf(_Text);
+                     CommandPreviewPre.Text = c.Key.Substring(0, index);
+                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
                      _LastSuggested = c.Key;
                      _Suggested = c.Value;
                   }
@@ -243,7 +289,10 @@ namespace Tildetool
          }
          }
          if (_Suggested == null)
-            CommandPreview.Text = _Text.Length == 0 ? _LastSuggested : "";
+         {
+            CommandPreviewPre.Text = _Text.Length == 0 ? _LastSuggested : "";
+            CommandPreviewPost.Text = "";
+         }
          if (!suggestedFull && (_Suggested != null || _Text.Length != 0))
             CommandExpand.Visibility = Visibility.Collapsed;
 
