@@ -12,12 +12,12 @@
     <Window.Resources>
         <DataTemplate x:Key="OptionTemplate">
             <Grid Width="200" Height="200" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <shape:Arc x:Name="Arc" Stroke="#CC000000" StrokeThickness="50" StartAngle="50" EndAngle="130" />
-                <TextBlock x:Name="Text" TextWrapping="Wrap" Foreground="White" VerticalAlignment="Top" Margin="20,20,20,20" TextAlignment="Center" FontWeight="Bold"/>
+                <shape:Arc x:Name="Arc" Stroke="#FF101010" StrokeThickness="50" StartAngle="50" EndAngle="130" />
+                <TextBlock x:Name="Text" TextWrapping="Wrap" FontFamily="Cascadia Code Light" FontSize="16" Foreground="#FF00FF56" VerticalAlignment="Top" Margin="20,20,20,20" TextAlignment="Center" FontWeight="Bold"/>
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid Margin="100 100 100 100">
+    <Grid Width="400" Height="400">
         <Grid x:Name="OptionGrid">
         </Grid>
     </Grid>

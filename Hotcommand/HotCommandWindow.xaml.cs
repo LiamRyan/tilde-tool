@@ -46,6 +46,11 @@ namespace Tildetool
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
 
          InitializeComponent();
+         CommandBox.Opacity = 0;
+         CommandEntry.Text = "";
+         CommandPreview.Text = "";
+         CommandExpand.Text = "";
+
          _AnimateIn();
 
          //
@@ -253,7 +258,7 @@ namespace Tildetool
                ContentControl content = OptionGrid.Children[i] as ContentControl;
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
-               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+               StackPanel grid = VisualTreeHelper.GetChild(presenter, 0) as StackPanel;
                TextBlock text = grid.FindElementByName<TextBlock>("Text");
 
                text.Text = altCmds[i];
