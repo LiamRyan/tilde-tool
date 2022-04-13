@@ -106,6 +106,7 @@ namespace Tildetool.Hotcommand
             }
             catch (Exception ex)
             {
+               MessageBox.Show(ex.ToString());
                Console.WriteLine(ex.Message);
             }
          }
@@ -158,6 +159,7 @@ namespace Tildetool.Hotcommand
          }
          catch (Exception ex)
          {
+            MessageBox.Show(ex.ToString());
             Console.WriteLine(ex.Message);
          }
          Watcher.EnableRaisingEvents = true;

@@ -437,6 +437,7 @@ namespace Tildetool
             }
             catch (Exception ex)
             {
+               MessageBox.Show(ex.ToString());
                Console.WriteLine(ex.ToString());
             }
 
