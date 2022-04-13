@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Hotcommand
 {
-   public class HotcommandData
+   public class Context
    {
-      public Context[] Context { get; set; }
+      public string Name { get; set; }
 
       public Command[] Hotcommand { get; set; }
 

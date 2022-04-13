@@ -7,9 +7,16 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Windows;
 
 namespace Tildetool.Hotcommand
 {
+   public class HmContext
+   {
+      public string Name;
+      public Dictionary<string, Command> Commands = new Dictionary<string, Command>();
+      public Dictionary<string, Command> QuickTags = new Dictionary<string, Command>();
+   }
    public class HotcommandManager
    {
       #region Singleton
@@ -24,8 +31,11 @@ namespace Tildetool.Hotcommand
       HotcommandData Data;
 
       // Processed results
-      public Dictionary<string, Hotcommand> Commands = new Dictionary<string, Hotcommand>();
-      public Dictionary<string, Hotcommand> QuickTags = new Dictionary<string, Hotcommand>();
+      public Dictionary<string, HmContext> Context = new Dictionary<string, HmContext>();
+      public Dictionary<string, HmContext> ContextTag = new Dictionary<string, HmContext>();
+
+      // State
+      public HmContext CurrentContext;
 
       #endregion
       #region File Watcher
@@ -114,35 +124,63 @@ namespace Tildetool.Hotcommand
          {
             // Initial run, populate some basic data.
             Data = new HotcommandData();
-            Data.Hotcommand = new Hotcommand[]
+            Data.Hotcommand = new Command[]
                {
-                  new Hotcommand {
+                  new Command {
                      Tag = "DOCUMENT",
-                     Spawns = new HotcommandSpawn[] { new HotcommandSpawn {
+                     Spawns = new CommandSpawn[] { new CommandSpawn {
                         FileName = "explorer.exe",
                         Arguments = "D:\\Documents" } } },
                };
-            Data.QuickTag = new HotcommandQuickTag[]
+            Data.QuickTag = new QuickTag[]
                {
-                  new HotcommandQuickTag { Tag = "DOC", Target = "DOCUMENT" },
+                  new QuickTag { Tag = "DOC", Target = "DOCUMENT" },
                };
             Save();
             WatchFile();
          }
 
          // Process it.
-         Commands = new Dictionary<string, Hotcommand>();
-         if (Data.Hotcommand != null)
-            foreach (Hotcommand command in Data.Hotcommand)
-               Commands[command.Tag] = command;
-         QuickTags = new Dictionary<string, Hotcommand>();
-         if (Data.QuickTag != null)
-            foreach (HotcommandQuickTag qtag in Data.QuickTag)
+         Context = new Dictionary<string, HmContext>();
+         HmContext context;
+
+         if (Data.Context != null)
+            foreach (var dcontext in Data.Context)
             {
-               Hotcommand command;
-               if (Commands.TryGetValue(qtag.Target, out command))
-                  QuickTags[qtag.Tag] = command;
+               context = new HmContext { Name = dcontext.Name };
+               if (dcontext.Hotcommand != null)
+                  foreach (Command command in dcontext.Hotcommand)
+                     context.Commands[command.Tag] = command;
+               if (dcontext.QuickTag != null)
+                  foreach (QuickTag qtag in dcontext.QuickTag)
+                  {
+                     Command command;
+                     if (context.Commands.TryGetValue(qtag.Target, out command))
+                        context.QuickTags[qtag.Tag] = command;
+                     else
+                        MessageBox.Show("Invalid quicktag " + qtag.Tag + " in context " + dcontext.Name);
+                  }
+               Context[dcontext.Name] = context;
             }
+
+         context = new HmContext { Name = "DEFAULT" };
+         if (Data.Hotcommand != null)
+            foreach (Command command in Data.Hotcommand)
+               context.Commands[command.Tag] = command;
+         if (Data.QuickTag != null)
+            foreach (QuickTag qtag in Data.QuickTag)
+            {
+               HmContext subcontext;
+               Command command;
+               if (Context.TryGetValue(qtag.Target, out subcontext))
+                  ContextTag[qtag.Tag] = subcontext;
+               else if (context.Commands.TryGetValue(qtag.Target, out command))
+                  context.QuickTags[qtag.Tag] = command;
+               else
+                  MessageBox.Show("Invalid quicktag " + qtag.Tag);
+            }
+         Context["DEFAULT"] = context;
+         CurrentContext = context;
 
          return result;
       }

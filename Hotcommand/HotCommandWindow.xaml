@@ -19,6 +19,7 @@
     <Grid x:Name="RootFrame" HorizontalAlignment="Left">
         <Grid Background="#F0101010" VerticalAlignment="Top" Margin="0,0,0,10">
             <StackPanel x:Name="CommandLine" VerticalAlignment="Top" Margin="10,10,10,10" HorizontalAlignment="Left" Orientation="Horizontal">
+                <TextBlock x:Name="CommandContext" Text="ENET" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#D000FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
                 <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#FF101010" Opacity="1" HorizontalAlignment="Left" Orientation="Horizontal">
                     <TextBlock x:Name="CommandPreviewPre" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#7F00FF56" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
                     <TextBlock x:Name="CommandEntry" Text="DO" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,0,0"/>

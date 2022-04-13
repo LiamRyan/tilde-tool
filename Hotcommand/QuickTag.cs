@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Hotcommand
 {
-    public class HotcommandQuickTag
+    public class QuickTag
     {
       public string Tag { get; set; }
       public string Target { get; set; }

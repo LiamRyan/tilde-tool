@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Hotcommand
 {
-   public class HotcommandSpawn
+   public class CommandSpawn
    {
       //
       public string FileName { get; set; }

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Hotcommand
 {
-   public class Hotcommand
+   public class Command
    {
       public string Tag { get; set; }
 
-      public HotcommandSpawn[] Spawns { get; set; }
+      public CommandSpawn[] Spawns { get; set; }
    }
 }

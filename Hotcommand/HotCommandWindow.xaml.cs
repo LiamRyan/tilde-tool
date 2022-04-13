@@ -52,6 +52,9 @@ namespace Tildetool
          CommandPreviewPost.Text = "";
          CommandExpand.Text = "";
 
+         CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
+         CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
+
          _AnimateIn();
 
          //
@@ -80,7 +83,7 @@ namespace Tildetool
       }
 
       Timer? _SpawnTimer = null;
-      Dictionary<HotcommandSpawn, Process> _SpawnProcess = new Dictionary<HotcommandSpawn, Process>();
+      Dictionary<CommandSpawn, Process> _SpawnProcess = new Dictionary<CommandSpawn, Process>();
       void WaitForSpawn()
       {
          _SpawnTimer = new Timer();
@@ -88,7 +91,7 @@ namespace Tildetool
          _SpawnTimer.Elapsed += (s, e) =>
          {
             //
-            Dictionary<HotcommandSpawn, Process> spawnProcess = new Dictionary<HotcommandSpawn, Process>();
+            Dictionary<CommandSpawn, Process> spawnProcess = new Dictionary<CommandSpawn, Process>();
             foreach (var entry in _SpawnProcess)
             {
                if (entry.Value.MainWindowHandle != IntPtr.Zero)
@@ -122,7 +125,8 @@ namespace Tildetool
       bool _Finished = false;
       bool _FadedIn = false;
 
-      Tildetool.Hotcommand.Hotcommand? _Suggested = null;
+      Tildetool.Hotcommand.HmContext? _SuggestedContext = null;
+      Tildetool.Hotcommand.Command? _Suggested = null;
       string _LastSuggested = "";
 
       const string _Number = "0123456789";
@@ -140,7 +144,7 @@ namespace Tildetool
                return;
          }
 
-         Tildetool.Hotcommand.Hotcommand? command;
+         Tildetool.Hotcommand.Command? command;
 
          // Handle key entry.
          if (e.Key >= Key.A && e.Key <= Key.Z)
@@ -180,8 +184,15 @@ namespace Tildetool
                process.Start();
                Cancel();
             }
-            else if (HotcommandManager.Instance.Commands.TryGetValue(_Text, out command))
+            else if (HotcommandManager.Instance.CurrentContext.Commands.TryGetValue(_Text, out command))
                Execute(command);
+            else if (_SuggestedContext != null)
+            {
+               HotcommandManager.Instance.CurrentContext = _SuggestedContext;
+               _AnimateCommand();
+               _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
+               _MediaPlayer.Play();
+            }
             else if (_Suggested != null)
                Execute(_Suggested);
             else
@@ -198,102 +209,107 @@ namespace Tildetool
          if (_FadedIn && _Text.Length == 0)
             _AnimateTextOut();
 
+         HmContext? defaultContext;
+         if (HotcommandManager.Instance.Context.TryGetValue("DEFAULT", out defaultContext))
+            if (defaultContext == HotcommandManager.Instance.CurrentContext)
+               defaultContext = null;
+
          //
          _Suggested = null;
+         _SuggestedContext = null;
          bool suggestedFull = false;
          List<string> altCmds = new List<string>();
          List<string> altCmdsFull = new List<string>();
          if (_Text.Length > 0)
          {
-            HashSet<Tildetool.Hotcommand.Hotcommand> used = new HashSet<Tildetool.Hotcommand.Hotcommand>();
-            foreach (var c in HotcommandManager.Instance.QuickTags)
-               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
+            HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
+            usedC.Add(HotcommandManager.Instance.CurrentContext);
+
+            HashSet<Tildetool.Hotcommand.Command> used = new HashSet<Tildetool.Hotcommand.Command>();
+
+            void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag)
+            {
+               if (command != null)
+                  used.Add(command);
+               if (context != null)
+                  usedC.Add(context);
+
+               if (_Suggested == null && _SuggestedContext == null)
                {
-                  used.Add(c.Value);
-                  if (_Suggested == null)
+                  int index = tag.IndexOf(_Text);
+                  CommandPreviewPre.Text = tag.Substring(0, index);
+                  CommandPreviewPost.Text = tag.Substring(index + _Text.Length);
+                  if (quicktag)
                   {
-                     int index = c.Key.IndexOf(_Text);
-                     CommandPreviewPre.Text = c.Key.Substring(0, index);
-                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
                      CommandExpand.Visibility = Visibility.Visible;
-                     CommandExpand.Text = "\u2192 " + c.Value.Tag;
-                     _LastSuggested = c.Key;
-                     _Suggested = c.Value;
+                     CommandExpand.Text = "\u2192 " + full;
                      suggestedFull = true;
                   }
-                  else
-                  {
-                     altCmds.Add(c.Key);
-                     altCmdsFull.Add(" \u2192 " + c.Value.Tag);
-                  }
+                  _LastSuggested = tag;
+                  _Suggested = command;
+                  _SuggestedContext = context;
                }
-
-            foreach (var c in HotcommandManager.Instance.QuickTags)
-               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+               else
                {
-                  used.Add(c.Value);
-                  if (_Suggested == null)
-                  {
-                     int index = c.Key.IndexOf(_Text);
-                     CommandPreviewPre.Text = c.Key.Substring(0, index);
-                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
-                     CommandExpand.Visibility = Visibility.Visible;
-                     CommandExpand.Text = "\u2192 " + c.Value.Tag;
-                     _LastSuggested = c.Key;
-                     _Suggested = c.Value;
-                     suggestedFull = true;
-                  }
+                  altCmds.Add(tag);
+                  if (quicktag)
+                     altCmdsFull.Add(" \u2192 " + full);
                   else
-                  {
-                     altCmds.Add(c.Key);
-                     altCmdsFull.Add(" \u2192 " + c.Value.Tag);
+                     altCmdsFull.Add("");
                }
-               }
+            }
 
-            foreach (var c in HotcommandManager.Instance.Commands)
+            foreach (var c in HotcommandManager.Instance.ContextTag)
+               if (c.Key.StartsWith(_Text) && !usedC.Contains(c.Value))
+                  _addTag(c.Key, c.Value.Name, null, c.Value, true);
+
+            foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
-               {
-                  used.Add(c.Value);
-                  if (_Suggested == null)
-                  {
-                     int index = c.Key.IndexOf(_Text);
-                     CommandPreviewPre.Text = c.Key.Substring(0, index);
-                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
-                     _LastSuggested = c.Key;
-                     _Suggested = c.Value;
-                  }
-                  else
-                  {
-                     altCmds.Add(c.Value.Tag);
-                     altCmdsFull.Add("");
-                  }
-               }
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, true);
 
-            foreach (var c in HotcommandManager.Instance.Commands)
+            if (defaultContext != null)
+               foreach (var c in defaultContext.QuickTags)
+                  if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true);
+
+            foreach (var c in HotcommandManager.Instance.Context)
+               if (c.Key.StartsWith(_Text) && !usedC.Contains(c.Value))
+                  _addTag(c.Key, c.Value.Name, null, c.Value, false);
+
+            foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, false);
+
+            if (defaultContext != null)
+               foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+                  if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false);
+
+
+            foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                if (c.Key.Contains(_Text) && !used.Contains(c.Value))
-               {
-                  used.Add(c.Value);
-                  if (_Suggested == null)
-                  {
-                     int index = c.Key.IndexOf(_Text);
-                     CommandPreviewPre.Text = c.Key.Substring(0, index);
-                     CommandPreviewPost.Text = c.Key.Substring(index + _Text.Length);
-                     _LastSuggested = c.Key;
-                     _Suggested = c.Value;
-                  }
-                  else
-                  {
-                     altCmds.Add(c.Value.Tag);
-                     altCmdsFull.Add("");
-               }
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, true);
+
+            if (defaultContext != null)
+               foreach (var c in defaultContext.QuickTags)
+                  if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true);
+
+            foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, false);
+
+            if (defaultContext != null)
+               foreach (var c in defaultContext.Commands)
+                  if (c.Key.Contains(_Text) && !used.Contains(c.Value))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false);
          }
-         }
-         if (_Suggested == null)
+         if (_Suggested == null && _SuggestedContext == null)
          {
             CommandPreviewPre.Text = _Text.Length == 0 ? _LastSuggested : "";
             CommandPreviewPost.Text = "";
          }
-         if (!suggestedFull && (_Suggested != null || _Text.Length != 0))
+         if (!suggestedFull && (_Suggested != null || _SuggestedContext != null || _Text.Length != 0))
             CommandExpand.Visibility = Visibility.Collapsed;
 
          //
@@ -328,16 +344,37 @@ namespace Tildetool
          }
 
          //
-         if (HotcommandManager.Instance.QuickTags.TryGetValue(_Text, out command))
+         HmContext context;
+         if (HotcommandManager.Instance.ContextTag.TryGetValue(_Text, out context))
+         {
+            HotcommandManager.Instance.CurrentContext = context;
+            CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
+            CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
+
+            _Text = "";
+            _LastSuggested = "";
+            _SuggestedContext = null;
+            _Suggested = null;
+            CommandEntry.Text = "";
+            CommandPreviewPre.Text = "";
+            CommandPreviewPost.Text = "";
+            CommandExpand.Visibility = Visibility.Collapsed;
+
+            _AnimateTextOut();
+
+            _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
+            _MediaPlayer.Play();
+         }
+         else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
             Execute(command);
       }
 
-      public void Execute(Tildetool.Hotcommand.Hotcommand command)
+      public void Execute(Tildetool.Hotcommand.Command command)
       {
          bool waitSpawn = false;
          try
          {
-            foreach (HotcommandSpawn spawn in command.Spawns)
+            foreach (CommandSpawn spawn in command.Spawns)
             {
                Process process = new Process();
                ProcessStartInfo startInfo = new ProcessStartInfo();
