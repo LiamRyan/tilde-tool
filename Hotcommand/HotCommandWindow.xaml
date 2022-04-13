@@ -17,7 +17,7 @@
         </DataTemplate>
     </Window.Resources>
     <Grid x:Name="RootFrame" HorizontalAlignment="Left">
-        <Grid Background="#F0101010" VerticalAlignment="Top">
+        <Grid Background="#F0101010" VerticalAlignment="Top" Margin="0,0,0,10">
             <StackPanel x:Name="CommandLine" VerticalAlignment="Top" Margin="10,10,10,10" HorizontalAlignment="Left" Orientation="Horizontal">
                 <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#FF101010" Opacity="1" HorizontalAlignment="Left" Orientation="Horizontal">
                     <TextBlock x:Name="CommandPreviewPre" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#7F00FF56" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
@@ -26,6 +26,14 @@
                 </StackPanel>
                 <TextBlock x:Name="CommandExpand" Text="→ OPEN DOCUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#D000FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
             </StackPanel>
+        </Grid>
+        <Grid VerticalAlignment="Top" Height="10" Margin="0,60,0,0">
+            <Grid.Background>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <GradientStop Color="#7F008026"/>
+                    <GradientStop Color="#0000FF56" Offset="1"/>
+                </LinearGradientBrush>
+            </Grid.Background>
         </Grid>
         <Grid x:Name="OptionGrid" Background="#F0101010" Margin="0,60,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Grid.RowDefinitions>
