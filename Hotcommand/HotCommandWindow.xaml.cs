@@ -56,6 +56,7 @@ namespace Tildetool
          CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
 
          _AnimateIn();
+         RefreshDisplay();
 
          //
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
@@ -130,6 +131,194 @@ namespace Tildetool
       string _LastSuggested = "";
 
       const string _Number = "0123456789";
+      private void RefreshDisplay()
+      {
+         HmContext? defaultContext;
+         if (HotcommandManager.Instance.ContextByTag.TryGetValue("DEFAULT", out defaultContext))
+            if (defaultContext == HotcommandManager.Instance.CurrentContext)
+               defaultContext = null;
+
+         //
+         _Suggested = null;
+         _SuggestedContext = null;
+         bool suggestedFull = false;
+         List<string> altCmds = new List<string>();
+         List<string> altCmdsFull = new List<string>();
+         {
+            HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
+            usedC.Add(HotcommandManager.Instance.CurrentContext);
+
+            HashSet<Tildetool.Hotcommand.Command> used = new HashSet<Tildetool.Hotcommand.Command>();
+
+            void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag, bool allowSuggest)
+            {
+               bool already = false;
+               if (command != null)
+                  already = !used.Add(command);
+               if (context != null)
+                  already = !usedC.Add(context);
+
+               quicktag = quicktag && tag.CompareTo(full) != 0;
+               if (_Suggested == null && _SuggestedContext == null && allowSuggest)
+               {
+                  int index = tag.IndexOf(_Text);
+                  CommandPreviewPre.Text = tag.Substring(0, index);
+                  CommandPreviewPost.Text = tag.Substring(index + _Text.Length);
+                  if (quicktag)
+                  {
+                     CommandExpand.Visibility = Visibility.Visible;
+                     CommandExpand.Text = "\u2192 " + full;
+                     suggestedFull = true;
+                  }
+                  _LastSuggested = tag;
+                  _Suggested = command;
+                  _SuggestedContext = context;
+               }
+               else if (!already && altCmds.Count < 10)
+               {
+                  altCmds.Add(tag);
+                  if (quicktag)
+                     altCmdsFull.Add(" \u2192 " + full);
+                  else
+                     altCmdsFull.Add("");
+               }
+            }
+
+            //
+            List<HmUsage>? usages;
+            if (HotcommandManager.Instance.CurrentContext.UsageByText.TryGetValue(_Text, out usages))
+            {
+               foreach (HmUsage usage in usages)
+                  if (!used.Contains(usage.Command))
+                     _addTag(usage.Command.Tag, usage.Command.Tag, usage.Command, null, false, false);
+            }
+
+            //
+            if (_Text.Length > 0)
+            {
+               foreach (var c in HotcommandManager.Instance.ContextTag)
+                  if (c.Key.StartsWith(_Text))
+                     _addTag(c.Key, c.Value.Name, null, c.Value, true, true);
+
+               foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
+                  if (c.Key.StartsWith(_Text))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+
+               if (defaultContext != null)
+                  foreach (var c in defaultContext.QuickTags)
+                     if (c.Key.StartsWith(_Text))
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+
+               foreach (var c in HotcommandManager.Instance.ContextByTag)
+                  if (c.Key.StartsWith(_Text))
+                     _addTag(c.Key, c.Value.Name, null, c.Value, false, true);
+
+               foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+                  if (c.Key.StartsWith(_Text))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+
+               if (defaultContext != null)
+                  foreach (var c in defaultContext.Commands)
+                     if (c.Key.StartsWith(_Text))
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+
+
+               foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
+                  if (c.Key.Contains(_Text))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+
+               if (defaultContext != null)
+                  foreach (var c in defaultContext.QuickTags)
+                     if (c.Key.Contains(_Text))
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+
+               foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+                  if (c.Key.Contains(_Text))
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+
+               if (defaultContext != null)
+                  foreach (var c in defaultContext.Commands)
+                     if (c.Key.Contains(_Text))
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+            }
+
+            //
+            if (altCmds.Count < 10)
+               foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
+               {
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, true, false);
+                  if (altCmds.Count >= 10)
+                     break;
+               }
+
+            if (altCmds.Count < 10)
+               if (defaultContext != null)
+                  foreach (var c in defaultContext.QuickTags)
+                  {
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, false);
+                     if (altCmds.Count >= 10)
+                        break;
+                  }
+
+            if (altCmds.Count < 10)
+               foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+               {
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, false, false);
+                  if (altCmds.Count >= 10)
+                     break;
+               }
+
+            if (altCmds.Count < 10)
+               if (defaultContext != null)
+                  foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
+                  {
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, false);
+                     if (altCmds.Count >= 10)
+                        break;
+                  }
+         }
+
+         //
+         if (_Suggested == null && _SuggestedContext == null)
+         {
+            CommandPreviewPre.Text = _Text.Length == 0 ? _LastSuggested : "";
+            CommandPreviewPost.Text = "";
+         }
+         if (!suggestedFull && (_Suggested != null || _SuggestedContext != null || _Text.Length != 0))
+            CommandExpand.Visibility = Visibility.Collapsed;
+
+         //
+         {
+            DataTemplate? template = Resources["CommandOption"] as DataTemplate;
+            while (OptionGrid.Children.Count > altCmds.Count)
+               OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
+            while (OptionGrid.Children.Count < altCmds.Count)
+            {
+               ContentControl content = new ContentControl { ContentTemplate = template };
+               OptionGrid.Children.Add(content);
+               Grid.SetRow(content, OptionGrid.Children.Count);
+               content.ApplyTemplate();
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               presenter.ApplyTemplate();
+            }
+            for (int i = 0; i < altCmds.Count; i++)
+            {
+               ContentControl content = OptionGrid.Children[i] as ContentControl;
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               presenter.ApplyTemplate();
+               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+               TextBlock text = grid.FindElementByName<TextBlock>("Text");
+               TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
+
+               text.Text = altCmds[i];
+               expand.Text = altCmdsFull[i];
+               Thickness t = grid.Margin;
+               t.Bottom = (i + 1 >= altCmds.Count) ? 10 : 0;
+               grid.Margin = t;
+            }
+         }
+      }
+
       private void Window_KeyDown(object sender, KeyEventArgs e)
       {
          if (_Finished)
@@ -202,146 +391,11 @@ namespace Tildetool
             return;
          }
          CommandEntry.Text = _Text;
-         RootFrame.UpdateLayout();
 
          if (!_FadedIn && _Text.Length == 1)
             _AnimateTextIn();
          if (_FadedIn && _Text.Length == 0)
             _AnimateTextOut();
-
-         HmContext? defaultContext;
-         if (HotcommandManager.Instance.Context.TryGetValue("DEFAULT", out defaultContext))
-            if (defaultContext == HotcommandManager.Instance.CurrentContext)
-               defaultContext = null;
-
-         //
-         _Suggested = null;
-         _SuggestedContext = null;
-         bool suggestedFull = false;
-         List<string> altCmds = new List<string>();
-         List<string> altCmdsFull = new List<string>();
-         if (_Text.Length > 0)
-         {
-            HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
-            usedC.Add(HotcommandManager.Instance.CurrentContext);
-
-            HashSet<Tildetool.Hotcommand.Command> used = new HashSet<Tildetool.Hotcommand.Command>();
-
-            void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag)
-            {
-               if (command != null)
-                  used.Add(command);
-               if (context != null)
-                  usedC.Add(context);
-
-               if (_Suggested == null && _SuggestedContext == null)
-               {
-                  int index = tag.IndexOf(_Text);
-                  CommandPreviewPre.Text = tag.Substring(0, index);
-                  CommandPreviewPost.Text = tag.Substring(index + _Text.Length);
-                  if (quicktag)
-                  {
-                     CommandExpand.Visibility = Visibility.Visible;
-                     CommandExpand.Text = "\u2192 " + full;
-                     suggestedFull = true;
-                  }
-                  _LastSuggested = tag;
-                  _Suggested = command;
-                  _SuggestedContext = context;
-               }
-               else
-               {
-                  altCmds.Add(tag);
-                  if (quicktag)
-                     altCmdsFull.Add(" \u2192 " + full);
-                  else
-                     altCmdsFull.Add("");
-               }
-            }
-
-            foreach (var c in HotcommandManager.Instance.ContextTag)
-               if (c.Key.StartsWith(_Text) && !usedC.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Name, null, c.Value, true);
-
-            foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
-               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, true);
-
-            if (defaultContext != null)
-               foreach (var c in defaultContext.QuickTags)
-                  if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, true);
-
-            foreach (var c in HotcommandManager.Instance.Context)
-               if (c.Key.StartsWith(_Text) && !usedC.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Name, null, c.Value, false);
-
-            foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
-               if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, false);
-
-            if (defaultContext != null)
-               foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
-                  if (c.Key.StartsWith(_Text) && !used.Contains(c.Value))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, false);
-
-
-            foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
-               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, true);
-
-            if (defaultContext != null)
-               foreach (var c in defaultContext.QuickTags)
-                  if (c.Key.Contains(_Text) && !used.Contains(c.Value))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, true);
-
-            foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
-               if (c.Key.Contains(_Text) && !used.Contains(c.Value))
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, false);
-
-            if (defaultContext != null)
-               foreach (var c in defaultContext.Commands)
-                  if (c.Key.Contains(_Text) && !used.Contains(c.Value))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, false);
-         }
-         if (_Suggested == null && _SuggestedContext == null)
-         {
-            CommandPreviewPre.Text = _Text.Length == 0 ? _LastSuggested : "";
-            CommandPreviewPost.Text = "";
-         }
-         if (!suggestedFull && (_Suggested != null || _SuggestedContext != null || _Text.Length != 0))
-            CommandExpand.Visibility = Visibility.Collapsed;
-
-         //
-         {
-            DataTemplate? template = Resources["CommandOption"] as DataTemplate;
-            while (OptionGrid.Children.Count > altCmds.Count)
-               OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
-            while (OptionGrid.Children.Count < altCmds.Count)
-            {
-               ContentControl content = new ContentControl { ContentTemplate = template };
-               OptionGrid.Children.Add(content);
-               Grid.SetRow(content, OptionGrid.Children.Count);
-               content.ApplyTemplate();
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-            }
-            for (int i = 0; i < altCmds.Count; i++)
-            {
-               ContentControl content = OptionGrid.Children[i] as ContentControl;
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
-               TextBlock text = grid.FindElementByName<TextBlock>("Text");
-               TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
-
-               text.Text = altCmds[i];
-               expand.Text = altCmdsFull[i];
-               Thickness t = grid.Margin;
-               t.Bottom = (i + 1 >= altCmds.Count) ? 10 : 0;
-               grid.Margin = t;
-            }
-         }
 
          //
          HmContext context;
@@ -367,6 +421,8 @@ namespace Tildetool
          }
          else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
             Execute(command);
+
+         RefreshDisplay();
       }
 
       public void Execute(Tildetool.Hotcommand.Command command)
@@ -406,9 +462,14 @@ namespace Tildetool
             return;
          }
 
+         HotcommandManager.Instance.IncFrequency("", command, 0.9f);
+         //HotcommandManager.Instance.IncFrequency(_Text, command, 0.66f);
+         HotcommandManager.Instance.SaveUsageLater();
+
          if (waitSpawn)
             WaitForSpawn();
 
+         _Suggested = command;
          _AnimateCommand();
          _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
          _MediaPlayer.Play();
@@ -442,7 +503,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.WidthProperty));
          }
 
-         _StoryboardAppear.Completed += (sender, e) => { _StoryboardAppear.Remove(); _StoryboardAppear = null; };
+         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(); _StoryboardAppear = null; };
          _StoryboardAppear.Begin(this);
          _StoryboardFit.Begin(this);
       }
@@ -472,7 +533,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
          _StoryboardTextFade.Begin(this);
       }
       void _AnimateTextOut()
@@ -502,7 +563,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
          _StoryboardTextFade.Begin(this);
       }
 

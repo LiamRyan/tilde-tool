@@ -32,6 +32,8 @@ namespace Tildetool
          AppNotifyIcon = (TaskbarIcon)FindResource("AppNotifyIcon");
 
          HotcommandManager.Instance.Load();
+         HotcommandManager.Instance.LoadUsage();
+         HotcommandManager.Instance.WatchFile();
 
          Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
