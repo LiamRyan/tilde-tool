@@ -144,13 +144,14 @@ namespace Tildetool
          bool suggestedFull = false;
          List<string> altCmds = new List<string>();
          List<string> altCmdsFull = new List<string>();
+         List<bool> altCmdsContext = new List<bool>();
          {
             HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
             usedC.Add(HotcommandManager.Instance.CurrentContext);
 
             HashSet<Tildetool.Hotcommand.Command> used = new HashSet<Tildetool.Hotcommand.Command>();
 
-            void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag, bool allowSuggest)
+            void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag, bool inContext, bool allowSuggest)
             {
                bool already = false;
                if (command != null)
@@ -181,6 +182,7 @@ namespace Tildetool
                      altCmdsFull.Add(" \u2192 " + full);
                   else
                      altCmdsFull.Add("");
+                  altCmdsContext.Add(inContext);
                }
             }
 
@@ -190,7 +192,7 @@ namespace Tildetool
             {
                foreach (HmUsage usage in usages)
                   if (!used.Contains(usage.Command))
-                     _addTag(usage.Command.Tag, usage.Command.Tag, usage.Command, null, false, false);
+                     _addTag(usage.Command.Tag, usage.Command.Tag, usage.Command, null, false, true, _Text.Length > 0);
             }
 
             //
@@ -198,55 +200,55 @@ namespace Tildetool
             {
                foreach (var c in HotcommandManager.Instance.ContextTag)
                   if (c.Key.StartsWith(_Text))
-                     _addTag(c.Key, c.Value.Name, null, c.Value, true, true);
+                     _addTag(c.Key, c.Value.Name, null, c.Value, true, false, true);
 
                foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                   if (c.Key.StartsWith(_Text))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, defaultContext != null, true);
 
                if (defaultContext != null)
                   foreach (var c in defaultContext.QuickTags)
                      if (c.Key.StartsWith(_Text))
-                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, false, true);
 
                foreach (var c in HotcommandManager.Instance.ContextByTag)
                   if (c.Key.StartsWith(_Text))
-                     _addTag(c.Key, c.Value.Name, null, c.Value, false, true);
+                     _addTag(c.Key, c.Value.Name, null, c.Value, false, false, true);
 
                foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                   if (c.Key.StartsWith(_Text))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, defaultContext != null, true);
 
                if (defaultContext != null)
                   foreach (var c in defaultContext.Commands)
                      if (c.Key.StartsWith(_Text))
-                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, false, true);
 
 
                foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                   if (c.Key.Contains(_Text))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, defaultContext != null, true);
 
                if (defaultContext != null)
                   foreach (var c in defaultContext.QuickTags)
                      if (c.Key.Contains(_Text))
-                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, true);
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, true, false, true);
 
                foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                   if (c.Key.Contains(_Text))
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, defaultContext != null, true);
 
                if (defaultContext != null)
                   foreach (var c in defaultContext.Commands)
                      if (c.Key.Contains(_Text))
-                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, true);
+                        _addTag(c.Key, c.Value.Tag, c.Value, null, false, false, true);
             }
 
             //
             if (altCmds.Count < 10)
                foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                {
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, true, false);
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, true, defaultContext != null, false);
                   if (altCmds.Count >= 10)
                      break;
                }
@@ -255,7 +257,7 @@ namespace Tildetool
                if (defaultContext != null)
                   foreach (var c in defaultContext.QuickTags)
                   {
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, false);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, true, false, false);
                      if (altCmds.Count >= 10)
                         break;
                   }
@@ -263,7 +265,7 @@ namespace Tildetool
             if (altCmds.Count < 10)
                foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                {
-                  _addTag(c.Key, c.Value.Tag, c.Value, null, false, false);
+                  _addTag(c.Key, c.Value.Tag, c.Value, null, false, defaultContext != null, false);
                   if (altCmds.Count >= 10)
                      break;
                }
@@ -272,7 +274,7 @@ namespace Tildetool
                if (defaultContext != null)
                   foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                   {
-                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, false);
+                     _addTag(c.Key, c.Value.Tag, c.Value, null, false, false, false);
                      if (altCmds.Count >= 10)
                         break;
                   }
@@ -309,9 +311,11 @@ namespace Tildetool
                FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
                TextBlock text = grid.FindElementByName<TextBlock>("Text");
                TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
+               TextBlock pre = grid.FindElementByName<TextBlock>("Pre");
 
                text.Text = altCmds[i];
                expand.Text = altCmdsFull[i];
+               pre.Visibility = altCmdsContext[i] ? Visibility.Visible : Visibility.Collapsed;
                Thickness t = grid.Margin;
                t.Bottom = (i + 1 >= altCmds.Count) ? 10 : 0;
                grid.Margin = t;
@@ -420,6 +424,8 @@ namespace Tildetool
             _MediaPlayer.Play();
          }
          else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
+            Execute(command);
+         else if (HotcommandManager.Instance.ContextByTag["DEFAULT"].QuickTags.TryGetValue(_Text, out command))
             Execute(command);
 
          RefreshDisplay();

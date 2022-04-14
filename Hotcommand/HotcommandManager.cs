@@ -180,6 +180,8 @@ namespace Tildetool.Hotcommand
          }
 
          // Process it.
+         string contextName = (CurrentContext != null) ? CurrentContext.Name : "";
+
          ContextByTag = new Dictionary<string, HmContext>();
          HmContext context;
 
@@ -219,7 +221,9 @@ namespace Tildetool.Hotcommand
                   MessageBox.Show("Invalid quicktag " + qtag.Tag);
             }
          ContextByTag["DEFAULT"] = context;
-         CurrentContext = context;
+
+         if (!ContextByTag.TryGetValue(contextName, out CurrentContext))
+            CurrentContext = context;
 
          return result;
       }
