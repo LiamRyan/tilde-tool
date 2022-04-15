@@ -9,48 +9,46 @@
     <Window.Resources>
         <DataTemplate x:Key="CommandOption">
             <StackPanel VerticalAlignment="Top" Margin="10,0,10,0" Height="25" HorizontalAlignment="Left" Orientation="Horizontal">
-                <TextBlock x:Name="Pre" Text="→" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#6000FF56" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <StackPanel VerticalAlignment="Top" Margin="0,0,0,0" Height="25" Background="#FF101010" HorizontalAlignment="Left" Orientation="Horizontal">
-                    <TextBlock x:Name="Text" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                <TextBlock x:Name="Pre" Text="→" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF2D7722" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <StackPanel VerticalAlignment="Top" Margin="0,0,0,0" Height="25" Background="#FF131012" HorizontalAlignment="Left" Orientation="Horizontal">
+                    <TextBlock x:Name="Text" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF45AF34" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
                 </StackPanel>
-                <TextBlock x:Name="Expand" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#6000FF56" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBlock x:Name="Expand" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF2D7722" FontSize="14" VerticalAlignment="Center" Margin="0,0,0,0"/>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>
     <Grid x:Name="RootFrame" HorizontalAlignment="Left">
-        <Grid Background="#F0101010" VerticalAlignment="Top" Margin="0,0,0,10">
+        <Grid Background="#FF191718" VerticalAlignment="Top" Margin="0,0,0,5">
             <StackPanel x:Name="CommandLine" VerticalAlignment="Top" Margin="10,10,10,10" HorizontalAlignment="Left" Orientation="Horizontal">
-                <TextBlock x:Name="CommandContext" Text="ENET" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#D000FF56" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#FF101010" Opacity="1" HorizontalAlignment="Left" Orientation="Horizontal">
-                    <TextBlock x:Name="CommandPreviewPre" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#7F00FF56" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    <TextBlock x:Name="CommandEntry" Text="DO" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,0,0"/>
-                    <TextBlock x:Name="CommandPreviewPost" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#7F00FF56" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <StackPanel x:Name="CommandBox" VerticalAlignment="Top" Margin="0" Height="40" Background="#FF131012" Opacity="1" HorizontalAlignment="Left" Orientation="Horizontal">
+                    <TextBlock x:Name="CommandPreviewPre" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FF2D7722" FontFamily="Cascadia Code Light" FontSize="20" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="CommandEntry" Text="DO" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF57db42" FontSize="20" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                    <TextBlock x:Name="CommandPreviewPost" Text="CUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF2D7722" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 </StackPanel>
-                <TextBlock x:Name="CommandExpand" Text="→ OPEN DOCUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#D000FF56" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                <TextBlock x:Name="CommandExpand" Text="→ OPEN DOCUMENTS" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF45AF34" FontSize="16" VerticalAlignment="Center" Margin="10,0,10,0"/>
             </StackPanel>
+            <TextBlock x:Name="CommandContext" Text="ENET" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF45AF34" FontSize="8" VerticalAlignment="Top" Margin="10,1,0,0"/>
         </Grid>
-        <Grid VerticalAlignment="Top" Height="10" Margin="0,60,0,0">
-            <Grid.Background>
-                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="#7F008026"/>
-                    <GradientStop Color="#0000FF56" Offset="1"/>
-                </LinearGradientBrush>
-            </Grid.Background>
-        </Grid>
-        <Grid x:Name="OptionGrid" Background="#F0101010" Margin="0,60,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <Grid.RowDefinitions>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-                <RowDefinition></RowDefinition>
-            </Grid.RowDefinitions>
+        <Grid VerticalAlignment="Top" Height="1" Margin="0,60,0,0" Background="#FF45AF34"/>
+        <Grid VerticalAlignment="Top" Height="4" Margin="0,61,0,0" Background="#FF191718"/>
+        <Grid Background="#FF191718" Margin="0,61,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Grid Background="#FF45AF34" Margin="0,-1,4,4" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <Grid x:Name="OptionGrid" Background="#FF191718" Margin="0,0,1,1" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Grid.RowDefinitions>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
