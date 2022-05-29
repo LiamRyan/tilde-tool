@@ -109,12 +109,12 @@ namespace Tildetool.Status
          State = StateType.Success;
       }
 
-      public override bool NeedsRefresh(DateTime lastUpdate)
+      public override bool Ephemeral { get { return true; } }
+      public override bool NeedsRefresh(TimeSpan interval)
       {
-         double deltaSeconds = (DateTime.Now - lastUpdate).TotalSeconds;
          if (State == StateType.Inactive)
-            return deltaSeconds >= 1.0f;
-         return deltaSeconds >= 5.0f;
+            return interval.TotalSeconds >= 1.0f;
+         return interval.TotalSeconds >= 5.0f;
       }
    }
 }

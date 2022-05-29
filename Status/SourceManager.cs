@@ -44,6 +44,8 @@ namespace Tildetool.Status
          TickTimer.Elapsed += (s, e) =>
          {
             TickTimer.Stop();
+
+            DateTime now = DateTime.Now;
             for (int i = 0; i < Sources.Count; i++)
             {
                try
@@ -51,10 +53,15 @@ namespace Tildetool.Status
                   // Make sure we're not refreshing in a thread already.
                   if (Sources[i].RefreshTask != null && !Sources[i].RefreshTask.IsCompleted)
                      continue;
-                  if (!Sources[i].NeedsRefresh(SourceBundle.SourceData[Sources[i].Guid].LastUpdate))
+
+                  // Make sure it's time for an update.
+                  SourceCacheData data = SourceCache.SourceData[Sources[i].Guid];
+                  TimeSpan interval = now - data.LastUpdate;
+                  if (!Sources[i].NeedsRefresh(interval))
                      continue;
 
-                  Console.WriteLine("Updating source " + Sources[i].Title + " - " + Sources[i].Subtitle + " (previously " + SourceBundle.SourceData[Sources[i].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
+                  // Alright then, start an update.
+                  Console.WriteLine("Updating source " + Sources[i].Title + " - " + Sources[i].Subtitle + " (previously " + SourceCache.SourceData[Sources[i].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
                   int index = i;
                   int changeIndex = Sources[index].ChangeIndex;
                   Task task = Sources[index].Refresh();
@@ -62,11 +69,19 @@ namespace Tildetool.Status
                   // We'll handle when it finishes.
                   task.ContinueWith(t =>
                   {
+                     // Always update the data.
+                     data.Status = Sources[index].Status;
+                     data.State = Sources[index].State;
+                     data.LastUpdate = DateTime.Now;
+
+                     // If something changed, save it.  Even if nothing changed, if we update rarely, save the
+                     //  new LastUpdate so if we close and open we don't update again.
+                     if (!Sources[index].Ephemeral || Sources[index].ChangeIndex != changeIndex)
+                        SaveLater();
+
+                     // If something changed, send an event.
                      if (Sources[index].ChangeIndex != changeIndex)
-                     {
-                        UpdateSource(Sources[index]);
                         SourceChanged?.Invoke(this, index);
-                     }
                   });
                }
                catch (Exception ex)
@@ -77,15 +92,6 @@ namespace Tildetool.Status
             TickTimer.Start();
          };
          TickTimer.Start();
-      }
-
-      public void UpdateSource(Source source)
-      {
-         SourceData data = SourceBundle.SourceData[source.Guid];
-         data.Status = source.Status;
-         data.State = source.State;
-         data.LastUpdate = DateTime.Now;
-         SaveLater();
       }
 
       #endregion

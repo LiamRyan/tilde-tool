@@ -107,6 +107,7 @@ namespace Tildetool.Status
          }
       }
 
-      public override bool NeedsRefresh(DateTime lastUpdate) { return (DateTime.Now - lastUpdate).TotalHours >= 18.0f; }
+      public override bool Ephemeral { get { return false; } }
+      public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 18.0f; }
    }
 }

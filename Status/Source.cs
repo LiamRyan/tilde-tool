@@ -59,11 +59,24 @@ namespace Tildetool.Status
       public Task RefreshTask { get; protected set; }
       public Task Refresh()
       {
-         RefreshTask = Task.Run(() => _Refresh());
+         RefreshTask = Task.Run(() =>
+         {
+            try
+            {
+               _Refresh();
+            }
+            catch (Exception ex)
+            {
+               Console.WriteLine(ex.ToString());
+               Status = "intern err";
+               State = StateType.Error;
+            }
+         });
          return RefreshTask;
       }
       protected abstract void _Refresh();
 
-      public abstract bool NeedsRefresh(DateTime lastUpdate);
+      public abstract bool Ephemeral { get; }
+      public abstract bool NeedsRefresh(TimeSpan interval);
    }
 }
