@@ -38,6 +38,11 @@ namespace Tildetool
          Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
+
+         StartWindow window = new StartWindow();
+         window.Show();
+         window.Topmost = true;
+         window.Activate();
       }
 
       AppPaneWindow? _AppPaneWindow = null;
