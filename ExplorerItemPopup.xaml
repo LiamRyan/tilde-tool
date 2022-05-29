@@ -11,8 +11,9 @@
         KeyDown="Window_KeyDown">
     <Window.Resources>
         <DataTemplate x:Key="OptionTemplate">
-            <Grid Width="200" Height="200" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <shape:Arc x:Name="Arc" Stroke="#FF101010" StrokeThickness="50" StartAngle="50" EndAngle="130" />
+            <Grid Width="204" Height="204" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <shape:Arc x:Name="Arc2" Stroke="#FF45AF34" StrokeThickness="54" StartAngle="49" EndAngle="131" />
+                <shape:Arc x:Name="Arc" Width="200" Height="200" Stroke="#FF131012" StrokeThickness="50" StartAngle="50" EndAngle="130" />
                 <TextBlock x:Name="Text" TextWrapping="Wrap" FontFamily="Cascadia Code Light" FontSize="16" Foreground="#FF00FF56" VerticalAlignment="Top" Margin="20,20,20,20" TextAlignment="Center" FontWeight="Bold"/>
             </Grid>
         </DataTemplate>

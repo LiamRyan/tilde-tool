@@ -303,6 +303,10 @@ namespace Tildetool
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
             }
+            if (OptionGrid.RowDefinitions.Count > altCmds.Count)
+               OptionGrid.RowDefinitions.RemoveRange(0, OptionGrid.RowDefinitions.Count - altCmds.Count);
+            while (OptionGrid.RowDefinitions.Count < altCmds.Count)
+               OptionGrid.RowDefinitions.Add(new RowDefinition());
             for (int i = 0; i < altCmds.Count; i++)
             {
                ContentControl content = OptionGrid.Children[i] as ContentControl;
@@ -497,16 +501,27 @@ namespace Tildetool
             Storyboard.SetTarget(myDoubleAnimation, RootFrame);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            SubcommandArea.Opacity = 0.0;
+            myDoubleAnimation.From = 0.0;
+            myDoubleAnimation.To = 1.0;
+            myDoubleAnimation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.3f));
+            _StoryboardAppear.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, SubcommandArea);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
          _StoryboardFit = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.From = 40.0;
-            myDoubleAnimation.To = Width;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 2.5, EasingMode = EasingMode.EaseOut };
+            myDoubleAnimation.From = 5.0;
+            myDoubleAnimation.To = CommandArea.Height;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
+            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut };
             _StoryboardFit.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
          }
 
          _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(); _StoryboardAppear = null; };
@@ -603,6 +618,15 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
          {
+            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.7f));
+            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(CommandArea.Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
+            myDoubleAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(5.0f, KeyTime.FromPercent(1.0), new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut }));
+            _StoryboardCommand.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
             var flashAnimation = new ColorAnimationUsingKeyFrames();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
             flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
@@ -627,6 +651,15 @@ namespace Tildetool
             _StoryboardCancel.Children.Add(myDoubleAnimation);
             Storyboard.SetTarget(myDoubleAnimation, RootFrame);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            myDoubleAnimation.To = 5.0f;
+            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut };
+            _StoryboardCancel.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
          }
 
          _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(); Dispatcher.Invoke(Close); };

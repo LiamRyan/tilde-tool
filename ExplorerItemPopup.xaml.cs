@@ -69,12 +69,15 @@ namespace Tildetool
 
             // Find our elements.
             _Options[i] = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+            Shape.Arc arc2 = _Options[i].FindElementByName<Shape.Arc>("Arc2");
             Shape.Arc arc = _Options[i].FindElementByName<Shape.Arc>("Arc");
             TextBlock text = _Options[i].FindElementByName<TextBlock>("Text");
 
             // Resize based on the number of elements.
             arc.StartAngle = 90.0 - ((angleDelta - 10.0) / 2.0);
+            arc2.StartAngle = 89.0 - ((angleDelta - 10.0) / 2.0);
             arc.EndAngle = 90.0 + ((angleDelta - 10.0) / 2.0);
+            arc2.EndAngle = 91.0 + ((angleDelta - 10.0) / 2.0);
 
             // Rotate to the correct orientation.
             double angle = angleDelta * i;
