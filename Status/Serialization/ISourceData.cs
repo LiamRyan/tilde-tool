@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Status.Serialization
 {
-   public class SourceData
+   public interface ISourceData
    {
-      public string Status { get; set; }
-      public Source.StateType State { get; set; }
-      public DateTime LastUpdate { get; set; }
+      Source Spawn();
    }
 }

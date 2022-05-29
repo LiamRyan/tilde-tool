@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Status.Serialization
 {
-   public class SourceBundle
+   public class SourceCacheBundle
    {
-      public SourceDataBlog[] DataBlogs { get; set; }
-      public SourceDataVM[] DataVMs { get; set; }
+      public Dictionary<string, SourceCacheData> SourceData { get; set; }
    }
 }

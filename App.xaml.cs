@@ -36,6 +36,7 @@ namespace Tildetool
          HotcommandManager.Instance.LoadUsage();
          HotcommandManager.Instance.WatchFile();
          SourceManager.Instance.Load();
+         SourceManager.Instance.LoadCache();
          SourceManager.Instance.StartTick();
 
          //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);

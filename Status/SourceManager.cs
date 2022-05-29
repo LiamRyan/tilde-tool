@@ -23,11 +23,11 @@ namespace Tildetool.Status
       #region Variables
 
       // Raw data
-      SourceBundle SourceBundle;
+      SourceCacheBundle SourceCache;
+      SourceBundle Source;
 
-      //
-      internal List<Source> Sources = new List<Source>(new Source[] {
-      });
+      // Processed data
+      internal List<Source> Sources;
 
       #endregion
       #region Source Management
@@ -48,6 +48,7 @@ namespace Tildetool.Status
             {
                try
                {
+                  // Make sure we're not refreshing in a thread already.
                   if (Sources[i].RefreshTask != null && !Sources[i].RefreshTask.IsCompleted)
                      continue;
                   if (!Sources[i].NeedsRefresh(SourceBundle.SourceData[Sources[i].Guid].LastUpdate))
@@ -57,6 +58,8 @@ namespace Tildetool.Status
                   int index = i;
                   int changeIndex = Sources[index].ChangeIndex;
                   Task task = Sources[index].Refresh();
+
+                  // We'll handle when it finishes.
                   task.ContinueWith(t =>
                   {
                      if (Sources[index].ChangeIndex != changeIndex)
@@ -97,36 +100,30 @@ namespace Tildetool.Status
             try
             {
                string jsonString = File.ReadAllText("Source.json");
-               SourceBundle = JsonSerializer.Deserialize<SourceBundle>(jsonString)!;
+               Source = JsonSerializer.Deserialize<SourceBundle>(jsonString)!;
                result = true;
             }
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
                Console.WriteLine(ex.Message);
+               return false;
             }
          }
          // Initial run, make empty.
          else
          {
-            SourceBundle = new SourceBundle();
-            SourceBundle.SourceData = new Dictionary<string, SourceData>();
+            Source = new SourceBundle();
+            Source.DataVMs = new SourceDataVM[0];
+            Source.DataBlogs = new SourceDataBlog[0];
          }
 
-         // Make sure each source has a SourceData
-         foreach (Source source in Sources)
-         {
-            SourceData data;
-            if (SourceBundle.SourceData.TryGetValue(source.Guid, out data))
-               source.Initialize(data.Status, data.State);
-            else
-               SourceBundle.SourceData[source.Guid] = new SourceData
-               {
-                  Status = source.Status,
-                  State = source.State,
-                  LastUpdate = DateTime.UnixEpoch
-               };
-         }
+         // Populate into the Sources list.
+         Sources = new List<Source>(Source.DataVMs.Length + Source.DataBlogs.Length);
+         foreach (var source in Source.DataVMs)
+            Sources.Add(source.Spawn());
+         foreach (var source in Source.DataBlogs)
+            Sources.Add(source.Spawn());
 
          // Save if we didn't have any previously.
          if (!result)
@@ -141,8 +138,75 @@ namespace Tildetool.Status
          // Write to file.
          try
          {
-            string jsonString = JsonSerializer.Serialize<SourceBundle>(SourceBundle, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText("Source.json", jsonString);
+            string jsonString = JsonSerializer.Serialize<SourceBundle>(Source, new JsonSerializerOptions { WriteIndented = true });
+            //File.WriteAllText("Source.json", jsonString);
+         }
+         catch (Exception ex)
+         {
+            MessageBox.Show(ex.ToString());
+            Console.WriteLine(ex.Message);
+            return false;
+         }
+
+         return true;
+      }
+
+      public bool LoadCache()
+      {
+         // Read from the file.
+         bool result = false;
+         if (File.Exists("SourceCache.json"))
+         {
+            try
+            {
+               string jsonString = File.ReadAllText("SourceCache.json");
+               SourceCache = JsonSerializer.Deserialize<SourceCacheBundle>(jsonString)!;
+               result = true;
+            }
+            catch (Exception ex)
+            {
+               MessageBox.Show(ex.ToString());
+               Console.WriteLine(ex.Message);
+               return false;
+            }
+         }
+         // Initial run, make empty.
+         else
+         {
+            SourceCache = new SourceCacheBundle();
+            SourceCache.SourceData = new Dictionary<string, SourceCacheData>();
+         }
+
+         // Make sure each source has a SourceData
+         foreach (Source source in Sources)
+         {
+            SourceCacheData data;
+            if (SourceCache.SourceData.TryGetValue(source.Guid, out data))
+               source.Initialize(data.Status, data.State);
+            else
+               SourceCache.SourceData[source.Guid] = new SourceCacheData
+               {
+                  Status = source.Status,
+                  State = source.State,
+                  LastUpdate = DateTime.UnixEpoch
+               };
+         }
+
+         // Save if we didn't have any previously.
+         if (!result)
+            SaveCache();
+
+         return result;
+      }
+      public bool SaveCache()
+      {
+         // Pull from the dictionary to data.
+
+         // Write to file.
+         try
+         {
+            string jsonString = JsonSerializer.Serialize<SourceCacheBundle>(SourceCache, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText("SourceCache.json", jsonString);
          }
          catch (Exception ex)
          {
@@ -164,7 +228,7 @@ namespace Tildetool.Status
          SaveTimer.Elapsed += (s, e) =>
          {
             SaveTimer.Stop();
-            bool result = Save();
+            bool result = SaveCache();
             if (!result)
             {
                SaveTimer.Interval = 1000;

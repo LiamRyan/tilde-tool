@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Status.Serialization
 {
-   public class SourceBundle
+   public class SourceCacheData
    {
-      public SourceDataBlog[] DataBlogs { get; set; }
-      public SourceDataVM[] DataVMs { get; set; }
+      public string Status { get; set; }
+      public Source.StateType State { get; set; }
+      public DateTime LastUpdate { get; set; }
    }
 }
