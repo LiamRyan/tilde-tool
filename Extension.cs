@@ -55,5 +55,19 @@ namespace Tildetool
          return childElement;
       }
       #endregion
+
+      public static string Between(this string str, string strStart, string strEnd, int initialIndex = 0)
+      {
+         int indexS = str.IndexOf(strStart, initialIndex);
+         if (indexS == -1)
+            return "";
+         indexS += strStart.Length;
+
+         int indexE = str.IndexOf(strEnd, indexS);
+         if (indexE == -1)
+            return "";
+
+         return str.Substring(indexS, indexE - indexS);
+      }
    }
 }

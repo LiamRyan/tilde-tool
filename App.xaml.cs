@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using Hardcodet.Wpf.TaskbarNotification;
 using Tildetool.Hotcommand;
+using Tildetool.Status;
 
 namespace Tildetool
 {
@@ -34,15 +35,48 @@ namespace Tildetool
          HotcommandManager.Instance.Load();
          HotcommandManager.Instance.LoadUsage();
          HotcommandManager.Instance.WatchFile();
+         SourceManager.Instance.Load();
+         SourceManager.Instance.StartTick();
 
-         Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
+         //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
+         Hotkey.Register(KeyMod.Win, Keys.Y, HotkeyStatus);
+
+         SourceManager.Instance.SourceChanged += (s, index) =>
+            {
+               Dispatcher.Invoke(new Action(() =>
+               {
+                  if (_StatusBar == null)
+                     HotkeyStatus(0);
+                  else
+                     _StatusBar.Show();
+                  _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(index, true)));
+               }));
+            };
 
          StartWindow window = new StartWindow();
          window.Show();
          window.Topmost = true;
          window.Activate();
+      }
+
+      StatusBar? _StatusBar = null;
+      protected void HotkeyStatus(Keys keys)
+      {
+         if (_StatusBar == null)
+         {
+            _StatusBar = new StatusBar();
+            _StatusBar.Closing += (sender, e) => { _StatusBar = null; };
+
+            _StatusBar.Show();
+            _StatusBar.Topmost = true;
+            _StatusBar.Activate();
+         }
+         else if (_StatusBar.IsShowing)
+            _StatusBar.AnimateClose();
+         else
+            _StatusBar.AnimateShow();
       }
 
       AppPaneWindow? _AppPaneWindow = null;
