@@ -51,27 +51,42 @@ namespace Tildetool.Status
                try
                {
                   // Make sure we're not refreshing in a thread already.
-                  if (Sources[i].RefreshTask != null && !Sources[i].RefreshTask.IsCompleted)
+                  if (Sources[i].QueryTask != null && !Sources[i].QueryTask.IsCompleted)
                      continue;
 
                   // Make sure it's time for an update.
                   SourceCacheData data = SourceCache.SourceData[Sources[i].Guid];
                   TimeSpan interval = now - data.LastUpdate;
                   if (!Sources[i].NeedsRefresh(interval))
+                  {
+                     // Frequently update visuals though.
+                     Sources[i].Display();
                      continue;
+                  }
 
                   // Alright then, start an update.
                   Console.WriteLine("Updating source " + Sources[i].Title + " - " + Sources[i].Subtitle + " (previously " + SourceCache.SourceData[Sources[i].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
                   int index = i;
                   int changeIndex = Sources[index].ChangeIndex;
-                  Task task = Sources[index].Refresh();
+                  Task task = Sources[index].Query();
 
                   // We'll handle when it finishes.
                   task.ContinueWith(t =>
                   {
+                     // Now that we've queried, refresh the visuals from it.
+                     try
+                     {
+                        Sources[index].Display();
+                     }
+                     catch (Exception ex2)
+                     {
+                        App.WriteLog(ex2.ToString());
+                     }
+
                      // Always update the data.
                      data.Status = Sources[index].Status;
                      data.State = Sources[index].State;
+                     data.LastCache = Sources[index].Cache;
                      data.LastUpdate = DateTime.Now;
 
                      // If something changed, save it.  Even if nothing changed, if we update rarely, save the
@@ -86,7 +101,7 @@ namespace Tildetool.Status
                }
                catch (Exception ex)
                {
-                  Console.WriteLine(ex.ToString());
+                  App.WriteLog(ex.ToString());
                }
             }
             TickTimer.Start();
@@ -176,25 +191,26 @@ namespace Tildetool.Status
                return false;
             }
          }
+
          // Initial run, make empty.
-         else
-         {
+         if (SourceCache == null)
             SourceCache = new SourceCacheBundle();
+         if (SourceCache.SourceData == null)
             SourceCache.SourceData = new Dictionary<string, SourceCacheData>();
-         }
 
          // Make sure each source has a SourceData
          foreach (Source source in Sources)
          {
             SourceCacheData data;
             if (SourceCache.SourceData.TryGetValue(source.Guid, out data))
-               source.Initialize(data.Status, data.State);
+               source.Initialize(data.Status, data.State, data.LastCache);
             else
                SourceCache.SourceData[source.Guid] = new SourceCacheData
                {
                   Status = source.Status,
                   State = source.State,
-                  LastUpdate = DateTime.UnixEpoch
+                  LastUpdate = DateTime.UnixEpoch,
+                  LastCache = ""
                };
          }
 

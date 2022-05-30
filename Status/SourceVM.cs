@@ -23,7 +23,7 @@ namespace Tildetool.Status
          VmIp = ip;
       }
 
-      protected override void _Refresh()
+      protected override void _Query()
       {
          // Check the VM status from Oracle.
          {
@@ -107,6 +107,9 @@ namespace Tildetool.Status
          // All good, return the result!
          Status = "online";
          State = StateType.Success;
+      }
+      public override void Display()
+      {
       }
 
       public override bool Ephemeral { get { return true; } }

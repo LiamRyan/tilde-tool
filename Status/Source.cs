@@ -32,8 +32,10 @@ namespace Tildetool.Status
       public int ChangeIndex { get; private set; }
       private string _Status;
       private StateType _State;
+      private string _Cache;
       public string Status { get { return _Status; } set { if (_Status != value) ChangeIndex++; _Status = value; } }
       public StateType State { get { return _State; } set { if (_State != value) ChangeIndex++; _State = value; } }
+      public string Cache { get { return _Cache; } set { if (_Cache != value) ChangeIndex++; _Cache = value; } }
 
       public Color Color { get { return sStateColor[_State][0]; } }
       public Color ColorDim { get { return sStateColor[_State][1]; } }
@@ -49,21 +51,23 @@ namespace Tildetool.Status
 
          Status = "...working...";
          State = StateType.Inactive;
+         Cache = "";
       }
-      public void Initialize(string status, StateType state)
+      public void Initialize(string status, StateType state, string cache)
       {
          Status = status;
          State = state;
+         Cache = cache;
       }
 
-      public Task RefreshTask { get; protected set; }
-      public Task Refresh()
+      public Task QueryTask { get; protected set; }
+      public Task Query()
       {
-         RefreshTask = Task.Run(() =>
+         QueryTask = Task.Run(() =>
          {
             try
             {
-               _Refresh();
+               _Query();
             }
             catch (Exception ex)
             {
@@ -72,9 +76,10 @@ namespace Tildetool.Status
                State = StateType.Error;
             }
          });
-         return RefreshTask;
+         return QueryTask;
       }
-      protected abstract void _Refresh();
+      protected abstract void _Query();
+      public abstract void Display();
 
       public abstract bool Ephemeral { get; }
       public abstract bool NeedsRefresh(TimeSpan interval);

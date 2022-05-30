@@ -11,5 +11,6 @@ namespace Tildetool.Status.Serialization
       public string Status { get; set; }
       public Source.StateType State { get; set; }
       public DateTime LastUpdate { get; set; }
+      public string LastCache { get; set; }
    }
 }

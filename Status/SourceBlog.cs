@@ -24,7 +24,7 @@ namespace Tildetool.Status
          DatePattern = datePattern;
       }
 
-      protected override void _Refresh()
+      protected override void _Query()
       {
          string responseBody;
          {
@@ -56,7 +56,8 @@ namespace Tildetool.Status
             while (index != -1)
             {
                // Find the date.
-               int lastIndex = 0;
+               index += SearchPattern[0].Length;
+               int lastIndex = index;
                for (int i = 1; i < SearchPattern.Length; i++)
                {
                   lastIndex = index;
@@ -72,27 +73,15 @@ namespace Tildetool.Status
                // Parse the date.
                string infoTimeStr = responseBody.Substring(lastIndex, index - lastIndex);
                infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
-               DateTime infoDate = DateTime.ParseExact(infoTimeStr, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
 
-               // Figure out which bucket it belongs in.
-               DateTime now = DateTime.Now;
-               TimeSpan delta = now - infoDate;
-               if (delta.Days >= 14)
-               {
-                  int weeks = delta.Days / 7;
-                  Status = weeks.ToString() + " week" + (weeks > 1 ? "s" : "") + " ago";
-                  State = StateType.Inactive;
-               }
-               else if (delta.Days >= 1)
-               {
-                  Status = delta.Days.ToString() + " day" + (delta.Days > 1 ? "s" : "") + " ago";
-                  State = StateType.Alert;
-               }
+               DateTime infoDate;
+               if (DatePattern == "unix")
+                  infoDate = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
                else
-               {
-                  Status = "Today";
-                  State = StateType.Success;
-               }
+                  infoDate = DateTime.ParseExact(infoTimeStr, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
+
+               // Store it for future use.
+               Cache = infoTimeStr;
                break;
 
                //
@@ -104,6 +93,42 @@ namespace Tildetool.Status
             Console.WriteLine(ex.Message);
             Status = "error";
             State = StateType.Error;
+         }
+      }
+      public override void Display()
+      {
+         DateTime infoDate;
+         if (DatePattern == "unix")
+            infoDate = DateTime.UnixEpoch.AddSeconds(int.Parse(Cache));
+         else
+            infoDate = DateTime.ParseExact(Cache, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
+
+         // Figure out which bucket it belongs in.
+         DateTime now = DateTime.Now;
+         TimeSpan delta = now - infoDate;
+         if (delta.TotalDays >= 70)
+         {
+            Status = infoDate.Year.ToString() + "/" + infoDate.Month.ToString() + "/" + infoDate.Day.ToString();
+            State = StateType.Inactive;
+         }
+         else if (delta.Days >= 14)
+         {
+            int weeks = delta.Days / 7;
+            Status = weeks.ToString() + " week" + (weeks > 1 ? "s" : "") + " ago";
+            State = StateType.Inactive;
+         }
+         else if (delta.Days >= 1)
+         {
+            Status = delta.Days.ToString() + " day" + (delta.Days > 1 ? "s" : "") + " ago";
+            State = StateType.Alert;
+         }
+         else
+         {
+            if (delta.Hours >= 1)
+               Status = delta.Hours.ToString() + " hour" + (delta.Hours > 1 ? "s" : "") + " ago";
+            else
+               Status = "new";
+            State = StateType.Success;
          }
       }
 
