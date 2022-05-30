@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -15,7 +17,8 @@ namespace Tildetool.Status
    /// </summary>
    public partial class StatusBar : Window
    {
-      public StatusBar()
+      protected bool _HasTimer;
+      public StatusBar(bool hasTimer)
       {
          // Initialize
          InitializeComponent();
@@ -45,6 +48,7 @@ namespace Tildetool.Status
 
          // Fade in.
          RootFrame.Opacity = 0;
+         _HasTimer = hasTimer;
          AnimateShow();
       }
 
@@ -52,6 +56,20 @@ namespace Tildetool.Status
       {
          base.OnClosing(e);
          SourceManager.Instance.SourceChanged -= Instance_SourceChanged;
+      }
+
+      private void Window_KeyDown(object sender, KeyEventArgs e)
+      {
+         if (e.Key == Key.Return)
+         {
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = System.AppDomain.CurrentDomain.BaseDirectory + "\\Source.json";
+            startInfo.UseShellExecute = true;
+            process.StartInfo = startInfo;
+            process.Start();
+            AnimateClose();
+         }
       }
 
       private void Instance_SourceChanged(object? sender, int index)
@@ -123,24 +141,36 @@ namespace Tildetool.Status
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; };
          _StoryboardHide.Begin(this);
 
-         ResetHideTimer();
+         if (_HasTimer)
+         {
+            if (_HideTimer != null)
+            {
+               _HideTimer.Stop();
+               _HideTimer.Dispose();
+            }
+            _HideTimer = new Timer();
+            _HideTimer.Interval = 2500;
+            _HideTimer.Elapsed += (s, e) =>
+            {
+               _HideTimer.Stop();
+               _HideTimer.Dispose();
+               _HideTimer = null;
+               Dispatcher.Invoke(() => AnimateClose());
+            };
+            _HideTimer.Start();
+         }
+      }
+      public void ClearTimer()
+      {
+         if (_HideTimer == null)
+            return;
+         _HasTimer = false;
+         _HideTimer.Stop();
+         _HideTimer.Dispose();
+         _HideTimer = null;
       }
 
-      Timer? _HideTimer = null;
-      public void ResetHideTimer()
-      {
-         if (_HideTimer != null)
-            _HideTimer.Stop();
-         _HideTimer = new Timer();
-         _HideTimer.Interval = 2500;
-         _HideTimer.Elapsed += (s, e) =>
-         {
-            _HideTimer.Stop();
-            _HideTimer = null;
-            Dispatcher.Invoke(() => AnimateClose());
-         };
-         _HideTimer.Start();
-      }
+      System.Timers.Timer? _HideTimer = null;
 
       public void AnimateClose()
       {

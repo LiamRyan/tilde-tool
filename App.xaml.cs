@@ -18,6 +18,11 @@ namespace Tildetool
         /// </summary>
    public partial class App : System.Windows.Application
    {
+      public static void WriteLog(string? log)
+      {
+         App.Current.Dispatcher.Invoke(() => Console.WriteLine(log));
+      }
+
       private void Main(object sender, StartupEventArgs e)
       {
          OnStartup(e);
@@ -49,9 +54,16 @@ namespace Tildetool
                Dispatcher.Invoke(new Action(() =>
                {
                   if (_StatusBar == null)
-                     HotkeyStatus(0);
-                  else
+                  {
+                     _StatusBar = new StatusBar(true);
+                     _StatusBar.Closing += (sender, e) => { _StatusBar = null; };
+
                      _StatusBar.Show();
+                     _StatusBar.Topmost = true;
+                     _StatusBar.Activate();
+                  }
+                  else
+                     _StatusBar.AnimateShow();
                   _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(index, true)));
                }));
             };
@@ -67,7 +79,7 @@ namespace Tildetool
       {
          if (_StatusBar == null)
          {
-            _StatusBar = new StatusBar();
+            _StatusBar = new StatusBar(false);
             _StatusBar.Closing += (sender, e) => { _StatusBar = null; };
 
             _StatusBar.Show();
@@ -77,7 +89,10 @@ namespace Tildetool
          else if (_StatusBar.IsShowing)
             _StatusBar.AnimateClose();
          else
+         {
+            _StatusBar.ClearTimer();
             _StatusBar.AnimateShow();
+         }
       }
 
       AppPaneWindow? _AppPaneWindow = null;
