@@ -142,9 +142,9 @@ namespace Tildetool.Status
          // Populate into the Sources list.
          Sources = new List<Source>(Source.DataVMs.Length + Source.DataBlogs.Length);
          foreach (var source in Source.DataVMs)
-            Sources.Add(source.Spawn());
+            Sources.Add(source.Spawn(Source));
          foreach (var source in Source.DataBlogs)
-            Sources.Add(source.Spawn());
+            Sources.Add(source.Spawn(Source));
 
          // Save if we didn't have any previously.
          if (!result)

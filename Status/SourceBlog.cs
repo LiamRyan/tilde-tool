@@ -15,8 +15,8 @@ namespace Tildetool.Status
       protected string Url;
       protected string[] SearchPattern;
       protected string DatePattern;
-      public SourceBlog(string name, string site, string url, string[] searchPattern, string datePattern)
-         : base("BLOG", name)
+      public SourceBlog(string title, string name, string site, string url, string[] searchPattern, string datePattern)
+         : base(title, name)
       {
          Site = site;
          Url = url;

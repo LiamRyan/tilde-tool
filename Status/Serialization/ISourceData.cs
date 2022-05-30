@@ -8,6 +8,6 @@ namespace Tildetool.Status.Serialization
 {
    public interface ISourceData
    {
-      Source Spawn();
+      Source Spawn(SourceBundle parent);
    }
 }

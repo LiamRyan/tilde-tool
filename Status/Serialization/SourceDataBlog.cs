@@ -6,17 +6,19 @@ using System.Threading.Tasks;
 
 namespace Tildetool.Status.Serialization
 {
-   public class SourceDataBlog
+   public class SourceDataBlog : ISourceData
    {
       public string Title { get; set; }
       public string Site { get; set; }
-      public string URL { get; set; }
-      public string[] DateLookup { get; set; }
-      public string DateFormat { get; set; }
+      public string Reference { get; set; }
 
-      public Source Spawn()
+      public Source? Spawn(SourceBundle parent)
       {
-         return new SourceBlog(Title, Site, URL, DateLookup, DateFormat);
+         if (!parent.Sites.TryGetValue(Site, out SourceBlogSite site))
+            return null;
+         string sitePath = site.Site.Replace("@REFERENCE@", Reference);
+         string siteURL = site.URL.Replace("@REFERENCE@", Reference);
+         return new SourceBlog(site.Tag, Title, sitePath, siteURL, site.DateLookup, site.DateFormat);
       }
    }
 }
