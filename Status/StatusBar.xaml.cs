@@ -72,9 +72,9 @@ namespace Tildetool.Status
          }
       }
 
-      private void Instance_SourceChanged(object? sender, int index)
+      private void Instance_SourceChanged(object? sender, SourceManager.SourceEventArgs args)
       {
-         Dispatcher.Invoke(() => { UpdateStatusBar(index, true); });
+         Dispatcher.Invoke(() => { UpdateStatusBar(args.Index, args.CacheChanged); });
       }
 
       private List<Storyboard> _Storyboards = new List<Storyboard>();

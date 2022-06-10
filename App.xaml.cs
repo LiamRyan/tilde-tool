@@ -49,8 +49,10 @@ namespace Tildetool
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
          Hotkey.Register(KeyMod.Win, Keys.Y, HotkeyStatus);
 
-         SourceManager.Instance.SourceChanged += (s, index) =>
+         SourceManager.Instance.SourceChanged += (s, args) =>
             {
+               if (!args.CacheChanged && _StatusBar == null)
+                  return;
                Dispatcher.Invoke(new Action(() =>
                {
                   if (_StatusBar == null)
@@ -64,7 +66,7 @@ namespace Tildetool
                   }
                   else
                      _StatusBar.AnimateShow();
-                  _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(index, true)));
+                  _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(args.Index, args.CacheChanged)));
                }));
             };
 

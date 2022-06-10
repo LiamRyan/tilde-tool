@@ -32,7 +32,12 @@ namespace Tildetool.Status
       #endregion
       #region Source Management
 
-      public event EventHandler<int> SourceChanged;
+      public struct SourceEventArgs
+      {
+         public int Index;
+         public bool CacheChanged;
+      }
+      public event EventHandler<SourceEventArgs> SourceChanged;
 
       Timer? TickTimer = null;
       public void StartTick()
@@ -45,68 +50,81 @@ namespace Tildetool.Status
          {
             TickTimer.Stop();
 
-            DateTime now = DateTime.Now;
-            for (int i = 0; i < Sources.Count; i++)
+            // Make sure none of the sources are already querying.
+            bool anyQuery = Sources.Any(src => src.QueryTask != null && !src.QueryTask.IsCompleted);
+            if (!anyQuery)
             {
-               try
+               DateTime now = DateTime.Now;
+               for (int i = 0; i < Sources.Count; i++)
                {
-                  // Make sure we're not refreshing in a thread already.
-                  if (Sources[i].QueryTask != null && !Sources[i].QueryTask.IsCompleted)
-                     continue;
-
-                  // Make sure it's time for an update.
-                  SourceCacheData data = SourceCache.SourceData[Sources[i].Guid];
-                  TimeSpan interval = now - data.LastUpdate;
-                  if (!Sources[i].NeedsRefresh(interval))
+                  try
                   {
-                     // Frequently update visuals though.
-                     Sources[i].Display();
-                     continue;
+                     // Make sure it's time for an update.
+                     SourceCacheData data = SourceCache.SourceData[Sources[i].Guid];
+                     TimeSpan interval = now - data.LastUpdate;
+                     if (!Sources[i].NeedsRefresh(interval))
+                     {
+                        // Frequently update visuals though.
+                        Sources[i].Display();
+                        continue;
+                     }
+
+                     // Alright then, start an update.
+                     Query(i);
+                     break;
                   }
-
-                  // Alright then, start an update.
-                  Console.WriteLine("Updating source " + Sources[i].Title + " - " + Sources[i].Subtitle + " (previously " + SourceCache.SourceData[Sources[i].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
-                  int index = i;
-                  int changeIndex = Sources[index].ChangeIndex;
-                  Task task = Sources[index].Query();
-
-                  // We'll handle when it finishes.
-                  task.ContinueWith(t =>
+                  catch (Exception ex)
                   {
-                     // Now that we've queried, refresh the visuals from it.
-                     try
-                     {
-                        Sources[index].Display();
-                     }
-                     catch (Exception ex2)
-                     {
-                        App.WriteLog(ex2.ToString());
-                     }
-
-                     // Always update the data.
-                     data.Status = Sources[index].Status;
-                     data.State = Sources[index].State;
-                     data.LastCache = Sources[index].Cache;
-                     data.LastUpdate = DateTime.Now;
-
-                     // If something changed, save it.  Even if nothing changed, if we update rarely, save the
-                     //  new LastUpdate so if we close and open we don't update again.
-                     if (!Sources[index].Ephemeral || Sources[index].ChangeIndex != changeIndex)
-                        SaveLater();
-
-                     // If something changed, send an event.
-                     if (Sources[index].ChangeIndex != changeIndex)
-                        SourceChanged?.Invoke(this, index);
-                  });
-               }
-               catch (Exception ex)
-               {
-                  App.WriteLog(ex.ToString());
+                     App.WriteLog(ex.ToString());
+                  }
                }
             }
+
             TickTimer.Start();
          };
          TickTimer.Start();
+      }
+
+      public void Query(int index)
+      {
+         // Make sure we're not refreshing in a thread already.
+         if (Sources[index].QueryTask != null && !Sources[index].QueryTask.IsCompleted)
+            return;
+
+         Console.WriteLine("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
+         int changeIndex = Sources[index].ChangeIndex;
+         Task task = Sources[index].Query();
+
+         // We'll handle when it finishes.
+         task.ContinueWith(t =>
+         {
+            // Now that we've queried, refresh the visuals from it.
+            try
+            {
+               Sources[index].Display();
+            }
+            catch (Exception ex2)
+            {
+               App.WriteLog(ex2.ToString());
+            }
+
+            // Always update the data.
+            SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
+            bool cacheChanged = data.LastCache != Sources[index].Cache;
+            data.Status = Sources[index].Status;
+            data.State = Sources[index].State;
+            data.LastCache = Sources[index].Cache;
+            data.LastUpdate = DateTime.Now;
+
+            // If something changed, save it.  Even if nothing changed, if we update rarely, save the
+            //  new LastUpdate so if we close and open we don't update again.
+            if (!Sources[index].Ephemeral || Sources[index].ChangeIndex != changeIndex)
+               SaveLater();
+
+            // If something changed, send an event.
+            if (Sources[index].ChangeIndex != changeIndex)
+               SourceChanged?.Invoke(this, new SourceEventArgs { Index = index, CacheChanged = cacheChanged });
+         });
       }
 
       #endregion

@@ -60,11 +60,7 @@ namespace Tildetool.Status
             // If it's not running, show that.
             if (status != "running")
             {
-               Status = status;
-               if (Status == "poweroff")
-                  State = StateType.Inactive;
-               else
-                  State = StateType.Alert;
+               Cache = status;
                return;
             }
          }
@@ -80,8 +76,7 @@ namespace Tildetool.Status
          // If it didn't respond .
          if (!pingResult)
          {
-            Status = "no ping";
-            State = StateType.Alert;
+            Cache = "no ping";
             return;
          }
 
@@ -105,11 +100,20 @@ namespace Tildetool.Status
          */
 
          // All good, return the result!
-         Status = "online";
-         State = StateType.Success;
+         Cache = "online";
       }
       public override void Display()
       {
+         Status = Cache;
+
+         if (Cache == "online")
+            State = StateType.Success;
+         else if (Cache == "no ping")
+            State = StateType.Alert;
+         else if (Cache == "poweroff")
+            State = StateType.Inactive;
+         else
+            State = StateType.Alert;
       }
 
       public override bool Ephemeral { get { return true; } }

@@ -39,6 +39,7 @@ namespace Tildetool.Status
             {
                Status = taskGet.Result.StatusCode.ToString();
                State = StateType.Error;
+               Cache = "";
                return;
             }
 
@@ -73,6 +74,7 @@ namespace Tildetool.Status
                // Parse the date.
                string infoTimeStr = responseBody.Substring(lastIndex, index - lastIndex);
                infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
+               infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
 
                DateTime infoDate;
                if (DatePattern == "unix")
@@ -93,10 +95,14 @@ namespace Tildetool.Status
             Console.WriteLine(ex.Message);
             Status = "error";
             State = StateType.Error;
+            Cache = "";
          }
       }
       public override void Display()
       {
+         if (string.IsNullOrEmpty(Cache))
+            return;
+
          DateTime infoDate;
          if (DatePattern == "unix")
             infoDate = DateTime.UnixEpoch.AddSeconds(int.Parse(Cache));
