@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -13,13 +14,15 @@ namespace Tildetool.Status
    {
       protected string Site;
       protected string Url;
+      protected string OpenToUrl;
       protected string[] SearchPattern;
       protected string DatePattern;
-      public SourceBlog(string title, string name, string site, string url, string[] searchPattern, string datePattern)
+      public SourceBlog(string title, string name, string site, string url, string openToUrl, string[] searchPattern, string datePattern)
          : base(title, name)
       {
          Site = site;
          Url = url;
+         OpenToUrl = openToUrl;
          SearchPattern = searchPattern;
          DatePattern = datePattern;
       }
@@ -140,5 +143,11 @@ namespace Tildetool.Status
 
       public override bool Ephemeral { get { return false; } }
       public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 18.0f; }
+
+      public override void HandleClick()
+      {
+         if (OpenToUrl.StartsWith("http://") || OpenToUrl.StartsWith("https://"))
+            Process.Start(new ProcessStartInfo(OpenToUrl) { UseShellExecute = true });
+      }
    }
 }

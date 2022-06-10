@@ -83,5 +83,6 @@ namespace Tildetool.Status
 
       public abstract bool Ephemeral { get; }
       public abstract bool NeedsRefresh(TimeSpan interval);
+      public abstract void HandleClick();
    }
 }

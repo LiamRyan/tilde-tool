@@ -123,5 +123,8 @@ namespace Tildetool.Status
             return interval.TotalSeconds >= 1.0f;
          return interval.TotalSeconds >= 5.0f;
       }
+      public override void HandleClick()
+      {
+      }
    }
 }

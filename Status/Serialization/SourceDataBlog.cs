@@ -18,7 +18,8 @@ namespace Tildetool.Status.Serialization
             return null;
          string sitePath = site.Site.Replace("@REFERENCE@", Reference);
          string siteURL = site.URL.Replace("@REFERENCE@", Reference);
-         return new SourceBlog(site.Tag, Title, sitePath, siteURL, site.DateLookup, site.DateFormat);
+         string siteOpenToUrl = site.OpenToURL.Replace("@REFERENCE@", Reference);
+         return new SourceBlog(site.Tag, Title, sitePath, siteURL, siteOpenToUrl, site.DateLookup, site.DateFormat);
       }
    }
 }

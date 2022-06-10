@@ -39,6 +39,12 @@ namespace Tildetool.Status
                content.ApplyTemplate();
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
+
+               int index = StatusPanel.Children.Count - 1;
+               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+               grid.PreviewMouseDown += (s, e) => Grid_PreviewMouseDown(s, e, index);
+               grid.MouseEnter += Grid_MouseEnter;
+               grid.MouseLeave += Grid_MouseLeave;
             }
          }
 
@@ -50,6 +56,91 @@ namespace Tildetool.Status
          RootFrame.Opacity = 0;
          _HasTimer = hasTimer;
          AnimateShow();
+      }
+
+      private void Grid_MouseEnter(object sender, MouseEventArgs e)
+      {
+         Storyboard storyboard = new Storyboard();
+         {
+            var flashAnimation = new ColorAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
+            flashAnimation.To = Color.FromArgb(0xFF, 0x2D, 0x26, 0x2A);
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+         }
+         _Storyboards.Add(storyboard);
+         storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+         storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+      private void Grid_MouseLeave(object sender, MouseEventArgs e)
+      {
+         Storyboard storyboard = new Storyboard();
+         {
+            var flashAnimation = new ColorAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
+            flashAnimation.To = Color.FromArgb(0xFF, 0x13, 0x10, 0x12);
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+         }
+         _Storyboards.Add(storyboard);
+         storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+         storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+      private void Grid_PreviewMouseDown(object sender, MouseEventArgs e, int index)
+      {
+         if (e.RightButton == MouseButtonState.Pressed)
+         {
+            Storyboard storyboard = new Storyboard();
+            {
+               var flashAnimation = new ColorAnimationUsingKeyFrames();
+               flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               storyboard.Children.Add(flashAnimation);
+               Storyboard.SetTarget(flashAnimation, sender as Grid);
+               Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+            }
+            _Storyboards.Add(storyboard);
+            storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+            storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+
+            Dispatcher.Invoke(() =>
+            {
+               SourceManager.Instance.Sources[index].Status = "...working...";
+               UpdateStatusBar(index, false);
+               SourceManager.Instance.Query(index);
+            });
+         }
+         else
+         {
+            IsShowing = false;
+
+            _StoryboardHide = new Storyboard();
+            {
+               var myDoubleAnimation = new DoubleAnimation();
+               myDoubleAnimation.BeginTime = TimeSpan.FromSeconds(0.2f);
+               myDoubleAnimation.To = 0.0;
+               myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+               _StoryboardHide.Children.Add(myDoubleAnimation);
+               Storyboard.SetTarget(myDoubleAnimation, RootFrame);
+               Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            }
+            {
+               var flashAnimation = new ColorAnimationUsingKeyFrames();
+               flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               _StoryboardHide.Children.Add(flashAnimation);
+               Storyboard.SetTarget(flashAnimation, sender as Grid);
+               Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+            }
+            _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; Close(); };
+            _StoryboardHide.Begin(this);
+
+            Dispatcher.Invoke(() => SourceManager.Instance.Sources[index].HandleClick());
+         }
       }
 
       protected override void OnClosing(CancelEventArgs e)
@@ -112,7 +203,7 @@ namespace Tildetool.Status
             }
             _Storyboards.Add(storyboard);
             storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
-            storyboard.Begin(this);
+            storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
          }
       }
 
