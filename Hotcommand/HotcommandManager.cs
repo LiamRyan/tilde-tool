@@ -37,6 +37,7 @@ namespace Tildetool.Hotcommand
       // Raw data
       HotcommandData Data;
       UsageData UsageData;
+      public string DictionaryURL { get { return Data.DictionaryURL; } }
 
       // Processed results
       public Dictionary<string, HmContext> ContextByTag = new Dictionary<string, HmContext>();

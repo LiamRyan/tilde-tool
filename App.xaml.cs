@@ -48,6 +48,7 @@ namespace Tildetool
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
          Hotkey.Register(KeyMod.Win, Keys.Y, HotkeyStatus);
+         Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);
 
          SourceManager.Instance.SourceChanged += (s, args) =>
             {
@@ -147,6 +148,23 @@ namespace Tildetool
          }
          else
             _HotCommandWindow.Cancel();
+      }
+
+      WordLookup? _WordLookup = null;
+      protected void HotkeyLookup(Keys keys)
+      {
+         if (_WordLookup == null)
+         {
+            _WordLookup = new WordLookup();
+            _WordLookup.OnFinish += (sender) => { if (_WordLookup == sender) _WordLookup = null; };
+            _WordLookup.Closing += (sender, e) => { _WordLookup = null; };
+
+            _WordLookup.Show();
+            _WordLookup.Topmost = true;
+            _WordLookup.Activate();
+         }
+         else
+            _WordLookup.Cancel();
       }
    }
 }

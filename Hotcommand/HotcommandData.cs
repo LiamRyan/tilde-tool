@@ -8,6 +8,8 @@ namespace Tildetool.Hotcommand
 {
    public class HotcommandData
    {
+      public string DictionaryURL { get; set; }
+
       public Context[] Context { get; set; }
 
       public Command[] Hotcommand { get; set; }
