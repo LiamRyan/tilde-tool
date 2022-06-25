@@ -40,6 +40,7 @@ namespace Tildetool.Status
       public event EventHandler<SourceEventArgs> SourceChanged;
 
       Timer? TickTimer = null;
+      int _QueryIndex = 0;
       public void StartTick()
       {
          if (TickTimer != null)
@@ -59,18 +60,21 @@ namespace Tildetool.Status
                {
                   try
                   {
+                     int index = (_QueryIndex + i) % Sources.Count;
+
                      // Make sure it's time for an update.
-                     SourceCacheData data = SourceCache.SourceData[Sources[i].Guid];
+                     SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
                      TimeSpan interval = now - data.LastUpdate;
-                     if (!Sources[i].NeedsRefresh(interval))
+                     if (!Sources[index].NeedsRefresh(interval))
                      {
                         // Frequently update visuals though.
-                        Sources[i].Display();
+                        Sources[index].Display();
                         continue;
                      }
 
                      // Alright then, start an update.
-                     Query(i);
+                     _QueryIndex = (index + 1) % Sources.Count;
+                     Query(index);
                      break;
                   }
                   catch (Exception ex)

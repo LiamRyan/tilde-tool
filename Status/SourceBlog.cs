@@ -96,9 +96,12 @@ namespace Tildetool.Status
          catch (Exception ex)
          {
             Console.WriteLine(ex.Message);
+            Cache = "";
+         }
+         if (string.IsNullOrEmpty(Cache))
+         {
             Status = "error";
             State = StateType.Error;
-            Cache = "";
          }
       }
       public override void Display()

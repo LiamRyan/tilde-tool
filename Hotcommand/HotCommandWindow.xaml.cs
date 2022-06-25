@@ -375,7 +375,7 @@ namespace Tildetool
             {
                Process process = new Process();
                ProcessStartInfo startInfo = new ProcessStartInfo();
-               startInfo.FileName = System.AppDomain.CurrentDomain.BaseDirectory + "\\Hotcommand.json";
+               startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\Hotcommand.json";
                startInfo.UseShellExecute = true;
                process.StartInfo = startInfo;
                process.Start();

@@ -155,7 +155,7 @@ namespace Tildetool.Status
          {
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = System.AppDomain.CurrentDomain.BaseDirectory + "\\Source.json";
+            startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\Source.json";
             startInfo.UseShellExecute = true;
             process.StartInfo = startInfo;
             process.Start();
