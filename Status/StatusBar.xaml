@@ -5,13 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool.Status"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal"
-        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="WidthAndHeight" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0">
-    <Window.Background>
-        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-            <GradientStop Color="#FF191718"/>
-            <GradientStop Color="#FF2F2D2E" Offset="1"/>
-        </LinearGradientBrush>
-    </Window.Background>
+        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Height" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">
             <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF131012" HorizontalAlignment="Left">
@@ -22,7 +16,13 @@
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid x:Name="RootFrame">
+    <Grid x:Name="RootFrame" HorizontalAlignment="Left">
+        <Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                <GradientStop Color="#FF191718"/>
+                <GradientStop Color="#FF2F2D2E" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
         <Grid Margin="3,3,3,3" HorizontalAlignment="Left" VerticalAlignment="Stretch">
             <Grid.Background>
                 <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -32,6 +32,9 @@
             </Grid.Background>
             <StackPanel x:Name="StatusPanel" Background="#FF191718" Margin="1,1,1,1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Orientation="Horizontal">
                 <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"></ContentControl>
+                <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF131012" HorizontalAlignment="Left">
+                    <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF45AF34" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
+                </Grid>
             </StackPanel>
         </Grid>
     </Grid>
