@@ -45,6 +45,12 @@ namespace Tildetool.Status
       {
          if (TickTimer != null)
             return;
+
+         // Let them refresh their display right away.
+         for (int i = 0; i < Sources.Count; i++)
+            Sources[i].Display();
+
+         //
          TickTimer = new Timer();
          TickTimer.Interval = 1000;
          TickTimer.Elapsed += (s, e) =>
