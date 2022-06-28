@@ -16,6 +16,8 @@ using System.Windows.Shapes;
 using Tildetool.Hotcommand;
 using System.Runtime.InteropServices;
 using System.Timers;
+using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Tildetool
 {
@@ -31,6 +33,37 @@ namespace Tildetool
 
       #endregion
 
+      private const int WH_JOURNALRECORD = 0;
+      private const int WH_JOURNALPLAYBACK = 1;
+      private const int WH_KEYBOARD = 2;
+      private const int WH_GETMESSAGE = 3;
+      private const int WH_CALLWNDPROC = 4;
+      private const int WH_CBT = 5;
+      private const int WH_SYSMSGFILTER = 6;
+      private const int WH_MOUSE = 7;
+      private const int WH_HARDWARE = 8;
+      private const int WH_DEBUG = 9;
+      private const int WH_SHELL = 10;
+      private const int WH_FOREGROUNDIDLE = 11;
+      private const int WH_CALLWNDPROCRET = 12;
+      private const int WH_KEYBOARD_LL = 13;
+      private const int WH_MOUSE_LL = 14;
+
+      private delegate int HookProc(int code, IntPtr wParam, IntPtr lParam);
+
+      [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+      public static extern IntPtr GetModuleHandle(string lpModuleName);
+
+      [DllImport("user32.dll", EntryPoint = "SetWindowsHookEx", SetLastError = true)]
+      static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+      [DllImport("User32.dll", EntryPoint = "UnhookWindowsHookEx", SetLastError = true)]
+      private static extern byte UnhookWindowsHookEx(IntPtr hHook);
+
+      [DllImport("user32.dll")]
+      static extern int CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+
       [DllImport("user32.dll", SetLastError = true)]
       static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
@@ -38,6 +71,9 @@ namespace Tildetool
       private const int SWP_NOMOVE = 0x0001;
       private const int SWP_NOZORDER = 0x0004;
       private const int SWP_SHOWWINDOW = 0x0040;
+
+      private const int WM_KEYDOWN = 0x0100;
+      private const int WM_KEYUP = 0x0101;
 
       MediaPlayer _MediaPlayer = new MediaPlayer();
 
@@ -62,9 +98,24 @@ namespace Tildetool
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
          _MediaPlayer.Play();
       }
+      IntPtr hKeyboardHook = IntPtr.Zero;
+      HookProc KeyboardHook;
+      public override void EndInit()
+      {
+         base.EndInit();
+         using (Process curProcess = Process.GetCurrentProcess())
+         using (ProcessModule curModule = curProcess.MainModule)
+         {
+            KeyboardHook = new HookProc(KeyboardHookProcedure);
+            hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, GetModuleHandle(curModule.ModuleName), 0);
+         }
+      }
       protected override void OnClosed(EventArgs e)
       {
          base.OnClosed(e);
+
+         if (hKeyboardHook != IntPtr.Zero)
+            UnhookWindowsHookEx(hKeyboardHook);
       }
       protected override void OnLostFocus(RoutedEventArgs e)
       {
@@ -76,18 +127,50 @@ namespace Tildetool
       {
          if (_Finished)
             return;
-         _AnimateCancel();
+         _AnimateFadeOut();
          _MediaPlayer.Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
          _MediaPlayer.Play();
          _Finished = true;
          OnFinish?.Invoke(this);
       }
 
-      Timer? _SpawnTimer = null;
+      [MethodImpl(MethodImplOptions.NoInlining)]
+      public int KeyboardHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
+      {
+         try
+         {
+            if (!_Finished)
+               if (nCode >= 0)
+               {
+                  if (wParam == (IntPtr)WM_KEYDOWN)
+                  {
+                     int vkCode = Marshal.ReadInt32(lParam);
+                     Key key = KeyInterop.KeyFromVirtualKey(vkCode);
+                     bool handled = HandleKeyDown(key);
+                     if (handled)
+                        return 1;
+                  }
+                  else if (wParam == (IntPtr)WM_KEYUP)
+                  {
+                     int vkCode = Marshal.ReadInt32(lParam);
+                     Key key = KeyInterop.KeyFromVirtualKey(vkCode);
+                  }
+               }
+         }
+         catch (Exception e)
+         {
+            Console.WriteLine(e.ToString());
+         }
+
+         //
+         return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+      }
+
+      System.Timers.Timer? _SpawnTimer = null;
       Dictionary<CommandSpawn, Process> _SpawnProcess = new Dictionary<CommandSpawn, Process>();
       void WaitForSpawn()
       {
-         _SpawnTimer = new Timer();
+         _SpawnTimer = new System.Timers.Timer();
          _SpawnTimer.Interval = 50;
          _SpawnTimer.Elapsed += (s, e) =>
          {
@@ -123,6 +206,7 @@ namespace Tildetool
       }
 
       string _Text = "";
+      bool _PendFinished = false;
       bool _Finished = false;
       bool _FadedIn = false;
 
@@ -327,49 +411,53 @@ namespace Tildetool
          }
       }
 
-      private void Window_KeyDown(object sender, KeyEventArgs e)
+      private bool HandleKeyDown(Key key)
       {
+         bool handled = false;
          if (_Finished)
-            return;
+            return handled;
 
          // Handle escape
-         switch (e.Key)
+         switch (key)
          {
             case Key.Escape:
-               e.Handled = true;
                Cancel();
-               return;
+               return true;
          }
 
          Tildetool.Hotcommand.Command? command;
 
+         void _handleText(char text)
+         {
+            if (_PendFinished)
+            {
+               _PendFinished = false;
+               _Text = text.ToString();
+            }
+            else
+               _Text += text;
+            handled = true;
+         }
+
          // Handle key entry.
-         if (e.Key >= Key.A && e.Key <= Key.Z)
+         if (key >= Key.A && key <= Key.Z)
+            _handleText(key.ToString()[0]);
+         else if (key >= Key.D0 && key <= Key.D9)
+            _handleText(_Number[key - Key.D0]);
+         else if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            _handleText(_Number[key - Key.NumPad0]);
+         else if (key == Key.Space)
+            _handleText(' ');
+         else if (key == Key.Back && _Text.Length > 0)
          {
-            _Text += e.Key.ToString();
-            e.Handled = true;
+            if (_PendFinished)
+               _Text = "";
+            else
+               _Text = _Text.Substring(0, _Text.Length - 1);
+            _PendFinished = false;
+            handled = true;
          }
-         else if (e.Key >= Key.D0 && e.Key <= Key.D9)
-         {
-            _Text += _Number[e.Key - Key.D0];
-            e.Handled = true;
-         }
-         else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
-         {
-            _Text += _Number[e.Key - Key.NumPad0];
-            e.Handled = true;
-         }
-         else if (e.Key == Key.Space)
-         {
-            _Text += " ";
-            e.Handled = true;
-         }
-         else if (e.Key == Key.Back && _Text.Length > 0)
-         {
-            _Text = _Text.Substring(0, _Text.Length - 1);
-            e.Handled = true;
-         }
-         else if (e.Key == Key.Return)
+         else if (key == Key.Return)
          {
             if (_Text.Length == 0)
             {
@@ -395,8 +483,7 @@ namespace Tildetool
             else
                Cancel();
 
-            e.Handled = true;
-            return;
+            return true;
          }
          CommandEntry.Text = _Text;
 
@@ -433,6 +520,7 @@ namespace Tildetool
             Execute(command);
 
          RefreshDisplay();
+         return handled;
       }
 
       public void Execute(Tildetool.Hotcommand.Command command)
@@ -591,57 +679,33 @@ namespace Tildetool
       private Storyboard? _StoryboardCommand;
       void _AnimateCommand()
       {
-         if (_Finished)
-            return;
-         _Finished = true;
-         OnFinish?.Invoke(this);
-
          _StoryboardCommand = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.7f));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.1f))));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromPercent(1.0)));
-            _StoryboardCommand.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, CommandBox);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
-         }
-         {
-            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.7f));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.2f))));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromPercent(1.0)));
-            _StoryboardCommand.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
-         }
-         {
-            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.7f));
-            myDoubleAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(CommandArea.Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
-            myDoubleAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(5.0f, KeyTime.FromPercent(1.0), new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut }));
-            _StoryboardCommand.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
-         }
-         {
             var flashAnimation = new ColorAnimationUsingKeyFrames();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0x80, 0x00, 0x00, 0x00), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.25), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0x80, 0x00, 0x00, 0x00), KeyTime.FromPercent(0.5), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
             _StoryboardCommand.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, CommandBox);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
          }
 
-         _StoryboardCommand.Completed += (sender, e) => { _StoryboardCommand.Remove(); Dispatcher.Invoke(Close); };
+         _PendFinished = true;
+         _StoryboardCommand.Completed += (sender, e) =>
+         {
+            _StoryboardCommand.Remove();
+            if (_PendFinished && !_Finished)
+            {
+               _AnimateFadeOut();
+               _Finished = true;
+               OnFinish?.Invoke(this);
+            }
+         };
          _StoryboardCommand.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
       private Storyboard? _StoryboardCancel;
-      void _AnimateCancel()
+      void _AnimateFadeOut()
       {
          _StoryboardCancel = new Storyboard();
          {
