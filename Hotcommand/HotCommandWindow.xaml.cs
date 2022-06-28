@@ -475,8 +475,9 @@ namespace Tildetool
             {
                HotcommandManager.Instance.CurrentContext = _SuggestedContext;
                _AnimateCommand();
-               _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-               _MediaPlayer.Play();
+               Thread trd = new Thread(new ThreadStart(_PlayBeep));
+               trd.IsBackground = true;
+               trd.Start();
             }
             else if (_Suggested != null)
                Execute(_Suggested);
@@ -511,8 +512,9 @@ namespace Tildetool
 
             _AnimateTextOut();
 
-            _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-            _MediaPlayer.Play();
+            Thread trd = new Thread(new ThreadStart(_PlayBeep));
+            trd.IsBackground = true;
+            trd.Start();
          }
          else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
             Execute(command);
@@ -569,8 +571,15 @@ namespace Tildetool
 
          _Suggested = command;
          _AnimateCommand();
-         _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-         _MediaPlayer.Play();
+         Thread trd = new Thread(new ThreadStart(_PlayBeep));
+         trd.IsBackground = true;
+         trd.Start();
+      }
+      void _PlayBeep()
+      {
+         MediaPlayer mediaPlayer = new MediaPlayer();
+         mediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
+         mediaPlayer.Play();
       }
 
       #region Animation
