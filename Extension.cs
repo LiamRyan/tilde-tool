@@ -69,5 +69,14 @@ namespace Tildetool
 
          return str.Substring(indexS, indexE - indexS);
       }
+
+      public static Color FromArgb(uint argb)
+      {
+         return Color.FromArgb((byte)((argb >> 24) & 0xFF), (byte)((argb >> 16) & 0xFF), (byte)((argb >> 8) & 0xFF), (byte)(argb & 0xFF));
+      }
+      public static Color FromRgb(uint rgb)
+      {
+         return Color.FromRgb((byte)((rgb >> 16) & 0xFF), (byte)((rgb >> 8) & 0xFF), (byte)(rgb & 0xFF));
+      }
    }
 }

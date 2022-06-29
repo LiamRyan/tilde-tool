@@ -5,25 +5,38 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool"
         Title="Virtual Desktop"
-        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal" Height="50" Width="300"
-        HorizontalAlignment="Center" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Width">
-    <Grid HorizontalAlignment="Center">
-        <Grid.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <GradientStop Color="#FF191718"/>
-                <GradientStop Color="#FF2F2D2E" Offset="1"/>
-            </LinearGradientBrush>
-        </Grid.Background>
-        <Grid Margin="3,3,3,3" HorizontalAlignment="Left">
-            <Grid.Background>
-                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="#FFB2E250"/>
-                    <GradientStop Color="#FF45AF34" Offset="0.8"/>
-                </LinearGradientBrush>
-            </Grid.Background>
-            <Grid x:Name="Border" Background="#FF191718" Margin="1,1,1,1" HorizontalAlignment="Left">
-                <TextBlock x:Name="Text" Text="NW" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FF57db42" FontFamily="Cascadia Code Light" FontSize="24" VerticalAlignment="Center" Margin="9,0,9,0"/>
-            </Grid>
+        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal" Height="62"
+        HorizontalAlignment="Stretch" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Manual">
+    <Window.Resources>
+        <DataTemplate x:Key="DesktopName">
+            <TextBlock x:Name="Text" Text="NW" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="24" VerticalAlignment="Center" Margin="9,0,9,0"/>
+        </DataTemplate>
+    </Window.Resources>
+    <Grid HorizontalAlignment="Stretch">
+        <Grid x:Name="Backfill" HorizontalAlignment="Center" Background="#FF021204"></Grid>
+        <Grid x:Name="Content" HorizontalAlignment="Center">
+            <Rectangle x:Name="GlowBlur" Margin="10 -8 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Effect>
+                    <BlurEffect Radius="8" KernelType="Gaussian"/>
+                </Rectangle.Effect>
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <Rectangle x:Name="Glow" Margin="10 -8 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <StackPanel x:Name="Border" Background="#FF042508" Margin="20,4,20,20" HorizontalAlignment="Left" Orientation="Horizontal">
+                <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource DesktopName}}"></ContentControl>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>
