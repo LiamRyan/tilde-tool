@@ -38,37 +38,83 @@ namespace Tildetool
          _StoryboardFade = new Storyboard();
          {
             var animation = new DoubleAnimationUsingKeyFrames();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(3.0f));
-            Opacity = 0.0f;
-            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0))));
-            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.25f))));
-            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.75f))));
-            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromPercent(1.0)));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Width, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.33f)), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Width, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.67f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f)), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn }));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.33f)), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.67f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f)), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn }));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(16.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(2.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(2.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(16.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f))));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(16.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(2.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(2.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(16.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f))));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, GlowBlur);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Width, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f)), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Width, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.5f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f)), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut }));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f)), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.5f))));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f)), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut }));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.3f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.5f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.7f))));
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.7f))));
+            animation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0f, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0f))));
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
-         }
-         {
-            var animation = new ThicknessAnimationUsingKeyFrames();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(3.0f));
-            Text.Margin = new Thickness(20, 0, 20, 0);
-            animation.KeyFrames.Add(new LinearThicknessKeyFrame(new Thickness(20, 0, 20, 0), KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0))));
-            animation.KeyFrames.Add(new EasingThicknessKeyFrame(new Thickness(40, 20, 40, 20), KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.8f)), new ExponentialEase { Exponent = 5.0f }));
-            animation.KeyFrames.Add(new LinearThicknessKeyFrame(new Thickness(40, 20, 40, 20), KeyTime.FromPercent(1.0)));
-            _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, Text);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(TextBlock.MarginProperty));
-         }
-         {
-            var animation = new ThicknessAnimationUsingKeyFrames();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(3.0f));
-            Border.Margin = new Thickness(21, 21, 21, 21);
-            animation.KeyFrames.Add(new LinearThicknessKeyFrame(new Thickness(21, 21, 21, 21), KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0))));
-            animation.KeyFrames.Add(new EasingThicknessKeyFrame(new Thickness(1, 1, 1, 1), KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.8f)), new ExponentialEase { Exponent = 5.0f }));
-            animation.KeyFrames.Add(new LinearThicknessKeyFrame(new Thickness(1, 1, 1, 1), KeyTime.FromPercent(1.0)));
-            _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, Border);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(); _StoryboardFade = null; Close(); };
          _StoryboardFade.Begin(this);

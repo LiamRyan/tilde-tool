@@ -5,23 +5,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal"
-        HorizontalAlignment="Center" VerticalAlignment="Center" SizeToContent="WidthAndHeight" ShowInTaskbar="False" WindowStartupLocation="CenterScreen" Loaded="OnLoaded">
-    <Window.Background>
-        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-            <GradientStop Color="#FF191718"/>
-            <GradientStop Color="#FF2F2D2E" Offset="1"/>
-        </LinearGradientBrush>
-    </Window.Background>
+        HorizontalAlignment="Center" VerticalAlignment="Center" SizeToContent="Manual" ShowInTaskbar="False" Background="{x:Null}" WindowStartupLocation="CenterScreen" Loaded="OnLoaded" Width="216" Height="120">
     <Grid>
-        <Grid Margin="3,3,3,3" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <Grid.Background>
-                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="#FFB2E250"/>
-                    <GradientStop Color="#FF45AF34" Offset="0.8"/>
-                </LinearGradientBrush>
-            </Grid.Background>
-            <Grid x:Name="Border" Background="#FF191718" Margin="1,1,1,1" HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock x:Name="Text" Text="READY" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FF57db42" FontFamily="Cascadia Code Light" FontSize="32" VerticalAlignment="Center" Margin="40,20,40,20"/>
+        <Grid x:Name="Backfill" HorizontalAlignment="Center" Background="#FF021204" VerticalAlignment="Center"></Grid>
+        <Grid x:Name="Content">
+            <Rectangle x:Name="GlowBlur" Margin="10 10 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Effect>
+                    <BlurEffect Radius="8" KernelType="Gaussian"/>
+                </Rectangle.Effect>
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <Rectangle x:Name="Glow" Margin="10 10 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <Grid x:Name="Border" Margin="20,20,20,20" Background="#FF042508">
+                <TextBlock x:Name="Text" Text="READY" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="32" VerticalAlignment="Center"/>
             </Grid>
         </Grid>
     </Grid>
