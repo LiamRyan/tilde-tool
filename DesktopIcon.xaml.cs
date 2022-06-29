@@ -46,6 +46,10 @@ namespace Tildetool
          _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => _AnimateOut()); };
          _Timer.Start();
       }
+      void OnLoaded(object sender, RoutedEventArgs args)
+      {
+         App.PreventAltTab(this);
+      }
       protected override void OnSourceInitialized(EventArgs e)
       {
          base.OnSourceInitialized(e);
@@ -96,7 +100,10 @@ namespace Tildetool
             TextBlock text = VisualTreeHelper.GetChild(presenter, 0) as TextBlock;
 
             // Make sure it's the right name.
-            text.Text = desktops[i].Name;
+            if (!string.IsNullOrEmpty(desktops[i].Name))
+               text.Text = desktops[i].Name;
+            else
+               text.Text = "Desktop " + (i + 1).ToString();
 
             // Change the appearance.
             bool isCurrent = (desktops[i] == current);

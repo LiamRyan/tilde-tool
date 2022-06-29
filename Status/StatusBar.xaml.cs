@@ -46,6 +46,10 @@ namespace Tildetool.Status
          _HasTimer = hasTimer;
          AnimateShow();
       }
+      void OnLoaded(object sender, RoutedEventArgs args)
+      {
+         App.PreventAltTab(this);
+      }
 
       private void ExpandBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
       {

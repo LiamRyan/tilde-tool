@@ -98,6 +98,10 @@ namespace Tildetool
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
          _MediaPlayer.Play();
       }
+      void OnLoaded(object sender, RoutedEventArgs args)
+      {
+         App.PreventAltTab(this);
+      }
       IntPtr hKeyboardHook = IntPtr.Zero;
       HookProc KeyboardHook;
       public override void EndInit()

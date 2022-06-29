@@ -28,6 +28,10 @@ namespace Tildetool
          InitializeComponent();
          _Animate();
       }
+      void OnLoaded(object sender, RoutedEventArgs args)
+      {
+         App.PreventAltTab(this);
+      }
 
       public void _Animate()
       {

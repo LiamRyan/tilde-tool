@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Timers;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Interop;
 using Hardcodet.Wpf.TaskbarNotification;
 using Tildetool.Hotcommand;
 using Tildetool.Status;
@@ -18,6 +20,20 @@ namespace Tildetool
       public static void WriteLog(string? log)
       {
          App.Current.Dispatcher.Invoke(() => Console.WriteLine(log));
+      }
+
+      [DllImport("user32.dll", SetLastError = true)]
+      static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+      [DllImport("user32.dll")]
+      static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+      private const int GWL_EX_STYLE = -20;
+      private const int WS_EX_APPWINDOW = 0x00040000, WS_EX_TOOLWINDOW = 0x00000080;
+
+      public static void PreventAltTab(Window window)
+      {
+         // Set the TOOLWINDOW and clear the APPWINDOW style flags.
+         IntPtr hWindow = new WindowInteropHelper(window).Handle;
+         SetWindowLong(hWindow, GWL_EX_STYLE, (GetWindowLong(hWindow, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
       }
 
       private void Main(object sender, StartupEventArgs e)
@@ -148,7 +164,7 @@ namespace Tildetool
          {
             _HotCommandWindow = new HotCommandWindow();
             _HotCommandWindow.OnFinish += (sender) => { if (_HotCommandWindow == sender) _HotCommandWindow = null; };
-            _HotCommandWindow.Closing += (sender, e) => { _HotCommandWindow = null; };
+            _HotCommandWindow.Closing += (sender, e) => { if (_HotCommandWindow == sender) _HotCommandWindow = null; };
 
             _HotCommandWindow.Show();
             _HotCommandWindow.Topmost = true;
@@ -165,7 +181,7 @@ namespace Tildetool
          {
             _WordLookup = new WordLookup();
             _WordLookup.OnFinish += (sender) => { if (_WordLookup == sender) _WordLookup = null; };
-            _WordLookup.Closing += (sender, e) => { _WordLookup = null; };
+            _WordLookup.Closing += (sender, e) => { if (_WordLookup == sender) _WordLookup = null; };
 
             _WordLookup.Show();
             _WordLookup.Topmost = true;
@@ -182,7 +198,7 @@ namespace Tildetool
          {
             _DesktopIcon = new DesktopIcon();
             _DesktopIcon.OnFinish += (sender) => { if (_DesktopIcon == sender) _DesktopIcon = null; };
-            _DesktopIcon.Closing += (sender, e) => { _DesktopIcon = null; };
+            _DesktopIcon.Closing += (sender, e) => { if (_DesktopIcon == sender) _DesktopIcon = null; };
 
             _DesktopIcon.Show();
             _DesktopIcon.Topmost = true;

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Tildetool"
         Title="Virtual Desktop"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal" Height="62"
-        HorizontalAlignment="Stretch" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Manual">
+        HorizontalAlignment="Stretch" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Manual" Loaded="OnLoaded">
     <Window.Resources>
         <DataTemplate x:Key="DesktopName">
             <TextBlock x:Name="Text" Text="NW" HorizontalAlignment="Left" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="24" VerticalAlignment="Center" Margin="9,0,9,0"/>
