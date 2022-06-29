@@ -119,11 +119,12 @@ namespace Tildetool.Status
             }
 
             // Always update the data.
+            string cache = Sources[index].GetCache();
             SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
-            bool cacheChanged = data.LastCache != Sources[index].Cache;
+            bool cacheChanged = data.LastCache != cache;
             data.Status = Sources[index].Status;
             data.State = Sources[index].State;
-            data.LastCache = Sources[index].Cache;
+            data.LastCache = cache;
             data.LastUpdate = DateTime.Now;
 
             // If something changed, save it.  Even if nothing changed, if we update rarely, save the

@@ -5,6 +5,7 @@ using System.Text;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using System.Text.Json;
 
 namespace Tildetool.Status
 {
@@ -32,15 +33,16 @@ namespace Tildetool.Status
       public int ChangeIndex { get; private set; }
       private string _Status;
       private StateType _State;
-      private string _Cache;
+      private Type _CacheType;
+      private object? _Cache;
       public string Status { get { return _Status; } set { if (_Status != value) ChangeIndex++; _Status = value; } }
       public StateType State { get { return _State; } set { if (_State != value) ChangeIndex++; _State = value; } }
-      public string Cache { get { return _Cache; } set { if (_Cache != value) ChangeIndex++; _Cache = value; } }
+      public object? Cache { get { return _Cache; } set { if (_Cache != null && value != null && !_Cache.Equals(value)) ChangeIndex++; if ((_Cache == null) != (value == null)) ChangeIndex++; _Cache = value; } }
 
       public Color Color { get { return sStateColor[_State][0]; } }
       public Color ColorDim { get { return sStateColor[_State][1]; } }
 
-      public Source(string title, string subtitle)
+      public Source(string title, string subtitle, Type cacheType)
       {
          Title = title;
          Subtitle = subtitle;
@@ -51,13 +53,30 @@ namespace Tildetool.Status
 
          Status = "...working...";
          State = StateType.Inactive;
-         Cache = "";
+         _CacheType = cacheType;
+         Cache = null;
       }
       public void Initialize(string status, StateType state, string cache)
       {
          Status = status;
          State = state;
-         Cache = cache;
+         Cache = null;
+         try
+         {
+            if (!string.IsNullOrEmpty(cache))
+               Cache = JsonSerializer.Deserialize(cache, _CacheType);
+         }
+         catch (Exception e)
+         {
+            Console.WriteLine(e.ToString());
+         }
+      }
+
+      public string GetCache()
+      {
+         if (Cache == null)
+            return "";
+         return JsonSerializer.Serialize(Cache, _CacheType);
       }
 
       public Task QueryTask { get; protected set; }

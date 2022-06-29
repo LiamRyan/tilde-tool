@@ -257,6 +257,7 @@ namespace Tildetool.Status
             DisplayIndex.Add(sourceIndex);
             DisplaySource.Add(src);
             AddStatusElement();
+            _AnimateShow(index);
          }
 
          // Grab the controls.

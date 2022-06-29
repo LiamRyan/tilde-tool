@@ -12,11 +12,16 @@ namespace Tildetool.Status
 {
    internal class SourceVM : Source
    {
+      protected record CacheStruct : IEquatable<CacheStruct>
+      {
+         public string Status { get; set; }
+      }
+
       protected string VmBoxPath;
       protected string VmName;
       protected string VmIp;
       public SourceVM(string name, string vboxPath, string vmname, string ip)
-         : base("VM", name)
+         : base("VM", name, typeof(CacheStruct))
       {
          VmBoxPath = vboxPath;
          VmName = vmname;
@@ -60,7 +65,7 @@ namespace Tildetool.Status
             // If it's not running, show that.
             if (status != "running")
             {
-               Cache = status;
+               Cache = new CacheStruct { Status = status };
                return;
             }
          }
@@ -76,7 +81,7 @@ namespace Tildetool.Status
          // If it didn't respond .
          if (!pingResult)
          {
-            Cache = "no ping";
+            Cache = new CacheStruct { Status = "no ping" };
             return;
          }
 
@@ -100,17 +105,20 @@ namespace Tildetool.Status
          */
 
          // All good, return the result!
-         Cache = "online";
+         Cache = new CacheStruct { Status = "online" };
       }
       public override void Display()
       {
-         Status = Cache;
+         CacheStruct cache = Cache as CacheStruct;
+         if (cache == null)
+            return;
+         Status = cache.Status;
 
-         if (Cache == "online")
+         if (cache.Status == "online")
             State = StateType.Success;
-         else if (Cache == "no ping")
+         else if (cache.Status == "no ping")
             State = StateType.Alert;
-         else if (Cache == "poweroff")
+         else if (cache.Status == "poweroff")
             State = StateType.Inactive;
          else
             State = StateType.Alert;

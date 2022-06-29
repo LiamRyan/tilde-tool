@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -12,13 +13,20 @@ namespace Tildetool.Status
 {
    internal class SourceBlog : Source
    {
+      protected record CacheStruct : IEquatable<CacheStruct>
+      {
+         public DateTime Date { get; set; }
+         public string? Etag { get; set; }
+         public DateTimeOffset? LastModified { get; set; }
+      }
+
       protected string Site;
       protected string Url;
       protected string OpenToUrl;
       protected string[] SearchPattern;
       protected string DatePattern;
       public SourceBlog(string title, string name, string site, string url, string openToUrl, string[] searchPattern, string datePattern)
-         : base(title, name)
+         : base(title, name, typeof(CacheStruct))
       {
          Site = site;
          Url = url;
@@ -29,22 +37,41 @@ namespace Tildetool.Status
 
       protected override void _Query()
       {
+         CacheStruct cache = Cache as CacheStruct;
+         if (cache == null)
+            cache = new CacheStruct();
+
          string responseBody;
          {
             // Set up an HTTP GET request.
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(Site);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, Url);
+            if (cache.Etag != null)
+               request.Headers.IfNoneMatch.Add(EntityTagHeaderValue.Parse(cache.Etag));
+            else if (cache.LastModified != null)
+               request.Headers.IfModifiedSince = cache.LastModified;
 
             // Send it, make sure we get a result.
-            Task<HttpResponseMessage> taskGet = httpClient.GetAsync(Url);
+            Task<HttpResponseMessage> taskGet = httpClient.SendAsync(request);
             taskGet.Wait();
+
+            // Not Modified, we're good!
+            if (taskGet.Result.StatusCode == System.Net.HttpStatusCode.NotModified)
+               return;
+
+            // Anything besides success, fail out.
             if (!taskGet.Result.IsSuccessStatusCode)
             {
                Status = taskGet.Result.StatusCode.ToString();
                State = StateType.Error;
-               Cache = "";
+               Cache = null;
                return;
             }
+
+            //
+            cache.Etag = taskGet.Result.Headers.ETag?.ToString();
+            cache.LastModified = taskGet.Result.Headers.Date;
 
             // Read the data.
             Task<string> taskRead = taskGet.Result.Content.ReadAsStringAsync();
@@ -52,7 +79,6 @@ namespace Tildetool.Status
             responseBody = taskRead.Result;
          }
 
-         // TODO: Find some format that lets us detect the format and identify links and their dates
          // Parse the data
          try
          {
@@ -79,14 +105,13 @@ namespace Tildetool.Status
                infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
                infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
 
-               DateTime infoDate;
                if (DatePattern == "unix")
-                  infoDate = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
+                  cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
                else
-                  infoDate = DateTime.ParseExact(infoTimeStr, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
+                  cache.Date = DateTime.ParseExact(infoTimeStr, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
 
                // Store it for future use.
-               Cache = infoTimeStr;
+               Cache = cache;
                break;
 
                //
@@ -96,9 +121,9 @@ namespace Tildetool.Status
          catch (Exception ex)
          {
             Console.WriteLine(ex.Message);
-            Cache = "";
+            Cache = null;
          }
-         if (string.IsNullOrEmpty(Cache))
+         if (Cache == null)
          {
             Status = "error";
             State = StateType.Error;
@@ -106,14 +131,11 @@ namespace Tildetool.Status
       }
       public override void Display()
       {
-         if (string.IsNullOrEmpty(Cache))
+         CacheStruct? cache = Cache as CacheStruct;
+         if (cache == null)
             return;
 
-         DateTime infoDate;
-         if (DatePattern == "unix")
-            infoDate = DateTime.UnixEpoch.AddSeconds(int.Parse(Cache));
-         else
-            infoDate = DateTime.ParseExact(Cache, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
+         DateTime infoDate = cache.Date;
 
          // Figure out which bucket it belongs in.
          DateTime now = DateTime.Now;
