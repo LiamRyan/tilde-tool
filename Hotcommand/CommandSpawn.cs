@@ -10,6 +10,7 @@ namespace Tildetool.Hotcommand
    public class CommandSpawn
    {
       //
+      public string ShellOpen { get; set; }
       public string FileName { get; set; }
       public string? WorkingDirectory { get; set; }
       public string? Arguments { get; set; }

@@ -42,6 +42,9 @@ namespace Tildetool.Status
             cache = new CacheStruct();
 
          string responseBody;
+         if (SourceBlogTest.sUseTest)
+            responseBody = SourceBlogTest.sTestResponseBody;
+         else
          {
             // Set up an HTTP GET request.
             HttpClient httpClient = new HttpClient();

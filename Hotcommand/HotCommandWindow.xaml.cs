@@ -486,6 +486,8 @@ namespace Tildetool
 
             return true;
          }
+
+         //
          CommandEntry.Text = _Text;
 
          if (!_FadedIn && _Text.Length == 1)
@@ -510,6 +512,7 @@ namespace Tildetool
             CommandPreviewPost.Text = "";
             CommandExpand.Visibility = Visibility.Collapsed;
 
+            RefreshDisplay();
             _AnimateTextOut();
 
             Thread trd = new Thread(new ThreadStart(_PlayBeep));
@@ -517,11 +520,18 @@ namespace Tildetool
             trd.Start();
          }
          else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
+         {
+            RefreshDisplay();
             Execute(command);
+         }
          else if (HotcommandManager.Instance.ContextByTag["DEFAULT"].QuickTags.TryGetValue(_Text, out command))
+         {
+            RefreshDisplay();
             Execute(command);
+         }
+         else
+            RefreshDisplay();
 
-         RefreshDisplay();
          return handled;
       }
 
@@ -534,7 +544,13 @@ namespace Tildetool
             {
                Process process = new Process();
                ProcessStartInfo startInfo = new ProcessStartInfo();
-               startInfo.FileName = spawn.FileName;
+               if (!string.IsNullOrEmpty(spawn.ShellOpen))
+               {
+                  startInfo.UseShellExecute = true;
+                  startInfo.FileName = spawn.ShellOpen;
+               }
+               else
+                  startInfo.FileName = spawn.FileName;
                if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
                {
                   foreach (string argument in spawn.ArgumentList)
