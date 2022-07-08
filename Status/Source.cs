@@ -79,6 +79,7 @@ namespace Tildetool.Status
          return JsonSerializer.Serialize(Cache, _CacheType);
       }
 
+      public bool IsQuerying { get { return QueryTask != null && !QueryTask.IsCompleted; } }
       public Task QueryTask { get; protected set; }
       public Task Query()
       {

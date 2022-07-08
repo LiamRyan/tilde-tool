@@ -38,6 +38,7 @@ namespace Tildetool.Status
          public bool CacheChanged;
       }
       public event EventHandler<SourceEventArgs> SourceChanged;
+      public event EventHandler<int> SourceQuery;
 
       Timer? TickTimer = null;
       int _QueryIndex = 0;
@@ -58,7 +59,7 @@ namespace Tildetool.Status
             TickTimer.Stop();
 
             // Make sure none of the sources are already querying.
-            bool anyQuery = Sources.Any(src => src.QueryTask != null && !src.QueryTask.IsCompleted);
+            bool anyQuery = Sources.Any(src => src.IsQuerying);
             if (!anyQuery)
             {
                DateTime now = DateTime.Now;
@@ -69,9 +70,7 @@ namespace Tildetool.Status
                      int index = (_QueryIndex + i) % Sources.Count;
 
                      // Make sure it's time for an update.
-                     SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
-                     TimeSpan interval = now - data.LastUpdate;
-                     if (!Sources[index].NeedsRefresh(interval))
+                     if (!NeedRefresh(Sources[index]))
                      {
                         // Frequently update visuals though.
                         Sources[index].Display();
@@ -95,15 +94,24 @@ namespace Tildetool.Status
          TickTimer.Start();
       }
 
+      public bool NeedRefresh(Source src)
+      {
+         SourceCacheData data = SourceCache.SourceData[src.Guid];
+         TimeSpan interval = DateTime.Now - data.LastUpdate;
+         return src.NeedsRefresh(interval);
+      }
+
       public void Query(int index)
       {
          // Make sure we're not refreshing in a thread already.
-         if (Sources[index].QueryTask != null && !Sources[index].QueryTask.IsCompleted)
+         if (Sources[index].IsQuerying)
             return;
 
          Console.WriteLine("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
          int changeIndex = Sources[index].ChangeIndex;
          Task task = Sources[index].Query();
+
+         SourceQuery?.Invoke(this, index);
 
          // We'll handle when it finishes.
          task.ContinueWith(t =>
@@ -131,6 +139,9 @@ namespace Tildetool.Status
             //  new LastUpdate so if we close and open we don't update again.
             if (!Sources[index].Ephemeral || Sources[index].ChangeIndex != changeIndex)
                SaveLater();
+
+            //
+            SourceQuery?.Invoke(this, index);
 
             // If something changed, send an event.
             if (Sources[index].ChangeIndex != changeIndex)

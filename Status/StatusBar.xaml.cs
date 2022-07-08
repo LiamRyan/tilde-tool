@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 
 namespace Tildetool.Status
 {
@@ -28,6 +29,7 @@ namespace Tildetool.Status
 
          // Bind event
          SourceManager.Instance.SourceChanged += Instance_SourceChanged;
+         SourceManager.Instance.SourceQuery += Instance_SourceQuery;
 
          //
          ExpandBox.PreviewMouseDown += ExpandBox_PreviewMouseDown;
@@ -46,6 +48,7 @@ namespace Tildetool.Status
          _HasTimer = hasTimer;
          AnimateShow();
       }
+
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
@@ -131,9 +134,8 @@ namespace Tildetool.Status
 
             Dispatcher.Invoke(() =>
             {
-               DisplaySource[index].Status = "...working...";
-               UpdateStatusBar(DisplayIndex[index], false);
                SourceManager.Instance.Query(DisplayIndex[index]);
+               UpdateStatusBar(DisplayIndex[index], false);
             });
          }
          else
@@ -170,6 +172,7 @@ namespace Tildetool.Status
       {
          base.OnClosing(e);
          SourceManager.Instance.SourceChanged -= Instance_SourceChanged;
+         SourceManager.Instance.SourceQuery -= Instance_SourceQuery;
       }
 
       private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -189,6 +192,10 @@ namespace Tildetool.Status
       private void Instance_SourceChanged(object? sender, SourceManager.SourceEventArgs args)
       {
          Dispatcher.Invoke(() => UpdateStatusBar(args.Index, args.CacheChanged));
+      }
+      private void Instance_SourceQuery(object? sender, int e)
+      {
+         Dispatcher.Invoke(() => UpdateStatusBar(e, false));
       }
 
       List<int> DisplayIndex = new List<int>();
@@ -273,6 +280,8 @@ namespace Tildetool.Status
          Grid divider = grid.FindElementByName<Grid>("Divider");
          TextBlock subtitle = grid.FindElementByName<TextBlock>("Subtitle");
          TextBlock status = grid.FindElementByName<TextBlock>("Status");
+         Ellipse progress = grid.FindElementByName<Ellipse>("Progress");
+         Shape.Arc progressArc = grid.FindElementByName<Shape.Arc>("ProgressArc");
 
          // Update.
          title.Text = DisplaySource[index].Title;
@@ -283,6 +292,37 @@ namespace Tildetool.Status
          divider.Background = new SolidColorBrush(DisplaySource[index].ColorDim);
          subtitle.Foreground = new SolidColorBrush(DisplaySource[index].Color);
          status.Foreground = new SolidColorBrush(DisplaySource[index].Color);
+         progress.Stroke = new SolidColorBrush(DisplaySource[index].ColorDim);
+         {
+            GradientStopCollection collection = new GradientStopCollection(2);
+            collection.Add((progressArc.Stroke as LinearGradientBrush).GradientStops[0]);
+            collection.Add(new GradientStop(DisplaySource[index].Color, 1.0));
+            collection.Freeze();
+            LinearGradientBrush oldBrush = progressArc.Stroke as LinearGradientBrush;
+            progressArc.Stroke = new LinearGradientBrush(collection, oldBrush.StartPoint, oldBrush.EndPoint);
+         }
+
+         // Progress animation.
+         bool pendQuery = src.IsQuerying || SourceManager.Instance.NeedRefresh(src);
+         progress.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
+         progressArc.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
+         if (pendQuery)
+         {
+            Storyboard storyboard = new Storyboard();
+            {
+               var flashAnimation = new DoubleAnimation();
+               flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(1.0f));
+               flashAnimation.To = 360.0f;
+               flashAnimation.RepeatBehavior = RepeatBehavior.Forever;
+               storyboard.Children.Add(flashAnimation);
+               progressArc.RenderTransform = new RotateTransform(0, 0, 0);
+               Storyboard.SetTarget(flashAnimation, progressArc);
+               Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("RenderTransform.Angle"));
+            }
+            _Storyboards.Add(storyboard);
+            storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+            storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+         }
 
          // Flash animation
          if (fromUpdate)
