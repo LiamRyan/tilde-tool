@@ -42,6 +42,7 @@ namespace Tildetool
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
+         App.Clickthrough(this);
       }
 
       public void Cancel()

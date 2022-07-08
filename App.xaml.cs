@@ -27,13 +27,20 @@ namespace Tildetool
       [DllImport("user32.dll")]
       static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
       private const int GWL_EX_STYLE = -20;
-      private const int WS_EX_APPWINDOW = 0x00040000, WS_EX_TOOLWINDOW = 0x00000080;
+      private const int WS_EX_TRANSPARENT = 0x00000020;
+      private const int WS_EX_TOOLWINDOW = 0x00000080;
+      private const int WS_EX_APPWINDOW = 0x00040000;
 
       public static void PreventAltTab(Window window)
       {
          // Set the TOOLWINDOW and clear the APPWINDOW style flags.
          IntPtr hWindow = new WindowInteropHelper(window).Handle;
          SetWindowLong(hWindow, GWL_EX_STYLE, (GetWindowLong(hWindow, GWL_EX_STYLE) | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW);
+      }
+      public static void Clickthrough(Window window)
+      {
+         IntPtr hWindow = new WindowInteropHelper(window).Handle;
+         SetWindowLong(hWindow, GWL_EX_STYLE, GetWindowLong(hWindow, GWL_EX_STYLE) | WS_EX_TRANSPARENT);
       }
 
       private void Main(object sender, StartupEventArgs e)
