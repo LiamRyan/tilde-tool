@@ -170,7 +170,7 @@ namespace Tildetool.Status
       }
 
       public override bool Ephemeral { get { return false; } }
-      public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 18.0f; }
+      public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 8.0f; }
 
       public override void HandleClick()
       {

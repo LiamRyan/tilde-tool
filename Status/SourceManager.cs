@@ -140,12 +140,12 @@ namespace Tildetool.Status
             if (!Sources[index].Ephemeral || Sources[index].ChangeIndex != changeIndex)
                SaveLater();
 
-            //
-            SourceQuery?.Invoke(this, index);
-
             // If something changed, send an event.
             if (Sources[index].ChangeIndex != changeIndex)
                SourceChanged?.Invoke(this, new SourceEventArgs { Index = index, CacheChanged = cacheChanged });
+
+            //
+            SourceQuery?.Invoke(this, index);
          });
       }
 

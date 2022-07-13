@@ -37,11 +37,8 @@ namespace Tildetool.Status
          ExpandBox.MouseLeave += Grid_MouseLeave;
 
          // Spawn controls
-         PopulateStatusBar();
-
-         // Do an initial refresh of the controls.
-         for (int i = 0; i < DisplayIndex.Count; i++)
-            UpdateStatusBar(DisplayIndex[i], false);
+         StatusPanel.Children.RemoveRange(0, StatusPanel.Children.Count - 1);
+         PopulateStatusBar(true);
 
          // Fade in.
          RootFrame.Opacity = 0;
@@ -76,11 +73,7 @@ namespace Tildetool.Status
             ExpandText.Text = _ShowAll ? "-" : "+";
 
             // Spawn controls
-            PopulateStatusBar();
-
-            // Do an initial refresh of the controls.
-            for (int i = 0; i < DisplayIndex.Count; i++)
-               UpdateStatusBar(DisplayIndex[i], false);
+            PopulateStatusBar(false);
          });
       }
 
@@ -195,61 +188,88 @@ namespace Tildetool.Status
       }
       private void Instance_SourceQuery(object? sender, int e)
       {
-         Dispatcher.Invoke(() => UpdateStatusBar(e, false));
+         Dispatcher.Invoke(() =>
+         {
+            PopulateStatusBar(false);
+            UpdateStatusBar(e, false);
+         });
       }
 
       List<int> DisplayIndex = new List<int>();
       List<Source> DisplaySource = new List<Source>();
-      protected void AddStatusElement()
+      Dictionary<int, DateTime> DisplayShow = new Dictionary<int, DateTime>();
+      protected void AddStatusElement(int index)
       {
          DataTemplate? template = Resources["StatusBox"] as DataTemplate;
          ContentControl content = new ContentControl { ContentTemplate = template };
-         StatusPanel.Children.Insert(StatusPanel.Children.Count - 1, content);
+         StatusPanel.Children.Insert(index, content);
          content.ApplyTemplate();
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
 
-         int index = StatusPanel.Children.Count - 2;
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
          grid.PreviewMouseDown += (s, e) => Grid_PreviewMouseDown(s, e, index);
          grid.MouseEnter += Grid_MouseEnter;
          grid.MouseLeave += Grid_MouseLeave;
       }
-      protected void PopulateStatusBar()
+      protected void PopulateStatusBar(bool initial)
       {
          //
          List<int> oldList = DisplayIndex;
-         List<int> newList = new List<int>();
+         UIElement[] oldUi = new UIElement[StatusPanel.Children.Count];
+         StatusPanel.Children.CopyTo(oldUi, 0);
+
+         //
          DisplayIndex = new List<int>();
          DisplaySource.Clear();
          for (int i = 0; i < SourceManager.Instance.Sources.Count; i++)
          {
+            // Decide whether to show this source.
+            bool showThis = true;
             Source source = SourceManager.Instance.Sources[i];
             if (!_ShowAll)
             {
-               if (source.State == Source.StateType.Inactive)
-                  continue;
+               DateTime showUntil;
+               if (DisplayShow.TryGetValue(i, out showUntil))
+               {
+                  if (DateTime.Now >= showUntil)
+                     DisplayShow.Remove(i);
+               }
+               else
+                  showUntil = DateTime.Now;
+
+               if (DateTime.Now < showUntil)
+                  showThis = true;
+               else if (!source.Ephemeral && (source.IsQuerying || SourceManager.Instance.NeedRefresh(source)))
+                  showThis = true;
+               else if (source.State == Source.StateType.Inactive)
+                  showThis = false;
             }
 
+            // Remove if it disappeared.
+            int oldIndex = oldList.IndexOf(i);
+            if (!showThis)
+            {
+               if (oldIndex != -1)
+                  StatusPanel.Children.Remove(oldUi[oldIndex]);
+               continue;
+            }
+
+            // Add if it's new.
+            if (oldIndex == -1)
+               AddStatusElement(DisplayIndex.Count);
+
+            // Insert and refresh
             DisplayIndex.Add(i);
             DisplaySource.Add(source);
 
-            if (_ShowAll)
-               if (!oldList.Contains(i))
-                  newList.Add(i);
+            if (oldIndex == -1)
+            {
+               UpdateStatusBar(i, false);
+               if (!initial)
+                  _AnimateShow(i);
+            }
          }
-
-         //
-         StatusPanel.Children.RemoveRange(0, StatusPanel.Children.Count - 1);
-         {
-            while (StatusPanel.Children.Count > DisplaySource.Count + 1)
-               StatusPanel.Children.RemoveAt(StatusPanel.Children.Count - 2);
-            while (StatusPanel.Children.Count < DisplaySource.Count + 1)
-               AddStatusElement();
-         }
-
-         foreach (int index in newList)
-            _AnimateShow(index);
       }
 
       private List<Storyboard> _Storyboards = new List<Storyboard>();
@@ -259,6 +279,10 @@ namespace Tildetool.Status
          Source src = SourceManager.Instance.Sources[sourceIndex];
          int index = DisplaySource.IndexOf(src);
 
+         //
+         if (fromUpdate)
+            DisplayShow[sourceIndex] = DateTime.Now + TimeSpan.FromSeconds(5);
+
          // If there was none, either add it (for an update), or ignore.
          if (index == -1)
          {
@@ -267,7 +291,7 @@ namespace Tildetool.Status
             index = DisplaySource.Count;
             DisplayIndex.Add(sourceIndex);
             DisplaySource.Add(src);
-            AddStatusElement();
+            AddStatusElement(StatusPanel.Children.Count - 1);
             _AnimateShow(index);
          }
 
