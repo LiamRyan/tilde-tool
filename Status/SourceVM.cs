@@ -112,7 +112,8 @@ namespace Tildetool.Status
          CacheStruct cache = Cache as CacheStruct;
          if (cache == null)
             return;
-         Status = cache.Status;
+         Status = "";
+         Article = cache.Status;
 
          if (cache.Status == "online")
             State = StateType.Success;

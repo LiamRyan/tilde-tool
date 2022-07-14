@@ -14,5 +14,6 @@ namespace Tildetool.Status.Serialization
       public string OpenToURL { get; set; }
       public string[] DateLookup { get; set; }
       public string DateFormat { get; set; }
+      public string[] TitleLookup { get; set; }
    }
 }

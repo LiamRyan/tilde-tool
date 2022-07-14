@@ -16,6 +16,7 @@ namespace Tildetool.Status
       protected record CacheStruct : IEquatable<CacheStruct>
       {
          public DateTime Date { get; set; }
+         public string Title { get; set; }
          public string? Etag { get; set; }
          public DateTimeOffset? LastModified { get; set; }
       }
@@ -23,16 +24,18 @@ namespace Tildetool.Status
       protected string Site;
       protected string Url;
       protected string OpenToUrl;
-      protected string[] SearchPattern;
-      protected string DatePattern;
-      public SourceBlog(string title, string name, string site, string url, string openToUrl, string[] searchPattern, string datePattern)
+      protected string[] DateLookup;
+      protected string DateFormat;
+      protected string[] TitleLookup;
+      public SourceBlog(string title, string name, string site, string url, string openToUrl, string[] dateLookup, string dateFormat, string[] titleLookup)
          : base(title, name, typeof(CacheStruct))
       {
          Site = site;
          Url = url;
          OpenToUrl = openToUrl;
-         SearchPattern = searchPattern;
-         DatePattern = datePattern;
+         DateLookup = dateLookup;
+         DateFormat = dateFormat;
+         TitleLookup = titleLookup;
       }
 
       protected override void _Query()
@@ -82,52 +85,95 @@ namespace Tildetool.Status
             responseBody = taskRead.Result;
          }
 
-         // Parse the data
-         try
+         //
+         string lookupData(string[] lookup)
          {
-            int index = responseBody.IndexOf(SearchPattern[0]);
-            while (index != -1)
+            try
             {
-               // Find the date.
-               index += SearchPattern[0].Length;
-               int lastIndex = index;
-               for (int i = 1; i < SearchPattern.Length; i++)
+               int index = responseBody.IndexOf(lookup[0]);
+               while (index != -1)
                {
-                  lastIndex = index;
-                  index = responseBody.IndexOf(SearchPattern[i], index);
+                  // Find the date.
+                  index += lookup[0].Length;
+                  int lastIndex = index;
+                  for (int i = 1; i < lookup.Length; i++)
+                  {
+                     lastIndex = index;
+                     index = responseBody.IndexOf(lookup[i], index);
+                     if (index == -1)
+                        break;
+                     if (i + 1 < lookup.Length)
+                        index += lookup[i].Length;
+                  }
                   if (index == -1)
                      break;
-                  if (i + 1 < SearchPattern.Length)
-                     index += SearchPattern[i].Length;
-               }
-               if (index == -1)
-                  break;
 
-               // Parse the date.
-               string infoTimeStr = responseBody.Substring(lastIndex, index - lastIndex);
+                  // Parse the date.
+                  string infoTimeStr = responseBody.Substring(lastIndex, index - lastIndex);
+                  return infoTimeStr;
+
+                  //
+                  index = responseBody.IndexOf(lookup[0], index);
+               }
+            }
+            catch (Exception ex)
+            {
+               Console.WriteLine(ex.Message);
+            }
+            return null;
+         }
+
+         bool isValid = true;
+
+         // Figure out the date
+         try
+         {
+            string infoTimeStr = lookupData(DateLookup);
+
+            // Parse it.
+            if (!string.IsNullOrEmpty(infoTimeStr))
+            {
+               // do some preprocessing to standardize some dates
                infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
                infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
 
-               if (DatePattern == "unix")
+               // parse
+               if (DateFormat == "unix")
                   cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
                else
-                  cache.Date = DateTime.ParseExact(infoTimeStr, DatePattern, CultureInfo.CreateSpecificCulture("en-us"));
-
-               // Store it for future use.
-               Cache = cache;
-               break;
-
-               //
-               index = responseBody.IndexOf(SearchPattern[0], index);
+                  cache.Date = DateTime.ParseExact(infoTimeStr, DateFormat, CultureInfo.CreateSpecificCulture("en-us"));
             }
+            else
+               isValid = false;
          }
          catch (Exception ex)
          {
             Console.WriteLine(ex.Message);
-            Cache = null;
+            isValid = false;
          }
-         if (Cache == null)
+
+         // Figure out the title.
+         try
          {
+            // Pull it out and store it.
+            string titleStr = lookupData(TitleLookup);
+            if (!string.IsNullOrEmpty(titleStr))
+               cache.Title = titleStr;
+            else
+               isValid = false;
+         }
+         catch (Exception ex)
+         {
+            Console.WriteLine(ex.Message);
+            isValid = false;
+         }
+
+         // Store it for future use.
+         if (isValid)
+            Cache = cache;
+         else
+         {
+            Cache = null;
             Status = "error";
             State = StateType.Error;
          }
@@ -167,6 +213,8 @@ namespace Tildetool.Status
                Status = "new";
             State = StateType.Success;
          }
+
+         Article = cache.Title;
       }
 
       public override bool Ephemeral { get { return false; } }

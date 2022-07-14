@@ -20,10 +20,10 @@ namespace Tildetool.Status
       }
       static Dictionary<StateType, Color[]> sStateColor = new Dictionary<StateType, Color[]>
       {
-         { StateType.Inactive, new Color[2] { Color.FromArgb(0xFF, 0xAB, 0xAB, 0xAB), Color.FromArgb(0xFF, 0x5F, 0x5F, 0x5F) } },
-         { StateType.Error,    new Color[2] { Color.FromArgb(0xFF, 0xDE, 0x5D, 0x5D), Color.FromArgb(0xFF, 0x84, 0x2F, 0x2F) } },
-         { StateType.Alert,    new Color[2] { Color.FromArgb(0xFF, 0xEC, 0xD6, 0x43), Color.FromArgb(0xFF, 0x92, 0x84, 0x26) } },
-         { StateType.Success,  new Color[2] { Color.FromArgb(0xFF, 0x57, 0xdb, 0x42), Color.FromArgb(0xFF, 0x2D, 0x77, 0x22) } },
+         { StateType.Inactive, new Color[3] { Extension.FromArgb(0xFF212121), Extension.FromArgb(0xFF8C8C8C), Extension.FromArgb(0xFF8C8C8C) } },
+         { StateType.Error,    new Color[3] { Extension.FromArgb(0xFF271515), Extension.FromArgb(0xFF963737), Extension.FromArgb(0xFF842F2F) } },
+         { StateType.Alert,    new Color[3] { Extension.FromArgb(0xFF21230C), Extension.FromArgb(0xFFEAF1AF), Extension.FromArgb(0xFF969237) } },
+         { StateType.Success,  new Color[3] { Extension.FromArgb(0xFF042508), Extension.FromArgb(0xFFC3F1AF), Extension.FromArgb(0xFF449637) } },
       };
 
       public string Title { get; private set; }
@@ -32,15 +32,20 @@ namespace Tildetool.Status
 
       public int ChangeIndex { get; private set; }
       private string _Status;
+      private string _Article;
       private StateType _State;
+      public string Status { get { return _Status; } set { if (_Status != value) ChangeIndex++; _Status = value; } }
+      public string Article { get { return _Article; } set { if (_Article != value) ChangeIndex++; _Article = value; } }
+      public StateType State { get { return _State; } set { if (_State != value) ChangeIndex++; _State = value; } }
+
+
       private Type _CacheType;
       private object? _Cache;
-      public string Status { get { return _Status; } set { if (_Status != value) ChangeIndex++; _Status = value; } }
-      public StateType State { get { return _State; } set { if (_State != value) ChangeIndex++; _State = value; } }
       public object? Cache { get { return _Cache; } set { if (_Cache != null && value != null && !_Cache.Equals(value)) ChangeIndex++; if ((_Cache == null) != (value == null)) ChangeIndex++; _Cache = value; } }
 
-      public Color Color { get { return sStateColor[_State][0]; } }
-      public Color ColorDim { get { return sStateColor[_State][1]; } }
+      public Color ColorBack { get { return sStateColor[_State][0]; } }
+      public Color Color { get { return sStateColor[_State][1]; } }
+      public Color ColorDim { get { return sStateColor[_State][2]; } }
 
       public Source(string title, string subtitle, Type cacheType)
       {
@@ -52,13 +57,15 @@ namespace Tildetool.Status
          Guid = Convert.ToHexString(guidarray);
 
          Status = "...working...";
+         Article = "";
          State = StateType.Inactive;
          _CacheType = cacheType;
          Cache = null;
       }
-      public void Initialize(string status, StateType state, string cache)
+      public void Initialize(string status, string article, StateType state, string cache)
       {
          Status = status;
+         Article = article;
          State = state;
          Cache = null;
          try

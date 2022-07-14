@@ -96,7 +96,7 @@ namespace Tildetool
                      _StatusBar.Topmost = true;
                      _StatusBar.Activate();
                   }
-                  else
+                  else if (!_StatusBar.IsShowing)
                      _StatusBar.AnimateShow();
                   _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(args.Index, args.CacheChanged)));
                }));

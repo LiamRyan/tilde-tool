@@ -33,15 +33,14 @@ namespace Tildetool.Status
 
          //
          ExpandBox.PreviewMouseDown += ExpandBox_PreviewMouseDown;
-         ExpandBox.MouseEnter += Grid_MouseEnter;
-         ExpandBox.MouseLeave += Grid_MouseLeave;
+         ExpandBox.MouseEnter += (s, e) => Grid_MouseEnter(s, e, -1);
+         ExpandBox.MouseLeave += (s, e) => Grid_MouseLeave(s, e, -1);
 
          // Spawn controls
          StatusPanel.Children.RemoveRange(0, StatusPanel.Children.Count - 1);
          PopulateStatusBar(true);
 
          // Fade in.
-         RootFrame.Opacity = 0;
          _HasTimer = hasTimer;
          AnimateShow();
       }
@@ -57,8 +56,8 @@ namespace Tildetool.Status
          {
             var flashAnimation = new ColorAnimationUsingKeyFrames();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFF042508), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
             storyboard.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, sender as Grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
@@ -77,46 +76,79 @@ namespace Tildetool.Status
          });
       }
 
-      private void Grid_MouseEnter(object sender, MouseEventArgs e)
+      private void Grid_MouseEnter(object sender, MouseEventArgs e, int sourceIndex)
       {
+         Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
+         int index = DisplaySource.IndexOf(src);
+         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+         color = new Color { R = (byte)(color.R << 1), G = (byte)(color.G << 1), B = (byte)(color.B << 1), A = 255 };
+
          Storyboard storyboard = new Storyboard();
          {
             var flashAnimation = new ColorAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
-            flashAnimation.To = Color.FromArgb(0xFF, 0x2D, 0x26, 0x2A);
+            flashAnimation.To = color;
             storyboard.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, sender as Grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+         }
+         if (sourceIndex != -1)
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
+            flashAnimation.To = 120.0f;
+            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.HeightProperty));
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
          storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
-      private void Grid_MouseLeave(object sender, MouseEventArgs e)
+      private void Grid_MouseLeave(object sender, MouseEventArgs e, int sourceIndex)
       {
+         Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
+         int index = DisplaySource.IndexOf(src);
+         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+
          Storyboard storyboard = new Storyboard();
          {
             var flashAnimation = new ColorAnimation();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
-            flashAnimation.To = Color.FromArgb(0xFF, 0x13, 0x10, 0x12);
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.3f));
+            flashAnimation.To = color;
             storyboard.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, sender as Grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
+         }
+         if (sourceIndex != -1)
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            flashAnimation.To = 80.0f;
+            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.HeightProperty));
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
          storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
-      private void Grid_PreviewMouseDown(object sender, MouseEventArgs e, int index)
+      private void Grid_PreviewMouseDown(object sender, MouseEventArgs e, int sourceIndex)
       {
+         Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
+         int index = DisplaySource.IndexOf(src);
+         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+
          if (e.RightButton == MouseButtonState.Pressed)
          {
             Storyboard storyboard = new Storyboard();
             {
                var flashAnimation = new ColorAnimationUsingKeyFrames();
                flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(color, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
                storyboard.Children.Add(flashAnimation);
                Storyboard.SetTarget(flashAnimation, sender as Grid);
                Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
@@ -142,14 +174,14 @@ namespace Tildetool.Status
                myDoubleAnimation.To = 0.0;
                myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
                _StoryboardHide.Children.Add(myDoubleAnimation);
-               Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-               Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+               Storyboard.SetTarget(myDoubleAnimation, this);
+               Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Window.OpacityProperty));
             }
             {
                var flashAnimation = new ColorAnimationUsingKeyFrames();
                flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(color, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
                _StoryboardHide.Children.Add(flashAnimation);
                Storyboard.SetTarget(flashAnimation, sender as Grid);
                Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
@@ -198,42 +230,61 @@ namespace Tildetool.Status
       List<int> DisplayIndex = new List<int>();
       List<Source> DisplaySource = new List<Source>();
       Dictionary<int, DateTime> DisplayShow = new Dictionary<int, DateTime>();
-      protected void AddStatusElement(int index)
+      HashSet<int> DisplayShown = new HashSet<int>();
+      protected void AddStatusElement(int sourceIndex, int guiIndex)
       {
+         // insert to the gui
          DataTemplate? template = Resources["StatusBox"] as DataTemplate;
          ContentControl content = new ContentControl { ContentTemplate = template };
-         StatusPanel.Children.Insert(index, content);
+         StatusPanel.Children.Insert(guiIndex, content);
          content.ApplyTemplate();
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
 
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
-         grid.PreviewMouseDown += (s, e) => Grid_PreviewMouseDown(s, e, index);
-         grid.MouseEnter += Grid_MouseEnter;
-         grid.MouseLeave += Grid_MouseLeave;
+         {
+            int i = sourceIndex;
+            grid.PreviewMouseDown += (s, e) => Grid_PreviewMouseDown(s, e, i);
+            grid.MouseEnter += (s, e) => Grid_MouseEnter(s, e, i);
+            grid.MouseLeave += (s, e) => Grid_MouseLeave(s, e, i);
+         }
+
+         // track our variables
+         DisplayShown.Add(sourceIndex);
+         DisplayIndex.Insert(guiIndex, sourceIndex);
+         DisplaySource.Insert(guiIndex, SourceManager.Instance.Sources[sourceIndex]);
+
+         // Do an initial refresh.
+         UpdateStatusBar(sourceIndex, false);
+      }
+      protected void RemoveStatusElement(int sourceIndex)
+      {
+         int guiIndex = DisplayIndex.IndexOf(sourceIndex);
+         if (guiIndex == -1)
+            return;
+
+         // instantly clear the shown state
+         DisplayShown.Remove(sourceIndex);
+
+         // animate disappearance -- this will clear everything else when done.
+         _AnimateHide(guiIndex);
       }
       protected void PopulateStatusBar(bool initial)
       {
          //
-         List<int> oldList = DisplayIndex;
-         UIElement[] oldUi = new UIElement[StatusPanel.Children.Count];
-         StatusPanel.Children.CopyTo(oldUi, 0);
-
-         //
-         DisplayIndex = new List<int>();
-         DisplaySource.Clear();
-         for (int i = 0; i < SourceManager.Instance.Sources.Count; i++)
+         int nextGuiIndex = 0;
+         for (int sourceIndex = 0; sourceIndex < SourceManager.Instance.Sources.Count; sourceIndex++)
          {
             // Decide whether to show this source.
             bool showThis = true;
-            Source source = SourceManager.Instance.Sources[i];
+            Source source = SourceManager.Instance.Sources[sourceIndex];
             if (!_ShowAll)
             {
                DateTime showUntil;
-               if (DisplayShow.TryGetValue(i, out showUntil))
+               if (DisplayShow.TryGetValue(sourceIndex, out showUntil))
                {
                   if (DateTime.Now >= showUntil)
-                     DisplayShow.Remove(i);
+                     DisplayShow.Remove(sourceIndex);
                }
                else
                   showUntil = DateTime.Now;
@@ -246,28 +297,31 @@ namespace Tildetool.Status
                   showThis = false;
             }
 
-            // Remove if it disappeared.
-            int oldIndex = oldList.IndexOf(i);
+            // Track how many guis are visible (even if fading out).
+            bool isVisible = DisplayIndex.Contains(sourceIndex);
+            if (isVisible || showThis)
+               nextGuiIndex++;
+            bool isFadeIn = DisplayShown.Contains(sourceIndex);
+
+            // Check if we're not showing it.
             if (!showThis)
             {
-               if (oldIndex != -1)
-                  StatusPanel.Children.Remove(oldUi[oldIndex]);
+               // If it wanted to be shown, clear it out.
+               if (DisplayShown.Contains(sourceIndex))
+                  RemoveStatusElement(sourceIndex);
                continue;
             }
 
-            // Add if it's new.
-            if (oldIndex == -1)
-               AddStatusElement(DisplayIndex.Count);
+            // We want to show.  Check if it's altogether missing, and insert if so.
+            if (!isVisible)
+               AddStatusElement(sourceIndex, nextGuiIndex - 1);
 
-            // Insert and refresh
-            DisplayIndex.Add(i);
-            DisplaySource.Add(source);
-
-            if (oldIndex == -1)
+            // If it was either missing or in the process of fading out, do the appear animation.
+            if (!isFadeIn)
             {
-               UpdateStatusBar(i, false);
                if (!initial)
-                  _AnimateShow(i);
+                  _AnimateShow(sourceIndex);
+               DisplayShown.Add(sourceIndex);
             }
          }
       }
@@ -277,50 +331,48 @@ namespace Tildetool.Status
       {
          // Look up which display index this corresponds to.
          Source src = SourceManager.Instance.Sources[sourceIndex];
-         int index = DisplaySource.IndexOf(src);
+         int guiIndex = DisplaySource.IndexOf(src);
 
-         //
+         // Make sure to show it at least 5 seconds after an update.
          if (fromUpdate)
             DisplayShow[sourceIndex] = DateTime.Now + TimeSpan.FromSeconds(5);
 
          // If there was none, either add it (for an update), or ignore.
-         if (index == -1)
+         if (guiIndex == -1)
          {
             if (!fromUpdate)
                return;
-            index = DisplaySource.Count;
-            DisplayIndex.Add(sourceIndex);
-            DisplaySource.Add(src);
-            AddStatusElement(StatusPanel.Children.Count - 1);
-            _AnimateShow(index);
+            PopulateStatusBar(false);
+            guiIndex = DisplaySource.IndexOf(src);
          }
 
          // Grab the controls.
-         ContentControl content = StatusPanel.Children[index] as ContentControl;
+         ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
-         FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+         Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
          TextBlock title = grid.FindElementByName<TextBlock>("Title");
          Grid divider = grid.FindElementByName<Grid>("Divider");
-         TextBlock subtitle = grid.FindElementByName<TextBlock>("Subtitle");
+         TextBlock article = grid.FindElementByName<TextBlock>("Article");
          TextBlock status = grid.FindElementByName<TextBlock>("Status");
          Ellipse progress = grid.FindElementByName<Ellipse>("Progress");
          Shape.Arc progressArc = grid.FindElementByName<Shape.Arc>("ProgressArc");
 
          // Update.
-         title.Text = DisplaySource[index].Title;
-         subtitle.Text = DisplaySource[index].Subtitle;
-         status.Text = DisplaySource[index].Status;
-         status.Margin = new Thickness(0, String.IsNullOrEmpty(DisplaySource[index].Subtitle) ? 22 : 42, 0, 0);
-         title.Foreground = new SolidColorBrush(DisplaySource[index].ColorDim);
-         divider.Background = new SolidColorBrush(DisplaySource[index].ColorDim);
-         subtitle.Foreground = new SolidColorBrush(DisplaySource[index].Color);
-         status.Foreground = new SolidColorBrush(DisplaySource[index].Color);
-         progress.Stroke = new SolidColorBrush(DisplaySource[index].ColorDim);
+         title.Text = DisplaySource[guiIndex].Subtitle;
+         status.Text = DisplaySource[guiIndex].Status;
+         article.Text = DisplaySource[guiIndex].Article;
+         article.Margin = new Thickness(article.Margin.Left, article.Margin.Top, article.Margin.Right, String.IsNullOrEmpty(DisplaySource[guiIndex].Status) ? 0 : 17);
+         grid.Background = new SolidColorBrush(DisplaySource[guiIndex].ColorBack);
+         title.Foreground = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
+         divider.Background = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
+         status.Foreground = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
+         article.Foreground = new SolidColorBrush(DisplaySource[guiIndex].Color);
+         progress.Stroke = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
          {
             GradientStopCollection collection = new GradientStopCollection(2);
             collection.Add((progressArc.Stroke as LinearGradientBrush).GradientStops[0]);
-            collection.Add(new GradientStop(DisplaySource[index].Color, 1.0));
+            collection.Add(new GradientStop(DisplaySource[guiIndex].Color, 1.0));
             collection.Freeze();
             LinearGradientBrush oldBrush = progressArc.Stroke as LinearGradientBrush;
             progressArc.Stroke = new LinearGradientBrush(collection, oldBrush.StartPoint, oldBrush.EndPoint);
@@ -351,12 +403,14 @@ namespace Tildetool.Status
          // Flash animation
          if (fromUpdate)
          {
+            ClearTimer();
+
             Storyboard storyboard = new Storyboard();
             {
                var flashAnimation = new ColorAnimationUsingKeyFrames();
                flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0x13, 0x10, 0x12), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(DisplaySource[guiIndex].ColorBack, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
                storyboard.Children.Add(flashAnimation);
                Storyboard.SetTarget(flashAnimation, grid);
                Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
@@ -379,7 +433,7 @@ namespace Tildetool.Status
          Storyboard storyboard = new Storyboard();
          {
             var flashAnimation = new DoubleAnimation();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             flashAnimation.From = 0.0f;
             flashAnimation.To = 1.0f;
             storyboard.Children.Add(flashAnimation);
@@ -388,7 +442,7 @@ namespace Tildetool.Status
          }
          {
             var flashAnimation = new DoubleAnimation();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.6f));
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             flashAnimation.From = 0.0f;
             flashAnimation.To = 120.0f;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
@@ -396,8 +450,67 @@ namespace Tildetool.Status
             Storyboard.SetTarget(flashAnimation, grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.WidthProperty));
          }
+         {
+            var animation = new ThicknessAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.To = new Thickness(1, 1, 1, 1);
+            storyboard.Children.Add(animation);
+            Storyboard.SetTarget(animation, grid);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+         }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+         storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+      protected void _AnimateHide(int guiIndex)
+      {
+         //
+         ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
+         ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+         presenter.ApplyTemplate();
+         FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+
+         //
+         Storyboard storyboard = new Storyboard();
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
+            flashAnimation.To = 0.0f;
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
+            flashAnimation.To = 0.0f;
+            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var animation = new ThicknessAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.To = new Thickness(0,0,0,0);
+            storyboard.Children.Add(animation);
+            Storyboard.SetTarget(animation, grid);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+         }
+         _Storyboards.Add(storyboard);
+
+         int sourceIndex = DisplayIndex[guiIndex];
+         storyboard.Completed += (sender, e) =>
+         {
+            _Storyboards.Remove(storyboard);
+            storyboard.Remove(this);
+
+            // finalize the removal
+            int _guiIndex = DisplayIndex.IndexOf(sourceIndex);
+            StatusPanel.Children.RemoveAt(_guiIndex);
+            DisplayIndex.RemoveAt(_guiIndex);
+            DisplaySource.RemoveAt(_guiIndex);
+         };
          storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
@@ -416,12 +529,62 @@ namespace Tildetool.Status
          //
          _StoryboardHide = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = 1.0;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            _StoryboardHide.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.From = 0.0f;
+            animation.To = Width;
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 8.0f;
+            animation.To = 2.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow1);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 8.0f;
+            animation.To = 2.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow2);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 46.0f;
+            animation.To = Height;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            Border.Opacity = 0.0f;
+            animation.To = 1.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            StatusPanel.Opacity = 0.0f;
+            animation.To = 1.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, StatusPanel);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; };
          _StoryboardHide.Begin(this);
@@ -470,12 +633,64 @@ namespace Tildetool.Status
          //
          _StoryboardHide = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = 0.0;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            _StoryboardHide.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.17f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.To = 0.0f;
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.To = 0.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.To = 0.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, StatusPanel);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 8.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow1);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 8.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow2);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 46.0f;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.35f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
+            animation.To = 0.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, this);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; Close(); };
          _StoryboardHide.Begin(this);

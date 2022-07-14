@@ -131,6 +131,7 @@ namespace Tildetool.Status
             SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
             bool cacheChanged = data.LastCache != cache;
             data.Status = Sources[index].Status;
+            data.Article = Sources[index].Article;
             data.State = Sources[index].State;
             data.LastCache = cache;
             data.LastUpdate = DateTime.Now;
@@ -243,11 +244,12 @@ namespace Tildetool.Status
          {
             SourceCacheData data;
             if (SourceCache.SourceData.TryGetValue(source.Guid, out data))
-               source.Initialize(data.Status, data.State, data.LastCache);
+               source.Initialize(data.Status, data.Article, data.State, data.LastCache);
             else
                SourceCache.SourceData[source.Guid] = new SourceCacheData
                {
                   Status = source.Status,
+                  Article = source.Article,
                   State = source.State,
                   LastUpdate = DateTime.UnixEpoch,
                   LastCache = ""

@@ -6,44 +6,53 @@
         xmlns:local="clr-namespace:Tildetool.Status"
         xmlns:Shape="clr-namespace:Tildetool.Shape" x:Name="window" x:Class="Tildetool.Status.StatusBar"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal"
-        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Height" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded">
+        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="146">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">
-            <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF131012" HorizontalAlignment="Left">
-                <TextBlock x:Name="Title" Text="VM" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF928426" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                <Ellipse x:Name="Progress" Stroke="#FF928426" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,4,8,0"/>
+            <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <TextBlock x:Name="Title" Text="local vm" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                <Ellipse x:Name="Progress" Stroke="#FF449637" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,4,8,0"/>
                 <Shape:Arc x:Name="ProgressArc" StrokeThickness="2.5" Width="13.5" Height="13.5" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,3.75,7.75,0" StartAngle="90" EndAngle="270" RenderTransformOrigin="0.5,0.5">
                     <Shape:Arc.Stroke>
                         <LinearGradientBrush EndPoint="0.5,0" StartPoint="0.5,1">
-                            <GradientStop Color="#00ECD643" Offset="0.149"/>
-                            <GradientStop Color="#FFECD643" Offset="1"/>
+                            <GradientStop Color="#00C3F1AF" Offset="0.149"/>
+                            <GradientStop Color="#FFC3F1AF" Offset="1"/>
                         </LinearGradientBrush>
                     </Shape:Arc.Stroke>
                 </Shape:Arc>
-                <Grid x:Name="Divider" Background="#FF928426" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="1" Margin="8,22,8,0"/>
-                <TextBlock x:Name="Subtitle" Text="local" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFECD643" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,30,0,20"/>
-                <TextBlock x:Name="Status" Text="online" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFECD643" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Center" Margin="0,42,0,0"/>
+                <Grid x:Name="Divider" Background="#FF449637" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="1" Margin="8,22,8,0"/>
+                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Width="103" Margin="0,29,0,17" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
+                <TextBlock x:Name="Status" Text="15/9/22" HorizontalAlignment="Stretch" TextAlignment="Left" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Bottom" Margin="8,0,8,4"/>
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid x:Name="RootFrame" HorizontalAlignment="Left">
-        <Grid.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <GradientStop Color="#FF191718"/>
-                <GradientStop Color="#FF2F2D2E" Offset="1"/>
-            </LinearGradientBrush>
-        </Grid.Background>
-        <Grid Margin="3,3,3,3" HorizontalAlignment="Left" VerticalAlignment="Stretch">
-            <Grid.Background>
-                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="#FFB2E250"/>
-                    <GradientStop Color="#FF45AF34" Offset="0.8"/>
-                </LinearGradientBrush>
-            </Grid.Background>
-            <StackPanel x:Name="StatusPanel" Background="#FF191718" Margin="1,1,1,1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Orientation="Horizontal">
+    <Grid HorizontalAlignment="Left">
+        <Grid x:Name="Backfill" HorizontalAlignment="Left" Background="#FF021204" Margin="0,0,0,40"></Grid>
+        <Grid x:Name="Content" HorizontalAlignment="Left">
+            <Rectangle x:Name="Glow1" Margin="10 -8 10 50" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Effect>
+                    <BlurEffect Radius="8" KernelType="Gaussian"/>
+                </Rectangle.Effect>
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <Rectangle x:Name="Glow2" Margin="10 -8 10 50" StrokeThickness="2" RadiusX="2" RadiusY="2">
+                <Rectangle.Stroke>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFDEEFBA"/>
+                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                    </LinearGradientBrush>
+                </Rectangle.Stroke>
+            </Rectangle>
+            <Grid x:Name="Border" Background="#FF031F07" Margin="20,4,20,20" Height="82" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
+            <StackPanel x:Name="StatusPanel" Margin="20,4,20,20" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
                 <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"/>
-                <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF131012" HorizontalAlignment="Left">
-                    <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF45AF34" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
+                <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
                 </Grid>
             </StackPanel>
         </Grid>
