@@ -91,8 +91,9 @@ namespace Tildetool
          CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
          CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
 
-         _AnimateIn();
-         RefreshDisplay();
+         OptionGrid.Children.Clear();
+
+         _AnimateColor(true);
 
          //
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
@@ -101,6 +102,9 @@ namespace Tildetool
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
+
+         RefreshDisplay();
+         _AnimateIn();
       }
       IntPtr hKeyboardHook = IntPtr.Zero;
       HookProc KeyboardHook;
@@ -218,6 +222,17 @@ namespace Tildetool
       Tildetool.Hotcommand.Command? _Suggested = null;
       string _LastSuggested = "";
 
+      public struct AltCommand
+      {
+         public Command? Command;
+         public HmContext? Context;
+         public string Tag;
+         public string FullText;
+         public bool IsQuickTag;
+         public bool IsContextual;
+      }
+      List<AltCommand> _AltCmds = new List<AltCommand>();
+
       const string _Number = "0123456789";
       private void RefreshDisplay()
       {
@@ -229,10 +244,8 @@ namespace Tildetool
          //
          _Suggested = null;
          _SuggestedContext = null;
+         _AltCmds.Clear();
          bool suggestedFull = false;
-         List<string> altCmds = new List<string>();
-         List<string> altCmdsFull = new List<string>();
-         List<bool> altCmdsContext = new List<bool>();
          {
             HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
             usedC.Add(HotcommandManager.Instance.CurrentContext);
@@ -263,15 +276,8 @@ namespace Tildetool
                   _Suggested = command;
                   _SuggestedContext = context;
                }
-               else if (!already && altCmds.Count < 10)
-               {
-                  altCmds.Add(tag);
-                  if (quicktag)
-                     altCmdsFull.Add(" \u2192 " + full);
-                  else
-                     altCmdsFull.Add("");
-                  altCmdsContext.Add(inContext);
-               }
+               else if (!already && _AltCmds.Count < 10)
+                  _AltCmds.Add(new AltCommand { Tag = tag, FullText = full, Command = command, Context = context, IsQuickTag = quicktag, IsContextual = inContext });
             }
 
             //
@@ -333,37 +339,37 @@ namespace Tildetool
             }
 
             //
-            if (altCmds.Count < 10)
+            if (_AltCmds.Count < 10)
                foreach (var c in HotcommandManager.Instance.CurrentContext.QuickTags)
                {
                   _addTag(c.Key, c.Value.Tag, c.Value, null, true, defaultContext != null, false);
-                  if (altCmds.Count >= 10)
+                  if (_AltCmds.Count >= 10)
                      break;
                }
 
-            if (altCmds.Count < 10)
+            if (_AltCmds.Count < 10)
                if (defaultContext != null)
                   foreach (var c in defaultContext.QuickTags)
                   {
                      _addTag(c.Key, c.Value.Tag, c.Value, null, true, false, false);
-                     if (altCmds.Count >= 10)
+                     if (_AltCmds.Count >= 10)
                         break;
                   }
 
-            if (altCmds.Count < 10)
+            if (_AltCmds.Count < 10)
                foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                {
                   _addTag(c.Key, c.Value.Tag, c.Value, null, false, defaultContext != null, false);
-                  if (altCmds.Count >= 10)
+                  if (_AltCmds.Count >= 10)
                      break;
                }
 
-            if (altCmds.Count < 10)
+            if (_AltCmds.Count < 10)
                if (defaultContext != null)
                   foreach (var c in HotcommandManager.Instance.CurrentContext.Commands)
                   {
                      _addTag(c.Key, c.Value.Tag, c.Value, null, false, false, false);
-                     if (altCmds.Count >= 10)
+                     if (_AltCmds.Count >= 10)
                         break;
                   }
          }
@@ -380,37 +386,39 @@ namespace Tildetool
          //
          {
             DataTemplate? template = Resources["CommandOption"] as DataTemplate;
-            while (OptionGrid.Children.Count > altCmds.Count)
+            while (OptionGrid.Children.Count > _AltCmds.Count)
                OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
-            while (OptionGrid.Children.Count < altCmds.Count)
+            while (OptionGrid.Children.Count < _AltCmds.Count)
             {
                ContentControl content = new ContentControl { ContentTemplate = template };
                OptionGrid.Children.Add(content);
-               Grid.SetRow(content, OptionGrid.Children.Count);
                content.ApplyTemplate();
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
             }
-            if (OptionGrid.RowDefinitions.Count > altCmds.Count)
-               OptionGrid.RowDefinitions.RemoveRange(0, OptionGrid.RowDefinitions.Count - altCmds.Count);
-            while (OptionGrid.RowDefinitions.Count < altCmds.Count)
-               OptionGrid.RowDefinitions.Add(new RowDefinition());
-            for (int i = 0; i < altCmds.Count; i++)
+            for (int i = 0; i < _AltCmds.Count; i++)
             {
                ContentControl content = OptionGrid.Children[i] as ContentControl;
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
-               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+               TextBlock number = grid.FindElementByName<TextBlock>("Number");
                TextBlock text = grid.FindElementByName<TextBlock>("Text");
                TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
-               TextBlock pre = grid.FindElementByName<TextBlock>("Pre");
+               Grid area = grid.FindElementByName<Grid>("Area");
 
-               text.Text = altCmds[i];
-               expand.Text = altCmdsFull[i];
-               pre.Visibility = altCmdsContext[i] ? Visibility.Visible : Visibility.Collapsed;
-               Thickness t = grid.Margin;
-               t.Bottom = (i + 1 >= altCmds.Count) ? 10 : 0;
-               grid.Margin = t;
+               number.Text = ((i + 1) % 10).ToString();
+               text.Text = (_AltCmds[i].IsContextual ? "\u2192 " : "") + _AltCmds[i].Tag;
+               if (_AltCmds[i].IsQuickTag)
+                  expand.Text = _AltCmds[i].FullText;
+               else
+                  expand.Text = "";
+
+               grid.Background = new SolidColorBrush { Color = Extension.FromArgb(_AltCmds[i].IsContextual ? 0xFF001310 : 0xFF021204) };
+               area.Background = _AltCmds[i].IsContextual ? (Resources["ColorBackground"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF042508) };
+               number.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               text.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               expand.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
             }
          }
       }
@@ -427,6 +435,40 @@ namespace Tildetool
             case Key.Escape:
                Cancel();
                return true;
+         }
+
+         // Handle shift-commands
+         if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+         {
+            switch (key)
+            {
+               case Key.Q:
+                  Cancel();
+                  App.Current.Shutdown();
+                  return true;
+            }
+
+            int number = -1;
+            if (key >= Key.D0 && key <= Key.D9)
+               number = key - Key.D0;
+            else if (key >= Key.NumPad0 && key <= Key.NumPad9)
+               number = key - Key.NumPad0;
+            if (number != -1)
+            {
+               number = (number + 9) % 10;
+               if (number < _AltCmds.Count)
+               {
+                  if (_AltCmds[number].Context != null)
+                     SetContext(_AltCmds[number].Context);
+                  else if (_AltCmds[number].Command != null)
+                  {
+                     RefreshDisplay();
+                     Execute(_AltCmds[number].Command, number);
+                  }
+               }
+            }
+
+            return true;
          }
 
          Tildetool.Hotcommand.Command? command;
@@ -476,13 +518,7 @@ namespace Tildetool
             else if (HotcommandManager.Instance.CurrentContext.Commands.TryGetValue(_Text, out command))
                Execute(command);
             else if (_SuggestedContext != null)
-            {
-               HotcommandManager.Instance.CurrentContext = _SuggestedContext;
-               _AnimateCommand();
-               Thread trd = new Thread(new ThreadStart(_PlayBeep));
-               trd.IsBackground = true;
-               trd.Start();
-            }
+               SetContext(_SuggestedContext);
             else if (_Suggested != null)
                Execute(_Suggested);
             else
@@ -502,27 +538,7 @@ namespace Tildetool
          //
          HmContext context;
          if (HotcommandManager.Instance.ContextTag.TryGetValue(_Text, out context))
-         {
-            HotcommandManager.Instance.CurrentContext = context;
-            CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
-            CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
-
-            _Text = "";
-            _LastSuggested = "";
-            _SuggestedContext = null;
-            _Suggested = null;
-            CommandEntry.Text = "";
-            CommandPreviewPre.Text = "";
-            CommandPreviewPost.Text = "";
-            CommandExpand.Visibility = Visibility.Collapsed;
-
-            RefreshDisplay();
-            _AnimateTextOut();
-
-            Thread trd = new Thread(new ThreadStart(_PlayBeep));
-            trd.IsBackground = true;
-            trd.Start();
-         }
+            SetContext(context);
          else if (HotcommandManager.Instance.CurrentContext.QuickTags.TryGetValue(_Text, out command))
          {
             RefreshDisplay();
@@ -539,7 +555,31 @@ namespace Tildetool
          return handled;
       }
 
-      public void Execute(Tildetool.Hotcommand.Command command)
+      public void SetContext(HmContext context)
+      {
+         HotcommandManager.Instance.CurrentContext = context;
+         CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
+         CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
+
+         _Text = "";
+         _LastSuggested = "";
+         _SuggestedContext = null;
+         _Suggested = null;
+         CommandEntry.Text = "";
+         CommandPreviewPre.Text = "";
+         CommandPreviewPost.Text = "";
+         CommandExpand.Visibility = Visibility.Collapsed;
+
+         _AnimateColor(false);
+         RefreshDisplay();
+         _AnimateTextOut();
+
+         Thread trd = new Thread(new ThreadStart(_PlayBeep));
+         trd.IsBackground = true;
+         trd.Start();
+      }
+
+      public void Execute(Tildetool.Hotcommand.Command command, int index = -1)
       {
          bool waitSpawn = false;
          try
@@ -590,7 +630,7 @@ namespace Tildetool
             WaitForSpawn();
 
          _Suggested = command;
-         _AnimateCommand();
+         _AnimateCommand(index);
          Thread trd = new Thread(new ThreadStart(_PlayBeep));
          trd.IsBackground = true;
          trd.Start();
@@ -604,46 +644,120 @@ namespace Tildetool
 
       #region Animation
 
+      private Storyboard? _StoryboardColor;
+      void _AnimateColor(bool immediate)
+      {
+         void animateBrush(string resourceName, uint argb)
+         {
+            if (immediate)
+            {
+               (Resources[resourceName] as SolidColorBrush).Color = Extension.FromArgb(argb);
+               return;
+            }
+
+            var flashAnimation = new ColorAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            flashAnimation.To = Extension.FromArgb(argb);
+            _StoryboardColor.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, Resources[resourceName] as SolidColorBrush);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(SolidColorBrush.ColorProperty));
+         }
+         void animateColor(string resourceName, uint argb)
+         {
+            //if (immediate)
+            //{
+            Resources[resourceName] = Extension.FromArgb(argb);
+            return;
+            //}
+
+            var flashAnimation = new ColorAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            flashAnimation.To = Extension.FromArgb(argb);
+            _StoryboardColor.Children.Add(flashAnimation);
+            //Storyboard.SetTargetName(flashAnimation, resourceName);
+            //Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(SolidColorBrush.ColorProperty));
+         }
+
+         if (_StoryboardColor != null)
+            _StoryboardColor.Remove();
+         _StoryboardColor = new Storyboard();
+         if (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT")
+         {
+            animateBrush("ColorBackfill", 0xFF021204);
+            animateBrush("ColorBackground", 0xFF042508);
+            animateBrush("ColorTextFore", 0xFFC3F1AF);
+            animateBrush("ColorTextBack", 0xFF449637);
+            animateColor("ColorGlow1", 0xFFDEEFBA);
+            animateColor("ColorGlow2", 0xFFAAF99D);
+         }
+         else
+         {
+            animateBrush("ColorBackfill", 0xFF001310);
+            animateBrush("ColorBackground", 0xFF002720);
+            animateBrush("ColorTextFore", 0xFF8ff8e0);
+            animateBrush("ColorTextBack", 0xFF009d7f);
+            animateColor("ColorGlow1", 0xFFadf8e5);
+            animateColor("ColorGlow2", 0xFF4fffdf);
+         }
+         _StoryboardColor.Completed += (sender, e) => { if (_StoryboardColor != null) { _StoryboardColor.Stop(); _StoryboardColor.Remove(); _StoryboardColor = null; } };
+         _StoryboardColor.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+
       private Storyboard? _StoryboardAppear;
-      private Storyboard? _StoryboardFit;
       void _AnimateIn()
       {
          _StoryboardAppear = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.From = 0.0;
-            myDoubleAnimation.To = 1.0;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            _StoryboardAppear.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.From = 0.0f;
+            animation.To = Width;
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
          }
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            SubcommandArea.Opacity = 0.0;
-            myDoubleAnimation.From = 0.0;
-            myDoubleAnimation.To = 1.0;
-            myDoubleAnimation.BeginTime = TimeSpan.FromSeconds(0.2f);
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.3f));
-            _StoryboardAppear.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, SubcommandArea);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 16.0f;
+            animation.To = 2.0f;
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow1);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
-         _StoryboardFit = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.From = 5.0;
-            myDoubleAnimation.To = CommandArea.Height;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut };
-            _StoryboardFit.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 16.0f;
+            animation.To = 2.0f;
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow2);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.From = 6.0f;
+            animation.To = Height;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            Border.Opacity = 0.0f;
+            animation.To = 1.0f;
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
 
          _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(); _StoryboardAppear = null; };
          _StoryboardAppear.Begin(this);
-         _StoryboardFit.Begin(this);
       }
 
       private Storyboard? _StoryboardTextFade;
@@ -651,6 +765,10 @@ namespace Tildetool
       {
          _FadedIn = true;
 
+         CommandLine.UpdateLayout();
+
+         if (_StoryboardTextFade != null)
+            _StoryboardTextFade.Remove();
          _StoryboardTextFade = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
@@ -670,19 +788,23 @@ namespace Tildetool
             Storyboard.SetTarget(myDoubleAnimation, CommandExpand);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
+         {
+            var myDoubleAnimation = new DoubleAnimationUsingKeyFrames();
+            myDoubleAnimation.KeyFrames.Add(new DiscreteDoubleKeyFrame(double.NaN, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.0f))));
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandLine);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(StackPanel.WidthProperty));
+         }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
-         _StoryboardTextFade.Begin(this);
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; } };
+         _StoryboardTextFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
       void _AnimateTextOut()
       {
          _FadedIn = false;
 
          if (_StoryboardTextFade != null)
-         {
-            _StoryboardTextFade.Stop();
             _StoryboardTextFade.Remove();
-         }
          _StoryboardTextFade = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
@@ -700,22 +822,46 @@ namespace Tildetool
             Storyboard.SetTarget(myDoubleAnimation, CommandExpand);
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.From = CommandLine.ActualWidth;
+            myDoubleAnimation.To = 0.0;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.6f));
+            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 5.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardTextFade.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, CommandLine);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(StackPanel.WidthProperty));
+         }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
-         _StoryboardTextFade.Begin(this);
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; } };
+         _StoryboardTextFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
       private Storyboard? _StoryboardCommand;
-      void _AnimateCommand()
+      void _AnimateCommand(int index)
       {
+         DependencyObject background;
+         if (index == -1)
+            background = CommandBox;
+         else
+         {
+            ContentControl content = OptionGrid.Children[index] as ContentControl;
+            ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            presenter.ApplyTemplate();
+            FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+            background = grid.FindElementByName<Grid>("Area");
+         }
+         SolidColorBrush old = background.GetValue(Panel.BackgroundProperty) as SolidColorBrush;
+         background.SetValue(Panel.BackgroundProperty, old.Clone());
+
          _StoryboardCommand = new Storyboard();
          {
             var flashAnimation = new ColorAnimationUsingKeyFrames();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.25), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0x80, 0x00, 0x00, 0x00), KeyTime.FromPercent(0.5), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.25), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame((Resources["ColorBackground"] as SolidColorBrush).Color, KeyTime.FromPercent(0.5), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
             _StoryboardCommand.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, CommandBox);
+            Storyboard.SetTarget(flashAnimation, background);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
          }
 
@@ -738,21 +884,56 @@ namespace Tildetool
       {
          _StoryboardCancel = new Storyboard();
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.To = 0.0;
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            _StoryboardCancel.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.17f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.To = 0.0f;
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
          }
          {
-            var myDoubleAnimation = new DoubleAnimation();
-            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            myDoubleAnimation.To = 5.0f;
-            myDoubleAnimation.EasingFunction = new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut };
-            _StoryboardCancel.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, CommandArea);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.HeightProperty));
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.To = 0.0f;
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 16.0f;
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow1);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 16.0f;
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow2);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 6.0f;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.35f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
+            animation.To = 0.0f;
+            _StoryboardCancel.Children.Add(animation);
+            Storyboard.SetTarget(animation, this);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
 
          _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(); Dispatcher.Invoke(Close); };
