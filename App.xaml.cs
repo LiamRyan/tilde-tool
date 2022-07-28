@@ -9,6 +9,7 @@ using System.Windows.Interop;
 using Hardcodet.Wpf.TaskbarNotification;
 using Tildetool.Hotcommand;
 using Tildetool.Status;
+using Tildetool.Explorer;
 using WindowsDesktop;
 
 namespace Tildetool
@@ -64,6 +65,8 @@ namespace Tildetool
          SourceManager.Instance.Load();
          SourceManager.Instance.LoadCache();
          SourceManager.Instance.StartTick();
+         ExplorerManager.Instance.Load();
+         ExplorerManager.Instance.WatchFile();
 
          //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
@@ -177,6 +180,10 @@ namespace Tildetool
       {
          if (_ExplorerItemPopup == null)
          {
+            bool canLoad = ExplorerItemPopup.LoadFolderData();
+            if (!canLoad)
+               return;
+
             _ExplorerItemPopup = new ExplorerItemPopup();
             _ExplorerItemPopup.OnFinish += (sender) => { if (_ExplorerItemPopup == sender) _ExplorerItemPopup = null; };
             _ExplorerItemPopup.Closing += (sender, e) => { if (_ExplorerItemPopup == sender) _ExplorerItemPopup = null; };

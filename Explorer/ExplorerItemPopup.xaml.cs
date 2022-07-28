@@ -13,8 +13,10 @@ using System.Runtime.InteropServices;
 using System.Windows.Media.Animation;
 using System.Diagnostics;
 using System.Timers;
+using Tildetool.Explorer.Serialization;
+using System.Threading;
 
-namespace Tildetool
+namespace Tildetool.Explorer
 {
    /// <summary>
    /// Interaction logic for ExplorerItemPopup.xaml
@@ -39,6 +41,19 @@ namespace Tildetool
 
       const int SW_SHOW = 5;  // Activates the window and displays it in its current size and position.
 
+      public static int VK_NUMLOCK = 0x90;
+      public static int VK_SCROLL = 0x91;
+      public static int VK_CAPITAL = 0x14;
+      public static int KEYEVENTF_EXTENDEDKEY = 0x0001; // If specified, the scan code was preceded by a prefix byte having the value 0xE0 (224).
+      public static int KEYEVENTF_KEYUP = 0x0002; // If specified, the key is being released. If not specified, the key is being depressed.
+
+      [DllImport("User32.dll", SetLastError = true)]
+      public static extern void keybd_event(
+          byte bVk,
+          byte bScan,
+          int dwFlags,
+          IntPtr dwExtraInfo);
+
       #endregion
       #region Events
 
@@ -49,16 +64,40 @@ namespace Tildetool
       #region Spawning
 
       Grid[]? _Options;
-      System.Action<int>[]? _OptionFns = null;
+      ExplorerCommand[]? _OptionFns = null;
 
-      void _SetArray(string[] names, System.Action<int>[] optionFns)
+      bool AsFile = true;
+      List<ExplorerCommand> _IterAction(bool file, bool folder)
       {
-         if (names.Length != optionFns.Length)
-            throw new ArgumentException("names length must match optionFns length");
+         string extension = "";
+         if (FilePath != null)
+         {
+            int index = FilePath.LastIndexOf('.');
+            extension = FilePath.Substring(index + 1);
+         }
 
-         _Options = new Grid[names.Length];
-         double angleDelta = 360.0 / names.Length;
-         for (int i = 0; i < names.Length; i++)
+         List<ExplorerCommand> actions = new List<ExplorerCommand>(4);
+         List<ExplorerCommand> extActions;
+         if (ExplorerManager.Instance.CommandByExt.TryGetValue(extension, out extActions))
+            actions.AddRange(extActions.Where(e => e.AsFile == file || !e.AsFile == folder));
+         if (ExplorerManager.Instance.CommandByExt.TryGetValue("*", out extActions))
+            actions.AddRange(extActions.Where(e => e.AsFile == file || !e.AsFile == folder));
+
+         return actions;
+      }
+      void _Populate()
+      {
+         if (string.IsNullOrEmpty(FilePath))
+            AsFile = false;
+         List<ExplorerCommand> actions = _IterAction(AsFile, !AsFile);
+         _SetArray(actions.ToArray());
+      }
+
+      void _SetArray(ExplorerCommand[] actions)
+      {
+         _Options = new Grid[actions.Length];
+         double angleDelta = 360.0 / actions.Length;
+         for (int i = 0; i < actions.Length; i++)
          {
             // Spawn the control and apply the templates so child controls are created.
             ContentControl content = new ContentControl { ContentTemplate = Resources["OptionTemplate"] as DataTemplate };
@@ -72,6 +111,7 @@ namespace Tildetool
             Shape.Arc arc2 = _Options[i].FindElementByName<Shape.Arc>("Arc2");
             Shape.Arc arc = _Options[i].FindElementByName<Shape.Arc>("Arc");
             TextBlock text = _Options[i].FindElementByName<TextBlock>("Text");
+            TextBlock hotkey = _Options[i].FindElementByName<TextBlock>("Hotkey");
 
             // Resize based on the number of elements.
             arc.StartAngle = 90.0 - ((angleDelta - 10.0) / 2.0);
@@ -83,13 +123,15 @@ namespace Tildetool
             double angle = angleDelta * i;
             _Options[i].LayoutTransform = new RotateTransform { Angle = angle };
             text.LayoutTransform = new RotateTransform { Angle = (angle > 90.0 && angle < 270.0) ? -180.0 : 0.0 };
+            hotkey.RenderTransform = new RotateTransform { Angle = -(angleDelta - 20.0) / 2.0 };
 
             // Set text.
-            text.Text = names[i];
+            text.Text = actions[i].Title;
+            hotkey.Text = actions[i].Hotkey.ToLower();
          }
 
          // Store the callbacks for the options.
-         _OptionFns = optionFns;
+         _OptionFns = actions;
       }
 
       #endregion
@@ -137,7 +179,7 @@ namespace Tildetool
             }
          }
 
-         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) { _StoryboardAppear.Remove(); _StoryboardAppear = null; } };
+         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) { _StoryboardAppear.Remove(this); _StoryboardAppear = null; } };
          _StoryboardAppear.Begin(this);
       }
       void _AnimateFadeOne(Storyboard parent, int index, double beginTime = 0.0, double duration = 0.2)
@@ -182,12 +224,12 @@ namespace Tildetool
                return child;
          return null;
       }
-      void _AnimateCancel()
+      void _AnimateCancel(bool closeAtEnd)
       {
          if (_StoryboardAppear != null)
          {
-            _StoryboardAppear.Stop();
-            _StoryboardAppear.Remove();
+            _StoryboardAppear.Stop(this);
+            _StoryboardAppear.Remove(this);
             _StoryboardAppear = null;
          }
 
@@ -195,15 +237,18 @@ namespace Tildetool
          for (int i = 0; i < _Options.Length; i++)
             _AnimateFadeOne(_StoryboardExit, i);
 
-         _StoryboardExit.Completed += (sender, e) => { Dispatcher.BeginInvoke(Close); };
+         if (closeAtEnd)
+            _StoryboardExit.Completed += (sender, e) => { Dispatcher.BeginInvoke(Close); };
+         else
+            _StoryboardExit.Completed += (sender, e) => { if (_StoryboardExit == sender) { _StoryboardExit.Stop(this); _StoryboardExit.Remove(this); _StoryboardExit = null; } };
          _StoryboardExit.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
       void _AnimateSelect(int index)
       {
          if (_StoryboardAppear != null)
          {
-            _StoryboardAppear.Stop();
-            _StoryboardAppear.Remove();
+            _StoryboardAppear.Stop(this);
+            _StoryboardAppear.Remove(this);
             _StoryboardAppear = null;
          }
 
@@ -212,16 +257,19 @@ namespace Tildetool
             if (i != index)
                _AnimateFadeOne(_StoryboardExit, i);
 
-         Shape.Arc arc = _Options[index].FindElementByName<Shape.Arc>("Arc");
-         var flashAnimation = new ColorAnimationUsingKeyFrames();
-         flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-         flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-         flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xCC, 0x00, 0x00, 0x00), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
-         _StoryboardExit.Children.Add(flashAnimation);
-         Storyboard.SetTarget(flashAnimation, arc);
-         Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Stroke.Color"));
+         if (index != -1)
+         {
+            Shape.Arc arc = _Options[index].FindElementByName<Shape.Arc>("Arc");
+            var flashAnimation = new ColorAnimationUsingKeyFrames();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xFF, 0xF0, 0xF0, 0xFF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
+            flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Color.FromArgb(0xCC, 0x00, 0x00, 0x00), KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+            _StoryboardExit.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, arc);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Stroke.Color"));
 
-         _AnimateFadeOne(_StoryboardExit, index, 0.2, 0.3);
+            _AnimateFadeOne(_StoryboardExit, index, 0.2, 0.3);
+         }
 
          _StoryboardExit.Completed += (sender, e) => { Dispatcher.BeginInvoke(Close); };
          _StoryboardExit.Begin(this, HandoffBehavior.SnapshotAndReplace);
@@ -229,25 +277,10 @@ namespace Tildetool
 
       #endregion
 
-      public static int VK_NUMLOCK = 0x90;
-      public static int VK_SCROLL = 0x91;
-      public static int VK_CAPITAL = 0x14;
-      public static int KEYEVENTF_EXTENDEDKEY = 0x0001; // If specified, the scan code was preceded by a prefix byte having the value 0xE0 (224).
-      public static int KEYEVENTF_KEYUP = 0x0002; // If specified, the key is being released. If not specified, the key is being depressed.
-
-      [DllImport("User32.dll", SetLastError = true)]
-      public static extern void keybd_event(
-          byte bVk,
-          byte bScan,
-          int dwFlags,
-          IntPtr dwExtraInfo);
-
-      IntPtr Handle;
       bool WasNumlock;
       public ExplorerItemPopup()
       {
          // Grab the window that was selected before we opened.
-         Handle = GetForegroundWindow();
          WasNumlock = Keyboard.IsKeyToggled(Key.NumLock);
          if (!WasNumlock)
          {
@@ -256,6 +289,8 @@ namespace Tildetool
          }
 
          InitializeComponent();
+
+         OptionGrid.Children.Clear();
 
          _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
          _MediaPlayer.Play();
@@ -271,13 +306,22 @@ namespace Tildetool
 
          // Closing our window can send the child process to the back, so force it to the
          //  front manually now that we are closed.
-         Process process = _ResultProcess;
-         if (process != null && process.MainWindowHandle != IntPtr.Zero)
+         Process process = ResultProcess;
+         if (process != null)
          {
-            ShowWindow(process.MainWindowHandle, SW_SHOW);
-            SetForegroundWindow(process.MainWindowHandle);
+            IntPtr handle = IntPtr.Zero;
+            try
+            {
+               handle = process.MainWindowHandle;
+            }
+            catch { }
+            if (handle != IntPtr.Zero)
+            {
+               ShowWindow(handle, SW_SHOW);
+               SetForegroundWindow(handle);
+            }
             process.Dispose();
-            _ResultProcess = null;
+            ResultProcess = null;
          }
       }
       void _Finish()
@@ -292,56 +336,60 @@ namespace Tildetool
          OnFinish?.Invoke(this);
       }
 
-      Process? _ResultProcess = null;
+      public Process? ResultProcess = null;
+
+      static IntPtr Handle;
+      public static string? FolderPath;
+      public static string? FilePath;
+      public static string[]? AllFilePaths;
+      public static bool LoadFolderData()
+      {
+         // Get information about the folder and selected files
+         Handle = GetForegroundWindow();
+         FolderPath = null;
+         FilePath = null;
+         AllFilePaths = null;
+
+         List<string> selected = new List<string>();
+         Shell32.Shell shell = new Shell32.Shell();
+         foreach (SHDocVw.InternetExplorer window in shell.Windows())
+         {
+            if (window.HWND != (int)Handle)
+               continue;
+            var shellWindow = window.Document as Shell32.ShellFolderView;
+            if (shellWindow == null)
+               continue;
+
+            FolderPath = new Uri(window.LocationURL).LocalPath;
+
+            Shell32.FolderItems items = shellWindow.SelectedItems();
+            if (items.Count > 0)
+               FilePath = items.Item(0).Path;
+
+            AllFilePaths = new string[items.Count];
+            for (int i = 0; i < items.Count; i++)
+               AllFilePaths[i] = items.Item(i).Path;
+            return true;
+         }
+         return false;
+      }
+
       protected override void OnSourceInitialized(EventArgs e)
       {
          base.OnSourceInitialized(e);
 
-         _SetArray(new string[] { "Command Prompt", "Copy Path", "Grep" },
-                   new Action<int>[] {
-                     (index) =>
-                     {
-                        string folderPath, filePath;
-                        GetFolderData(out folderPath, out filePath);
-                        _ResultProcess = new Process();
-                        ProcessStartInfo startInfo = new ProcessStartInfo();
-                        startInfo.FileName = "cmd.exe";
-                        startInfo.WorkingDirectory = folderPath;
-                        _ResultProcess.StartInfo = startInfo;
-                        _ResultProcess.Start();
-                        WaitForSpawn();
-                     },
-                     (index) =>
-                     {
-                        string folderPath, filePath;
-                        GetFolderData(out folderPath, out filePath);
-                        Clipboard.SetText(filePath);
-                     },
-                     (index) =>
-                     {
-                        string folderPath, filePath;
-                        GetFolderData(out folderPath, out filePath);
-                        _ResultProcess = new Process();
-                        ProcessStartInfo startInfo = new ProcessStartInfo();
-                        startInfo.FileName = "D:\\Program Files\\grepWin\\grepWin.exe";
-                        startInfo.Arguments = folderPath;
-                        _ResultProcess.StartInfo = startInfo;
-                        _ResultProcess.Start();
-                        WaitForSpawn();
-                     },
-                   });
-
+         _Populate();
          _AnimateAppear();
       }
 
-      Timer? _SpawnTimer = null;
-      void WaitForSpawn()
+      System.Timers.Timer? _SpawnTimer = null;
+      public void WaitForSpawn()
       {
-         _SpawnTimer = new Timer();
+         _SpawnTimer = new System.Timers.Timer();
          _SpawnTimer.Interval = 50;
          _SpawnTimer.Elapsed += (s, e) =>
          {
-            Process process = _ResultProcess;
+            Process process = ResultProcess;
             if (process == null)
             {
                _SpawnTimer.Stop();
@@ -349,10 +397,16 @@ namespace Tildetool
                _SpawnTimer = null;
                return;
             }
-            if (process.MainWindowHandle != IntPtr.Zero)
+            IntPtr handle = IntPtr.Zero;
+            try
             {
-               ShowWindow(process.MainWindowHandle, SW_SHOW);
-               SetForegroundWindow(process.MainWindowHandle);
+               handle = process.MainWindowHandle;
+            }
+            catch { }
+            if (handle != IntPtr.Zero)
+            {
+               ShowWindow(handle, SW_SHOW);
+               SetForegroundWindow(handle);
                Close();
 
                _SpawnTimer.Stop();
@@ -370,36 +424,9 @@ namespace Tildetool
             return;
 
          _Finish();
-         _AnimateCancel();
+         _AnimateCancel(true);
          _MediaPlayer.Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
          _MediaPlayer.Play();
-      }
-
-      void GetFolderData(out string folderPath, out string filePath)
-      {
-         folderPath = null;
-         filePath = null;
-
-         List<string> selected = new List<string>();
-         Shell32.Shell shell = new Shell32.Shell();
-         foreach (SHDocVw.InternetExplorer window in shell.Windows())
-         {
-            if (window.HWND != (int)Handle)
-               continue;
-            var shellWindow = window.Document as Shell32.ShellFolderView;
-            if (shellWindow == null)
-               continue;
-
-            folderPath = new Uri(window.LocationURL).LocalPath;
-
-            //var currentFolder = shellWindow.Folder.Items().Item();
-            //return currentFolder.Path;
-
-            Shell32.FolderItems items = shellWindow.SelectedItems();
-            if (items.Count > 0)
-               filePath = items.Item(0).Path;
-            break;
-         }
       }
 
       Dictionary<Key, int>[] KeyToIndex =
@@ -422,26 +449,110 @@ namespace Tildetool
          // Check if it's escape, and close if so.
          switch (e.Key)
          {
+            case Key.Return:
+               Process process = new Process();
+               ProcessStartInfo startInfo = new ProcessStartInfo();
+               startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\Explorer.json";
+               startInfo.UseShellExecute = true;
+               process.StartInfo = startInfo;
+               process.Start();
+               Cancel();
+               return;
+
             case Key.Escape:
                e.Handled = true;
                Cancel();
                return;
+
+            case Key.NumPad0:
+               if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin))
+               {
+                  e.Handled = true;
+                  if (!string.IsNullOrEmpty(FilePath))
+                  {
+                     AsFile = !AsFile;
+                     _AnimateCancel(false);
+                     _Populate();
+                     _AnimateAppear();
+                  }
+                  return;
+               }
+               break;
          }
 
          // Check if it's a command key.
+         ExplorerCommand? action = null;
          Dictionary<Key, int> keyToInt = KeyToIndex[_Options.Length - 1];
          int index;
          if (keyToInt.TryGetValue(e.Key, out index))
+            action = _OptionFns[index];
+
+         if (action == null)
          {
-            // Call the function.
-            try
+            List<ExplorerCommand> actions = _IterAction(AsFile, !AsFile);
+            foreach (ExplorerCommand testAction in actions)
+               if (testAction.HotkeyAsKey == e.Key)
+               {
+                  action = testAction;
+                  break;
+               }
+            if (action == null)
             {
-               _OptionFns[index](index);
+               actions = _IterAction(!AsFile, AsFile);
+               foreach (ExplorerCommand testAction in actions)
+                  if (testAction.HotkeyAsKey == e.Key)
+                  {
+                     action = testAction;
+                     break;
+                  }
             }
-            catch (Exception ex)
+         }
+
+         if (action != null)
+         {
+            index = -1;
+            for (int i = 0; i < _OptionFns.Length; i++)
+               if (_OptionFns[i] == action)
+               {
+                  index = i;
+                  break;
+               }
+
+            // Call the function.
+            if (action.Command.Equals("{COPY}"))
             {
-               MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.ToString());
+               if (action.AsFile)
+                  Clipboard.SetText(String.Join("\n", AllFilePaths));
+               else
+                  Clipboard.SetText(FolderPath);
+            }
+            else
+            {
+               Thread trd = new Thread(new ThreadStart(() =>
+               {
+                  try
+                  {
+                     string path = action.AsFile ? FilePath : FolderPath;
+                     ResultProcess = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = action.Command;
+                     if (action.InWorkingDir)
+                        startInfo.WorkingDirectory = path;
+                     else
+                        startInfo.Arguments = path;
+                     ResultProcess.StartInfo = startInfo;
+                     ResultProcess.Start();
+                  }
+                  catch (Exception ex)
+                  {
+                     MessageBox.Show(ex.ToString());
+                     Console.WriteLine(ex.ToString());
+                  }
+               }));
+               trd.IsBackground = true;
+               trd.Start();
+
+               WaitForSpawn();
             }
 
             // Finish up.
