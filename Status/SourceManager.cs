@@ -41,7 +41,6 @@ namespace Tildetool.Status
       public event EventHandler<int> SourceQuery;
 
       Timer? TickTimer = null;
-      int _QueryIndex = 0;
       public void StartTick()
       {
          if (TickTimer != null)
@@ -62,25 +61,30 @@ namespace Tildetool.Status
             bool anyQuery = Sources.Any(src => src.IsQuerying);
             if (!anyQuery)
             {
+               HashSet<string> alreadyQuery = new HashSet<string>();
                DateTime now = DateTime.Now;
                for (int i = 0; i < Sources.Count; i++)
                {
                   try
                   {
-                     int index = (_QueryIndex + i) % Sources.Count;
-
                      // Make sure it's time for an update.
-                     if (!NeedRefresh(Sources[index]))
+                     bool shouldUpdate = false;
+                     if (NeedRefresh(Sources[i]))
                      {
-                        // Frequently update visuals though.
-                        Sources[index].Display();
-                        continue;
+                        if (Sources[i].Ephemeral)
+                           shouldUpdate = true;
+                        else if (!alreadyQuery.Contains(Sources[i].Domain))
+                           shouldUpdate = true;
                      }
 
                      // Alright then, start an update.
-                     _QueryIndex = (index + 1) % Sources.Count;
-                     Query(index);
-                     break;
+                     if (shouldUpdate)
+                     {
+                        Query(i);
+                        alreadyQuery.Add(Sources[i].Domain);
+                     }
+                     else
+                        Sources[i].Display();
                   }
                   catch (Exception ex)
                   {

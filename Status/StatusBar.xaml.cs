@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
@@ -222,6 +221,8 @@ namespace Tildetool.Status
       {
          Dispatcher.Invoke(() =>
          {
+            if (SourceManager.Instance.Sources[e].Ephemeral)
+               return;
             PopulateStatusBar(false);
             UpdateStatusBar(e, false);
          });
@@ -379,7 +380,7 @@ namespace Tildetool.Status
          }
 
          // Progress animation.
-         bool pendQuery = src.IsQuerying || SourceManager.Instance.NeedRefresh(src);
+         bool pendQuery = !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src));
          progress.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          progressArc.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          if (pendQuery)
