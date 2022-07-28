@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool.Status"
         xmlns:Shape="clr-namespace:Tildetool.Shape" x:Name="window" x:Class="Tildetool.Status.StatusBar"
-        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal"
+        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal"
         KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="146">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">

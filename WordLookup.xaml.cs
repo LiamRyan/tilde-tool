@@ -167,7 +167,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
 
-         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(); _StoryboardAppear = null; };
+         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(this); _StoryboardAppear = null; };
          _StoryboardAppear.Begin(this);
       }
 
@@ -191,7 +191,7 @@ namespace Tildetool
 
          _StoryboardCommand.Completed += (sender, e) =>
          {
-            _StoryboardCommand.Remove();
+            _StoryboardCommand.Remove(this);
             _AnimateFadeOut();
             OnFinish?.Invoke(this);
          };
@@ -255,7 +255,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
 
-         _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(); Dispatcher.Invoke(Close); };
+         _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(this); Dispatcher.Invoke(Close); };
          _StoryboardCancel.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
@@ -279,7 +279,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(this); _StoryboardTextFade = null; };
          _StoryboardTextFade.Begin(this);
       }
       void _AnimateTextOut()
@@ -290,8 +290,8 @@ namespace Tildetool
 
          if (_StoryboardTextFade != null)
          {
-            _StoryboardTextFade.Stop();
-            _StoryboardTextFade.Remove();
+            _StoryboardTextFade.Stop(this);
+            _StoryboardTextFade.Remove(this);
          }
          _StoryboardTextFade = new Storyboard();
          {
@@ -303,7 +303,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(); _StoryboardTextFade = null; };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade != null) _StoryboardTextFade.Remove(this); _StoryboardTextFade = null; };
          _StoryboardTextFade.Begin(this);
       }
    }

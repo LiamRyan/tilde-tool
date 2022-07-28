@@ -117,7 +117,7 @@ namespace Tildetool
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
-         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(); _StoryboardFade = null; Close(); };
+         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; Close(); };
          _StoryboardFade.Begin(this);
       }
    }

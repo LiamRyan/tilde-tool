@@ -522,7 +522,7 @@ namespace Tildetool.Status
 
          if (_StoryboardHide != null)
          {
-            _StoryboardHide.Stop();
+            _StoryboardHide.Stop(this);
             _StoryboardHide.Remove(this);
          }
 
@@ -626,7 +626,7 @@ namespace Tildetool.Status
 
          if (_StoryboardHide != null)
          {
-            _StoryboardHide.Stop();
+            _StoryboardHide.Stop(this);
             _StoryboardHide.Remove(this);
          }
 

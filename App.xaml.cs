@@ -94,7 +94,6 @@ namespace Tildetool
 
                      _StatusBar.Show();
                      _StatusBar.Topmost = true;
-                     _StatusBar.Activate();
                   }
                   else if (!_StatusBar.IsShowing)
                      _StatusBar.AnimateShow();
@@ -105,7 +104,6 @@ namespace Tildetool
          StartWindow window = new StartWindow();
          window.Show();
          window.Topmost = true;
-         window.Activate();
       }
 
       StatusBar? _StatusBar = null;
@@ -118,7 +116,6 @@ namespace Tildetool
 
             _StatusBar.Show();
             _StatusBar.Topmost = true;
-            _StatusBar.Activate();
          }
          else if (_StatusBar.IsShowing)
             _StatusBar.AnimateClose();
@@ -209,7 +206,6 @@ namespace Tildetool
 
             _DesktopIcon.Show();
             _DesktopIcon.Topmost = true;
-            _DesktopIcon.Activate();
          }
          else
             _DesktopIcon.Cancel();

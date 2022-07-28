@@ -679,7 +679,7 @@ namespace Tildetool
          }
 
          if (_StoryboardColor != null)
-            _StoryboardColor.Remove();
+            _StoryboardColor.Remove(this);
          _StoryboardColor = new Storyboard();
          if (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT")
          {
@@ -699,7 +699,7 @@ namespace Tildetool
             animateColor("ColorGlow1", 0xFFadf8e5);
             animateColor("ColorGlow2", 0xFF4fffdf);
          }
-         _StoryboardColor.Completed += (sender, e) => { if (_StoryboardColor != null) { _StoryboardColor.Stop(); _StoryboardColor.Remove(); _StoryboardColor = null; } };
+         _StoryboardColor.Completed += (sender, e) => { if (_StoryboardColor != null) { _StoryboardColor.Stop(); _StoryboardColor.Remove(this); _StoryboardColor = null; } };
          _StoryboardColor.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
@@ -756,7 +756,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
 
-         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(); _StoryboardAppear = null; };
+         _StoryboardAppear.Completed += (sender, e) => { if (_StoryboardAppear != null) _StoryboardAppear.Remove(this); _StoryboardAppear = null; };
          _StoryboardAppear.Begin(this);
       }
 
@@ -768,7 +768,7 @@ namespace Tildetool
          CommandLine.UpdateLayout();
 
          if (_StoryboardTextFade != null)
-            _StoryboardTextFade.Remove();
+            _StoryboardTextFade.Remove(this);
          _StoryboardTextFade = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
@@ -796,7 +796,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(StackPanel.WidthProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; } };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(this); _StoryboardTextFade = null; } };
          _StoryboardTextFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
       void _AnimateTextOut()
@@ -804,7 +804,7 @@ namespace Tildetool
          _FadedIn = false;
 
          if (_StoryboardTextFade != null)
-            _StoryboardTextFade.Remove();
+            _StoryboardTextFade.Remove(this);
          _StoryboardTextFade = new Storyboard();
          {
             var myDoubleAnimation = new DoubleAnimation();
@@ -833,7 +833,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(StackPanel.WidthProperty));
          }
 
-         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(); _StoryboardTextFade = null; } };
+         _StoryboardTextFade.Completed += (sender, e) => { if (_StoryboardTextFade == sender) { _StoryboardTextFade.Remove(this); _StoryboardTextFade = null; } };
          _StoryboardTextFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
@@ -868,7 +868,7 @@ namespace Tildetool
          _PendFinished = true;
          _StoryboardCommand.Completed += (sender, e) =>
          {
-            _StoryboardCommand.Remove();
+            _StoryboardCommand.Remove(this);
             if (_PendFinished && !_Finished)
             {
                _AnimateFadeOut();
@@ -936,7 +936,7 @@ namespace Tildetool
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
 
-         _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(); Dispatcher.Invoke(Close); };
+         _StoryboardCancel.Completed += (sender, e) => { _StoryboardCancel.Remove(this); Dispatcher.Invoke(Close); };
          _StoryboardCancel.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
       #endregion

@@ -87,7 +87,7 @@ namespace Tildetool
          if (animate)
          {
             if (_StoryboardShow != null)
-               _StoryboardShow.Stop();
+               _StoryboardShow.Stop(this);
             _StoryboardShow = new Storyboard();
          }
 
@@ -150,7 +150,7 @@ namespace Tildetool
 
          if (animate)
          {
-            _StoryboardShow.Completed += (sender, e) => { if (_StoryboardShow != null) _StoryboardShow.Remove(); _StoryboardShow = null; };
+            _StoryboardShow.Completed += (sender, e) => { if (_StoryboardShow != null) _StoryboardShow.Remove(this); _StoryboardShow = null; };
             _StoryboardShow.Begin(this, HandoffBehavior.SnapshotAndReplace);
          }
       }
@@ -238,7 +238,7 @@ namespace Tildetool
             Storyboard.SetTarget(animation, Border);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
-         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(); _StoryboardFade = null; };
+         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
       void _AnimateOut()
@@ -303,7 +303,7 @@ namespace Tildetool
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
-         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(); _StoryboardFade = null; _Timer.Dispose(); Close(); };
+         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; _Timer.Dispose(); Close(); };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
    }

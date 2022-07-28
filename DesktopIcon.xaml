@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool"
         Title="Virtual Desktop"
-        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" WindowState="Normal" Height="62"
+        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal" Height="62"
         HorizontalAlignment="Stretch" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Manual" Loaded="OnLoaded">
     <Window.Resources>
         <DataTemplate x:Key="DesktopName">
