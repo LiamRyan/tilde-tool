@@ -175,6 +175,7 @@ namespace Tildetool
       }
 
       System.Timers.Timer? _SpawnTimer = null;
+      int _SpawnCountLeft = 0;
       Dictionary<CommandSpawn, Process> _SpawnProcess = new Dictionary<CommandSpawn, Process>();
       void WaitForSpawn()
       {
@@ -188,6 +189,8 @@ namespace Tildetool
             {
                if (entry.Value.MainWindowHandle != IntPtr.Zero)
                {
+                  _SpawnCountLeft--;
+
                   int moveBit = (entry.Key.WindowX != null && entry.Key.WindowY != null) ? 0 : SWP_NOMOVE;
                   int sizeBit = (entry.Key.WindowW != null && entry.Key.WindowH != null) ? 0 : SWP_NOSIZE;
                   int wx = (entry.Key.WindowX != null) ? entry.Key.WindowX.Value : 0;
@@ -203,7 +206,7 @@ namespace Tildetool
             _SpawnProcess = spawnProcess;
 
             //
-            if (_SpawnProcess.Count == 0)
+            if (_SpawnCountLeft == 0)
             {
                _SpawnTimer.Stop();
                _SpawnTimer.Dispose();
@@ -586,32 +589,48 @@ namespace Tildetool
          {
             foreach (CommandSpawn spawn in command.Spawns)
             {
-               Process process = new Process();
-               ProcessStartInfo startInfo = new ProcessStartInfo();
-               if (!string.IsNullOrEmpty(spawn.ShellOpen))
+               Thread trd = new Thread(new ThreadStart(() =>
                {
-                  startInfo.UseShellExecute = true;
-                  startInfo.FileName = spawn.ShellOpen;
-               }
-               else
-                  startInfo.FileName = spawn.FileName;
-               if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
-               {
-                  foreach (string argument in spawn.ArgumentList)
-                     startInfo.ArgumentList.Add(argument);
-               }
-               else
-                  startInfo.Arguments = spawn.Arguments;
-               startInfo.WorkingDirectory = spawn.WorkingDirectory;
-               process.StartInfo = startInfo;
-               process.Start();
+                  try
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     if (!string.IsNullOrEmpty(spawn.ShellOpen))
+                     {
+                        startInfo.UseShellExecute = true;
+                        startInfo.FileName = spawn.ShellOpen;
+                     }
+                     else
+                        startInfo.FileName = spawn.FileName;
+                     if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
+                     {
+                        foreach (string argument in spawn.ArgumentList)
+                           startInfo.ArgumentList.Add(argument);
+                     }
+                     else
+                        startInfo.Arguments = spawn.Arguments;
+                     startInfo.WorkingDirectory = spawn.WorkingDirectory;
+                     process.StartInfo = startInfo;
+                     process.Start();
+                     if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
+                        _SpawnProcess[spawn] = process;
+                     else
+                        process.Dispose();
+                  }
+                  catch (Exception ex)
+                  {
+                     MessageBox.Show(ex.ToString());
+                     Console.WriteLine(ex.ToString());
+                  }
+               }));
+               trd.IsBackground = true;
+               trd.Start();
+
                if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
                {
-                  _SpawnProcess[spawn] = process;
                   waitSpawn = true;
+                  _SpawnCountLeft++;
                }
-               else
-                  process.Dispose();
             }
          }
          catch (Exception ex)
@@ -631,9 +650,9 @@ namespace Tildetool
 
          _Suggested = command;
          _AnimateCommand(index);
-         Thread trd = new Thread(new ThreadStart(_PlayBeep));
-         trd.IsBackground = true;
-         trd.Start();
+         Thread trd2 = new Thread(new ThreadStart(_PlayBeep));
+         trd2.IsBackground = true;
+         trd2.Start();
       }
       void _PlayBeep()
       {
