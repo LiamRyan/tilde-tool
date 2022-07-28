@@ -9,7 +9,7 @@
             <local:CloseCommand x:Key="OurCloseCommand" />
             <tb:TaskbarIcon x:Key="AppNotifyIcon"
                   IconSource="/Resource/Tildetool.ico"
-                  ToolTipText="Tildetool v0.0.2"
+                  ToolTipText="Tildetool v0.1.0"
                   DoubleClickCommand="{StaticResource OurCloseCommand}"/>
         </ResourceDictionary>
     </Application.Resources>
