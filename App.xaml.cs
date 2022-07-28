@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Timers;
 using System.Windows;
@@ -90,14 +91,37 @@ namespace Tildetool
                   if (_StatusBar == null)
                   {
                      _StatusBar = new StatusBar(true);
-                     _StatusBar.Closing += (sender, e) => { _StatusBar = null; };
+                     _StatusBar.Closing += (sender, e) => { if (sender != _StatusBar) return; StatusBarAwake?.Invoke(_StatusBar, false); _StatusBar = null; };
 
                      _StatusBar.Show();
                      _StatusBar.Topmost = true;
+                     StatusBarAwake?.Invoke(_StatusBar, true);
                   }
                   else if (!_StatusBar.IsShowing)
                      _StatusBar.AnimateShow();
                   _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(args.Index, args.CacheChanged)));
+               }));
+            };
+         SourceManager.Instance.SourceQuery += (s, args) =>
+            {
+               bool shouldShow = SourceManager.Instance.Sources.Any(src => !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src)));
+               bool isShowing = _StatusProgress != null && !_StatusProgress.Finished;
+
+               if (shouldShow == isShowing)
+                  return;
+
+               Dispatcher.Invoke(new Action(() =>
+               {
+                  if (shouldShow)
+                  {
+                     _StatusProgress = new StatusProgress();
+                     _StatusProgress.Closing += (sender, e) => { _StatusProgress = null; };
+
+                     _StatusProgress.Show();
+                     _StatusProgress.Topmost = true;
+                  }
+                  else
+                     _StatusProgress.Cancel();
                }));
             };
 
@@ -106,16 +130,24 @@ namespace Tildetool
          window.Topmost = true;
       }
 
-      StatusBar? _StatusBar = null;
+      public delegate void PanelAwake(Window window, bool awake);
+      public static StatusBar? StatusBar { get { return _StatusBar; } }
+      public static event PanelAwake? StatusBarAwake;
+
+
+      StatusProgress? _StatusProgress = null;
+
+      static StatusBar? _StatusBar = null;
       protected void HotkeyStatus(Keys keys)
       {
          if (_StatusBar == null)
          {
             _StatusBar = new StatusBar(false);
-            _StatusBar.Closing += (sender, e) => { _StatusBar = null; };
+            _StatusBar.Closing += (sender, e) => { if (sender != _StatusBar) return; StatusBarAwake?.Invoke(_StatusBar, false); _StatusBar = null; };
 
             _StatusBar.Show();
             _StatusBar.Topmost = true;
+            StatusBarAwake?.Invoke(_StatusBar, true);
          }
          else if (_StatusBar.IsShowing)
             _StatusBar.AnimateClose();
