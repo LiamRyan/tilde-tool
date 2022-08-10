@@ -18,6 +18,7 @@ using System.Runtime.InteropServices;
 using System.Timers;
 using System.Threading;
 using System.Runtime.CompilerServices;
+using Tildetool.Hotcommand.Serialization;
 
 namespace Tildetool
 {
@@ -222,7 +223,7 @@ namespace Tildetool
       bool _FadedIn = false;
 
       Tildetool.Hotcommand.HmContext? _SuggestedContext = null;
-      Tildetool.Hotcommand.Command? _Suggested = null;
+      Command? _Suggested = null;
       string _LastSuggested = "";
 
       public struct AltCommand
@@ -253,7 +254,7 @@ namespace Tildetool
             HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
             usedC.Add(HotcommandManager.Instance.CurrentContext);
 
-            HashSet<Tildetool.Hotcommand.Command> used = new HashSet<Tildetool.Hotcommand.Command>();
+            HashSet<Command> used = new HashSet<Command>();
 
             void _addTag(string tag, string full, Command? command, HmContext? context, bool quicktag, bool inContext, bool allowSuggest)
             {
@@ -474,7 +475,7 @@ namespace Tildetool
             return true;
          }
 
-         Tildetool.Hotcommand.Command? command;
+         Command? command;
 
          void _handleText(char text)
          {
@@ -582,7 +583,7 @@ namespace Tildetool
          trd.Start();
       }
 
-      public void Execute(Tildetool.Hotcommand.Command command, int index = -1)
+      public void Execute(Command command, int index = -1)
       {
          bool waitSpawn = false;
          try

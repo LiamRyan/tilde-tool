@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Tildetool.Hotcommand
+namespace Tildetool.Hotcommand.Serialization
 {
    public class CommandSpawn
    {

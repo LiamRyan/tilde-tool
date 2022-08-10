@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
+using Tildetool.Hotcommand.Serialization;
 
 namespace Tildetool.Hotcommand
 {
