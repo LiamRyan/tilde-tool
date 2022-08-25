@@ -635,17 +635,17 @@ namespace Tildetool.Status
          _StoryboardHide = new Storyboard();
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.17f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.BeginTime = TimeSpan.FromSeconds(0.05f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.35f));
             animation.To = 0.0f;
-            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Border);
@@ -653,7 +653,7 @@ namespace Tildetool.Status
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, StatusPanel);
@@ -679,14 +679,14 @@ namespace Tildetool.Status
             var animation = new DoubleAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
             animation.To = 46.0f;
-            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Content);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.35f);
+            animation.BeginTime = TimeSpan.FromSeconds(0.25f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardHide.Children.Add(animation);
