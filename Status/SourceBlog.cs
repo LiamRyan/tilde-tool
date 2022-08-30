@@ -42,7 +42,7 @@ namespace Tildetool.Status
       {
          CacheStruct cache = Cache as CacheStruct;
          if (cache == null)
-            cache = new CacheStruct();
+            cache = new CacheStruct { Date = DateTime.Now };
 
          string responseBody;
          if (SourceBlogTest.sUseTest)
@@ -126,51 +126,69 @@ namespace Tildetool.Status
          bool isValid = true;
 
          // Figure out the date
-         try
+         bool hasDate = DateLookup != null && DateLookup.Length > 0;
+         if (hasDate)
          {
-            string infoTimeStr = lookupData(DateLookup);
-
-            // Parse it.
-            if (!string.IsNullOrEmpty(infoTimeStr))
+            try
             {
-               // do some preprocessing to standardize some dates
-               infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
-               infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
+               string infoTimeStr = lookupData(DateLookup);
 
-               // parse
-               if (DateFormat == "unix")
-                  cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
+               // Parse it.
+               if (!string.IsNullOrEmpty(infoTimeStr))
+               {
+                  // do some preprocessing to standardize some dates
+                  infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
+                  infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
+
+                  // parse
+                  if (DateFormat == "unix")
+                     cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
+                  else
+                     cache.Date = DateTime.ParseExact(infoTimeStr, DateFormat, CultureInfo.CreateSpecificCulture("en-us"));
+               }
                else
-                  cache.Date = DateTime.ParseExact(infoTimeStr, DateFormat, CultureInfo.CreateSpecificCulture("en-us"));
+                  isValid = false;
             }
-            else
+            catch (Exception ex)
+            {
+               App.WriteLog(ex.Message);
                isValid = false;
-         }
-         catch (Exception ex)
-         {
-            App.WriteLog(ex.Message);
-            isValid = false;
+            }
          }
 
          // Figure out the title.
-         try
+         bool hasTitle = TitleLookup != null && TitleLookup.Length > 0;
+         if (hasTitle)
          {
-            // Pull it out and store it.
-            string titleStr = lookupData(TitleLookup);
-            if (!string.IsNullOrEmpty(titleStr))
-               cache.Title = titleStr;
-            else
+            try
+            {
+               // Pull it out and store it.
+               string titleStr = lookupData(TitleLookup);
+               if (!string.IsNullOrEmpty(titleStr))
+                  cache.Title = titleStr;
+               else
+                  isValid = false;
+            }
+            catch (Exception ex)
+            {
+               App.WriteLog(ex.Message);
                isValid = false;
-         }
-         catch (Exception ex)
-         {
-            App.WriteLog(ex.Message);
-            isValid = false;
+            }
          }
 
-         // Store it for future use.
          if (isValid)
+         {
+            // If we don't have a date lookup and the title changed, set the date to now.
+            if (!hasDate)
+               if (Cache == null || string.IsNullOrEmpty((Cache as CacheStruct).Title) || string.Compare((Cache as CacheStruct).Title, cache.Title) != 0)
+                  cache.Date = DateTime.Now;
+            // If we don't have a title lookup, use a default
+            if (!hasTitle)
+               cache.Title = "Updated " + cache.Date.ToString();
+
+            // Store it for future use.
             Cache = cache;
+         }
          else
          {
             Cache = null;
