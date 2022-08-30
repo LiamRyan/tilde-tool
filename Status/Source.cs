@@ -75,7 +75,7 @@ namespace Tildetool.Status
          }
          catch (Exception e)
          {
-            Console.WriteLine(e.ToString());
+            App.WriteLog(e.ToString());
          }
       }
 
@@ -98,7 +98,7 @@ namespace Tildetool.Status
             }
             catch (Exception ex)
             {
-               Console.WriteLine(ex.ToString());
+               App.WriteLog(ex.ToString());
                Status = "intern err";
                State = StateType.Error;
             }

@@ -111,7 +111,7 @@ namespace Tildetool.Status
          if (Sources[index].IsQuerying)
             return;
 
-         Console.WriteLine("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
+         App.WriteLog("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
          int changeIndex = Sources[index].ChangeIndex;
          Task task = Sources[index].Query();
 
@@ -172,7 +172,7 @@ namespace Tildetool.Status
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
                return false;
             }
          }
@@ -210,7 +210,7 @@ namespace Tildetool.Status
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
             return false;
          }
 
@@ -232,7 +232,7 @@ namespace Tildetool.Status
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
                return false;
             }
          }
@@ -279,7 +279,7 @@ namespace Tildetool.Status
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
             return false;
          }
 

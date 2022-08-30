@@ -104,7 +104,7 @@ namespace Tildetool.Explorer
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
             }
          }
          else
@@ -150,7 +150,7 @@ namespace Tildetool.Explorer
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
          }
 
          return result;
@@ -170,7 +170,7 @@ namespace Tildetool.Explorer
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
          }
          if (Watcher != null)
             Watcher.EnableRaisingEvents = true;

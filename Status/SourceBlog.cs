@@ -118,7 +118,7 @@ namespace Tildetool.Status
             }
             catch (Exception ex)
             {
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
             }
             return null;
          }
@@ -148,7 +148,7 @@ namespace Tildetool.Status
          }
          catch (Exception ex)
          {
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
             isValid = false;
          }
 
@@ -164,7 +164,7 @@ namespace Tildetool.Status
          }
          catch (Exception ex)
          {
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
             isValid = false;
          }
 

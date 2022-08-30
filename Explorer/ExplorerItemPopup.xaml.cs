@@ -546,7 +546,7 @@ namespace Tildetool.Explorer
                   catch (Exception ex)
                   {
                      MessageBox.Show(ex.ToString());
-                     Console.WriteLine(ex.ToString());
+                     App.WriteLog(ex.ToString());
                   }
                }));
                trd.IsBackground = true;

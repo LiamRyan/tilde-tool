@@ -159,7 +159,7 @@ namespace Tildetool.Hotcommand
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
             }
          }
          else
@@ -244,7 +244,7 @@ namespace Tildetool.Hotcommand
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
          }
          if (Watcher != null)
             Watcher.EnableRaisingEvents = true;
@@ -265,7 +265,7 @@ namespace Tildetool.Hotcommand
             catch (Exception ex)
             {
                MessageBox.Show(ex.ToString());
-               Console.WriteLine(ex.Message);
+               App.WriteLog(ex.Message);
             }
          }
          else
@@ -330,7 +330,7 @@ namespace Tildetool.Hotcommand
          catch (Exception ex)
          {
             MessageBox.Show(ex.ToString());
-            Console.WriteLine(ex.Message);
+            App.WriteLog(ex.Message);
          }
          if (WatcherUsage != null)
             WatcherUsage.EnableRaisingEvents = true;

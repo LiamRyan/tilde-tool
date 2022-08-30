@@ -21,7 +21,7 @@ namespace Tildetool
    {
       public static void WriteLog(string? log)
       {
-         App.Current.Dispatcher.Invoke(() => Console.WriteLine(log));
+         App.Current.Dispatcher.Invoke(() => Debug.Write(log + "\n"));
       }
 
       [DllImport("user32.dll", SetLastError = true)]

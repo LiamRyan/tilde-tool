@@ -178,7 +178,7 @@ namespace Tildetool
          }
          catch (Exception e)
          {
-            Console.WriteLine(e.ToString());
+            App.WriteLog(e.ToString());
          }
 
          //
@@ -631,7 +631,7 @@ namespace Tildetool
                   catch (Exception ex)
                   {
                      MessageBox.Show(ex.ToString());
-                     Console.WriteLine(ex.ToString());
+                     App.WriteLog(ex.ToString());
                   }
                }));
                trd.IsBackground = true;
@@ -646,7 +646,7 @@ namespace Tildetool
          }
          catch (Exception ex)
          {
-            Console.WriteLine(ex.ToString());
+            App.WriteLog(ex.ToString());
             Cancel();
             MessageBox.Show(ex.Message);
             return;
