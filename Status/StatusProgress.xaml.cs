@@ -49,6 +49,9 @@ namespace Tildetool.Status
 
       private void App_StatusBarAwake(Window window, bool awake)
       {
+         if (Finished)
+            return;
+
          if (awake)
             _AnimateShow();
          else
@@ -63,10 +66,7 @@ namespace Tildetool.Status
          if (!_Showing)
             Close();
          else
-         {
             _AnimateHide();
-            _StoryboardFade.Completed += (sender, e) => { Close(); };
-         }
 
          Finished = true;
       }
@@ -141,10 +141,17 @@ namespace Tildetool.Status
          _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; };
          _StoryboardFade.Begin(this);
 
+         if (_StoryboardSpin != null)
+         {
+            _StoryboardSpin.Stop(this);
+            _StoryboardSpin.Remove(this);
+            _StoryboardSpin = null;
+         }
          _StoryboardSpin = new Storyboard();
          {
             var flashAnimation = new DoubleAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(1.0f));
+            flashAnimation.From = 0.0f;
             flashAnimation.To = 360.0f;
             flashAnimation.RepeatBehavior = RepeatBehavior.Forever;
             _StoryboardSpin.Children.Add(flashAnimation);
@@ -227,7 +234,19 @@ namespace Tildetool.Status
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
-         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; _StoryboardSpin.Stop(this); _StoryboardSpin.Remove(this); _StoryboardSpin = null; };
+         _StoryboardFade.Completed += (sender, e) =>
+         {
+            if (_StoryboardFade != null)
+               _StoryboardFade.Remove(this);
+            _StoryboardFade = null;
+
+            _StoryboardSpin.Stop(this);
+            _StoryboardSpin.Remove(this);
+            _StoryboardSpin = null;
+
+            if (Finished)
+               Close();
+         };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
    }

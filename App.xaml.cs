@@ -11,6 +11,7 @@ using Tildetool.Hotcommand;
 using Tildetool.Status;
 using Tildetool.Explorer;
 using WindowsDesktop;
+using System.Diagnostics;
 
 namespace Tildetool
 {
@@ -107,8 +108,9 @@ namespace Tildetool
             };
          SourceManager.Instance.SourceQuery += (s, args) =>
             {
+               StatusProgress? oldProgressUi = _StatusProgress;
                bool shouldShow = SourceManager.Instance.Sources.Any(src => !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src)));
-               bool isShowing = _StatusProgress != null && !_StatusProgress.Finished;
+               bool isShowing = oldProgressUi != null && !oldProgressUi.Finished;
 
                if (shouldShow == isShowing)
                   return;
@@ -124,7 +126,7 @@ namespace Tildetool
                      _StatusProgress.Topmost = true;
                   }
                   else
-                     _StatusProgress.Cancel();
+                     oldProgressUi.Cancel();
                }));
             };
 
