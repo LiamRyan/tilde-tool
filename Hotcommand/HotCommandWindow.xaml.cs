@@ -19,6 +19,7 @@ using System.Timers;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using Tildetool.Hotcommand.Serialization;
+using System.Reflection;
 
 namespace Tildetool
 {
@@ -575,18 +576,12 @@ namespace Tildetool
          CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
          CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
 
-         _Text = "";
-         _LastSuggested = "";
-         _SuggestedContext = null;
+         _PendFinished = true;
          _Suggested = null;
-         CommandEntry.Text = "";
-         CommandPreviewPre.Text = "";
-         CommandPreviewPost.Text = "";
-         CommandExpand.Visibility = Visibility.Collapsed;
 
          _AnimateColor(false);
          RefreshDisplay();
-         _AnimateTextOut();
+         _AnimateCommand(-1);
 
          Thread trd = new Thread(new ThreadStart(_PlayBeep));
          trd.IsBackground = true;
