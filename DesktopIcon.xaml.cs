@@ -42,7 +42,7 @@ namespace Tildetool
          _AnimateIn();
 
          VirtualDesktop.CurrentChanged += VirtualDesktop_CurrentChanged;
-         _Timer = new Timer { Interval = 2000 };
+         _Timer = new Timer { Interval = 1000 };
          _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => _AnimateOut()); };
          _Timer.Start();
       }
@@ -171,7 +171,7 @@ namespace Tildetool
                   _Timer.Stop();
                   _Timer.Dispose();
                }
-               _Timer = new Timer { Interval = 2000 };
+               _Timer = new Timer { Interval = 1000 };
                _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => _AnimateOut()); };
                _Timer.Start();
             }
