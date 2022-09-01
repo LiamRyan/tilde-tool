@@ -20,5 +20,8 @@ namespace Tildetool.Hotcommand.Serialization
       public int? WindowY { get; set; }
       public int? WindowW { get; set; }
       public int? WindowH { get; set; }
+      public int? Monitor { get; set; }
+      public bool Maximize { get; set; } = false;
+      public bool Minimize{ get; set; } = false;
    }
 }

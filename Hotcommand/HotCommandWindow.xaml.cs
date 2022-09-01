@@ -66,11 +66,40 @@ namespace Tildetool
       static extern int CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
 
+      [StructLayout(LayoutKind.Sequential)]
+      public struct RECT
+      {
+         public int left;
+         public int top;
+         public int right;
+         public int bottom;
+      }
+
       [DllImport("user32.dll", SetLastError = true)]
       static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
 
+      [DllImport("user32.dll")]
+      static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+      [DllImport("user32.dll")]
+      [return: MarshalAs(UnmanagedType.Bool)]
+      static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+      private const int SW_HIDE = 0;
+      private const int SW_SHOWNORMAL = 1;
+      private const int SW_SHOWMINIMIZED = 2;
+      private const int SW_SHOWMAXIMIZED = 3;
+      private const int SW_SHOWNOACTIVATE = 4;
+      private const int SW_SHOW = 5;
+      private const int SW_MINIMIZE = 6;
+      private const int SW_SHOWMINNOACTIVE = 7;
+      private const int SW_SHOWNA = 8;
+      private const int SW_RESTORE = 9;
+      private const int SW_SHOWDEFAULT = 10;
+      private const int SW_FORCEMINIMIZE = 11;
+
       private const int SWP_NOSIZE = 0x0001;
-      private const int SWP_NOMOVE = 0x0001;
+      private const int SWP_NOMOVE = 0x0002;
       private const int SWP_NOZORDER = 0x0004;
       private const int SWP_SHOWWINDOW = 0x0040;
 
@@ -195,21 +224,69 @@ namespace Tildetool
          _SpawnTimer.Interval = 50;
          _SpawnTimer.Elapsed += (s, e) =>
          {
+            _SpawnTimer.Stop();
+
             //
             Dictionary<CommandSpawn, Process> spawnProcess = new Dictionary<CommandSpawn, Process>();
             foreach (var entry in _SpawnProcess)
             {
                if (entry.Value.MainWindowHandle != IntPtr.Zero)
                {
-                  _SpawnCountLeft--;
+                  // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
+                  if ((entry.Key.WindowX != null && entry.Key.WindowY != null) || entry.Key.Monitor != null)
+                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWNORMAL);
 
-                  int moveBit = (entry.Key.WindowX != null && entry.Key.WindowY != null) ? 0 : SWP_NOMOVE;
+                  // Switch monitors.
+                  int baseX = 0, baseY = 0;
+                  if (entry.Key.Monitor != null)
+                  {
+                     // Translate out of its current screen space.
+                     RECT rect;
+                     GetWindowRect(entry.Value.MainWindowHandle, out rect);
+                     System.Windows.Forms.Screen curScreen = null;
+                     try
+                     {
+                        curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
+                     }
+                     catch (Exception ex) { }
+                     if (curScreen != null)
+                     {
+                        baseX = rect.left - curScreen.WorkingArea.X;
+                        baseY = rect.top - curScreen.WorkingArea.Y;
+                     }
+
+                     // Translate into the new screen space.
+                     System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[entry.Key.Monitor.Value];
+                     baseX += targetScreen.WorkingArea.X;
+                     baseY += targetScreen.WorkingArea.Y;
+                  }
+
+                  // Move and resize.
+                  int moveBit = ((entry.Key.WindowX != null && entry.Key.WindowY != null) || entry.Key.Monitor != null) ? 0 : SWP_NOMOVE;
                   int sizeBit = (entry.Key.WindowW != null && entry.Key.WindowH != null) ? 0 : SWP_NOSIZE;
-                  int wx = (entry.Key.WindowX != null) ? entry.Key.WindowX.Value : 0;
-                  int wy = (entry.Key.WindowY != null) ? entry.Key.WindowY.Value : 0;
-                  int ww = (entry.Key.WindowW != null) ? entry.Key.WindowW.Value : 0;
-                  int wh = (entry.Key.WindowH != null) ? entry.Key.WindowH.Value : 0;
-                  SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+                  if (moveBit == 0 || sizeBit == 0)
+                  {
+                     int wx = ((entry.Key.WindowX != null) ? entry.Key.WindowX.Value : 0) + baseX;
+                     int wy = ((entry.Key.WindowY != null) ? entry.Key.WindowY.Value : 0) + baseY;
+                     int ww = (entry.Key.WindowW != null) ? entry.Key.WindowW.Value : 0;
+                     int wh = (entry.Key.WindowH != null) ? entry.Key.WindowH.Value : 0;
+                     SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+                  }
+
+                  // Maximize and minimize.
+                  if (entry.Key.Maximize)
+                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWMAXIMIZED);
+                  else if (entry.Key.Minimize)
+                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWMINIMIZED);
+
+                  _SpawnCountLeft--;
+                  entry.Value.Dispose();
+               }
+               else if (entry.Value.HasExited)
+               {
+                  App.WriteLog("App exited before move: " + entry.Key.FileName);
+
+                  _SpawnCountLeft--;
                   entry.Value.Dispose();
                }
                else
@@ -224,6 +301,8 @@ namespace Tildetool
                _SpawnTimer.Dispose();
                _SpawnTimer = null;
             }
+            else
+               _SpawnTimer.Start();
          };
          _SpawnTimer.Start();
       }
@@ -595,6 +674,7 @@ namespace Tildetool
          {
             foreach (CommandSpawn spawn in command.Spawns)
             {
+               bool wantSpawn = (spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null) || spawn.Monitor != null || spawn.Maximize || spawn.Minimize;
                Thread trd = new Thread(new ThreadStart(() =>
                {
                   try
@@ -618,7 +698,7 @@ namespace Tildetool
                      startInfo.WorkingDirectory = spawn.WorkingDirectory;
                      process.StartInfo = startInfo;
                      process.Start();
-                     if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
+                     if (wantSpawn)
                         _SpawnProcess[spawn] = process;
                      else
                         process.Dispose();
@@ -632,7 +712,7 @@ namespace Tildetool
                trd.IsBackground = true;
                trd.Start();
 
-               if ((spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null))
+               if (wantSpawn)
                {
                   waitSpawn = true;
                   _SpawnCountLeft++;
