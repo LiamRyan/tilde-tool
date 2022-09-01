@@ -17,9 +17,9 @@ namespace Tildetool.Status.Serialization
          if (!parent.Sites.TryGetValue(Site, out SourceBlogSite site))
             return null;
          string sitePath = site.Site.Replace("@REFERENCE@", Reference);
-         string siteURL = site.URL.Replace("@REFERENCE@", Reference);
+         SourceBlogUrl[] siteUrl = string.IsNullOrEmpty(site.URL) ? site.UrlLookup : new SourceBlogUrl[] { new SourceBlogUrl { URL = site.URL } };
          string siteOpenToUrl = site.OpenToURL.Replace("@REFERENCE@", Reference);
-         return new SourceBlog(site.Tag, Title, sitePath, siteURL, siteOpenToUrl, site.DateLookup, site.DateFormat, site.TitleLookup);
+         return new SourceBlog(site.Tag, Title, sitePath, siteUrl, siteOpenToUrl, site.DateLookup, site.DateFormat, site.TitleLookup, Reference);
       }
    }
 }

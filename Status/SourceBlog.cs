@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using Tildetool.Status.Serialization;
 
 namespace Tildetool.Status
 {
@@ -22,17 +23,19 @@ namespace Tildetool.Status
       }
 
       protected string Site;
-      protected string Url;
+      protected SourceBlogUrl[] Url;
       protected string OpenToUrl;
-      protected string[] DateLookup;
+      protected SourceBlogLookup DateLookup;
       protected string DateFormat;
-      protected string[] TitleLookup;
-      public SourceBlog(string title, string name, string site, string url, string openToUrl, string[] dateLookup, string dateFormat, string[] titleLookup)
+      protected SourceBlogLookup TitleLookup;
+      protected string Reference;
+      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string openToUrl, SourceBlogLookup dateLookup, string dateFormat, SourceBlogLookup titleLookup, string reference)
          : base(title, name, typeof(CacheStruct))
       {
-         Site = site;
+         Reference = reference;
+         Site = site.Replace("@REFERENCE@", Reference);
          Url = url;
-         OpenToUrl = openToUrl;
+         OpenToUrl = openToUrl.Replace("@REFERENCE@", Reference);
          DateLookup = dateLookup;
          DateFormat = dateFormat;
          TitleLookup = titleLookup;
@@ -40,70 +43,30 @@ namespace Tildetool.Status
 
       protected override void _Query()
       {
-         CacheStruct cache = Cache as CacheStruct;
-         if (cache == null)
-            cache = new CacheStruct { Date = DateTime.Now };
-
-         string responseBody;
-         if (SourceBlogTest.sUseTest)
-            responseBody = SourceBlogTest.sTestResponseBody;
-         else
-         {
-            // Set up an HTTP GET request.
-            HttpClient httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(Site);
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, Url);
-            if (cache.Etag != null)
-               request.Headers.IfNoneMatch.Add(EntityTagHeaderValue.Parse(cache.Etag));
-            else if (cache.LastModified != null)
-               request.Headers.IfModifiedSince = cache.LastModified;
-
-            // Send it, make sure we get a result.
-            Task<HttpResponseMessage> taskGet = httpClient.SendAsync(request);
-            taskGet.Wait();
-
-            // Not Modified, we're good!
-            if (taskGet.Result.StatusCode == System.Net.HttpStatusCode.NotModified)
-               return;
-
-            // Anything besides success, fail out.
-            if (!taskGet.Result.IsSuccessStatusCode)
-            {
-               Status = taskGet.Result.StatusCode.ToString();
-               State = StateType.Error;
-               Cache = null;
-               return;
-            }
-
-            //
-            cache.Etag = taskGet.Result.Headers.ETag?.ToString();
-            cache.LastModified = taskGet.Result.Headers.Date;
-
-            // Read the data.
-            Task<string> taskRead = taskGet.Result.Content.ReadAsStringAsync();
-            taskRead.Wait();
-            responseBody = taskRead.Result;
-         }
-
          //
-         string lookupData(string[] lookup)
+         string responseBody = null;
+         string lookupData(SourceBlogLookup lookup)
          {
             try
             {
-               int index = responseBody.IndexOf(lookup[0]);
+               int index;
+               if (lookup.Forward)
+                  index = responseBody.IndexOf(lookup.Path[0]);
+               else
+                  index = responseBody.LastIndexOf(lookup.Path[0]);
                while (index != -1)
                {
                   // Find the date.
-                  index += lookup[0].Length;
+                  index += lookup.Path[0].Length;
                   int lastIndex = index;
-                  for (int i = 1; i < lookup.Length; i++)
+                  for (int i = 1; i < lookup.Path.Length; i++)
                   {
                      lastIndex = index;
-                     index = responseBody.IndexOf(lookup[i], index);
+                     index = responseBody.IndexOf(lookup.Path[i], index);
                      if (index == -1)
                         break;
-                     if (i + 1 < lookup.Length)
-                        index += lookup[i].Length;
+                     if (i + 1 < lookup.Path.Length)
+                        index += lookup.Path[i].Length;
                   }
                   if (index == -1)
                      break;
@@ -111,9 +74,6 @@ namespace Tildetool.Status
                   // Parse the date.
                   string infoTimeStr = responseBody.Substring(lastIndex, index - lastIndex);
                   return infoTimeStr;
-
-                  //
-                  index = responseBody.IndexOf(lookup[0], index);
                }
             }
             catch (Exception ex)
@@ -123,10 +83,82 @@ namespace Tildetool.Status
             return null;
          }
 
+         CacheStruct cache = Cache as CacheStruct;
+         if (cache == null)
+            cache = new CacheStruct { Date = DateTime.Now };
+
          bool isValid = true;
 
+         if (SourceBlogTest.sUseTest)
+            responseBody = SourceBlogTest.sTestResponseBody;
+         else
+         {
+            bool isFirst = true;
+            string curReference = Reference;
+            foreach (SourceBlogUrl urlLink in Url)
+            {
+               string url = urlLink.URL.Replace("@REFERENCE@", curReference);
+
+               // Set up an HTTP GET request.
+               HttpClient httpClient = new HttpClient();
+               httpClient.BaseAddress = new Uri(Site);
+               HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
+               if (isFirst)
+               {
+                  if (cache.Etag != null)
+                     request.Headers.IfNoneMatch.Add(EntityTagHeaderValue.Parse(cache.Etag));
+                  else if (cache.LastModified != null)
+                     request.Headers.IfModifiedSince = cache.LastModified;
+               }
+
+               // Send it, make sure we get a result.
+               Task<HttpResponseMessage> taskGet = httpClient.SendAsync(request);
+               taskGet.Wait();
+
+               // Not Modified, we're good!
+               if (taskGet.Result.StatusCode == System.Net.HttpStatusCode.NotModified)
+                  return;
+
+               // Anything besides success, fail out.
+               if (!taskGet.Result.IsSuccessStatusCode)
+               {
+                  Status = taskGet.Result.StatusCode.ToString();
+                  State = StateType.Error;
+                  Cache = null;
+                  return;
+               }
+
+               //
+               if (isFirst)
+               {
+                  cache.Etag = taskGet.Result.Headers.ETag?.ToString();
+                  cache.LastModified = taskGet.Result.Headers.Date;
+                  isFirst = false;
+               }
+
+               // Read the data.
+               Task<string> taskRead = taskGet.Result.Content.ReadAsStringAsync();
+               taskRead.Wait();
+               responseBody = taskRead.Result;
+
+               // If we have a lookup for the next url, deal with it.
+               if (urlLink.Lookup != null && urlLink.Lookup.Path.Length > 0)
+               {
+                  try
+                  {
+                     curReference = lookupData(urlLink.Lookup);
+                  }
+                  catch (Exception ex)
+                  {
+                     App.WriteLog(ex.Message);
+                     isValid = false;
+                  }
+               }
+            }
+         }
+
          // Figure out the date
-         bool hasDate = DateLookup != null && DateLookup.Length > 0;
+         bool hasDate = DateLookup != null && DateLookup.Path.Length > 0;
          if (hasDate)
          {
             try
@@ -157,7 +189,7 @@ namespace Tildetool.Status
          }
 
          // Figure out the title.
-         bool hasTitle = TitleLookup != null && TitleLookup.Length > 0;
+         bool hasTitle = TitleLookup != null && TitleLookup.Path.Length > 0;
          if (hasTitle)
          {
             try
