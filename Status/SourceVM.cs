@@ -126,6 +126,7 @@ namespace Tildetool.Status
       }
 
       public override bool Ephemeral { get { return true; } }
+      public override bool Important { get { return false; } }
       public override string Domain { get { return VmIp; } }
       public override bool NeedsRefresh(TimeSpan interval)
       {

@@ -182,10 +182,13 @@ namespace Tildetool.Status
             Source = new SourceBundle();
             Source.DataVMs = new SourceDataVM[0];
             Source.DataBlogs = new SourceDataBlog[0];
+            Source.DataUptimes = new SourceDataUptime[0];
          }
 
          // Populate into the Sources list.
-         Sources = new List<Source>(Source.DataVMs.Length + Source.DataBlogs.Length);
+         Sources = new List<Source>(Source.DataVMs.Length + Source.DataBlogs.Length + Source.DataUptimes.Length);
+         foreach (var source in Source.DataUptimes)
+            Sources.Add(source.Spawn(Source));
          foreach (var source in Source.DataVMs)
             Sources.Add(source.Spawn(Source));
          foreach (var source in Source.DataBlogs)

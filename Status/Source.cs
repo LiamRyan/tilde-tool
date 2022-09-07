@@ -109,6 +109,7 @@ namespace Tildetool.Status
       public abstract void Display();
 
       public abstract bool Ephemeral { get; }
+      public abstract bool Important { get; }
       public abstract string Domain { get; }
       public abstract bool NeedsRefresh(TimeSpan interval);
       public abstract void HandleClick();

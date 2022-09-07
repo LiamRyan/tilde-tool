@@ -11,5 +11,6 @@ namespace Tildetool.Status.Serialization
       public Dictionary<string, SourceBlogSite> Sites { get; set; }
       public SourceDataBlog[] DataBlogs { get; set; }
       public SourceDataVM[] DataVMs { get; set; }
+      public SourceDataUptime[] DataUptimes { get; set; }
    }
 }

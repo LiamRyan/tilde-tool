@@ -294,7 +294,7 @@ namespace Tildetool.Status
                   showThis = true;
                else if (!source.Ephemeral && (source.IsQuerying || SourceManager.Instance.NeedRefresh(source)))
                   showThis = true;
-               else if (source.State == Source.StateType.Inactive)
+               else if (!source.Important)
                   showThis = false;
             }
 
