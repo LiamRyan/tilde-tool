@@ -292,8 +292,7 @@ namespace Tildetool.Explorer
 
          OptionGrid.Children.Clear();
 
-         _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
-         _MediaPlayer.Play();
+         App.PlayBeep("Resource\\beepG.mp3");
       }
       protected override void OnLostFocus(RoutedEventArgs e)
       {
@@ -425,8 +424,7 @@ namespace Tildetool.Explorer
 
          _Finish();
          _AnimateCancel(true);
-         _MediaPlayer.Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
-         _MediaPlayer.Play();
+         App.PlayBeep("Resource\\beepA.mp3");
       }
 
       Dictionary<Key, int>[] KeyToIndex =
@@ -559,8 +557,7 @@ namespace Tildetool.Explorer
             e.Handled = true;
             _Finish();
             _AnimateSelect(index);
-            _MediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-            _MediaPlayer.Play();
+            App.PlayBeep("Resource\\beepC.mp3");
             return;
          }
       }

@@ -77,6 +77,8 @@ namespace Tildetool.Status
          // Fade in.
          _HasTimer = hasTimer;
          AnimateShow();
+
+         App.PlayBeep("Resource\\beepG.mp3");
       }
 
       void OnLoaded(object sender, RoutedEventArgs args)
@@ -221,6 +223,8 @@ namespace Tildetool.Status
             _StoryboardHide.Begin(this);
 
             Dispatcher.Invoke(() => src.HandleClick());
+
+            App.PlayBeep("Resource\\beepC.mp3");
          }
       }
 
@@ -242,6 +246,7 @@ namespace Tildetool.Status
             process.StartInfo = startInfo;
             process.Start();
             AnimateClose();
+            App.PlayBeep("Resource\\beepC.mp3");
          }
       }
 
@@ -710,6 +715,7 @@ namespace Tildetool.Status
                _HideTimer.Dispose();
                _HideTimer = null;
                Dispatcher.Invoke(() => AnimateClose());
+               App.PlayBeep("Resource\\beepA.mp3");
             };
             _HideTimer.Start();
          }

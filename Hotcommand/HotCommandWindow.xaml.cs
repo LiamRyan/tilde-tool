@@ -127,8 +127,7 @@ namespace Tildetool
          _AnimateColor(true);
 
          //
-         _MediaPlayer.Open(new Uri("Resource\\beepG.mp3", UriKind.Relative));
-         _MediaPlayer.Play();
+         App.PlayBeep("Resource\\beepG.mp3");
       }
       void OnLoaded(object sender, RoutedEventArgs args)
       {
@@ -167,8 +166,8 @@ namespace Tildetool
          if (_Finished)
             return;
          _AnimateFadeOut();
-         _MediaPlayer.Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
-         _MediaPlayer.Play();
+         if (!_AnyCommand)
+            App.PlayBeep("Resource\\beepA.mp3");
          _Finished = true;
          OnFinish?.Invoke(this);
       }
@@ -195,12 +194,7 @@ namespace Tildetool
                      Key key = KeyInterop.KeyFromVirtualKey(vkCode);
                      if (key == Key.LWin || key == Key.LWin)
                      {
-                        if (!_Finished)
-                        {
-                           _AnimateFadeOut();
-                           _Finished = true;
-                           OnFinish?.Invoke(this);
-                        }
+                        Cancel();
                         return 0;
                      }
                   }
@@ -308,6 +302,7 @@ namespace Tildetool
       }
 
       string _Text = "";
+      bool _AnyCommand = false;
       bool _PendFinished = false;
       bool _Finished = false;
       bool _FadedIn = false;
@@ -655,6 +650,7 @@ namespace Tildetool
          CommandContext.Visibility = (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT") ? Visibility.Collapsed : Visibility.Visible;
          CommandContext.Text = HotcommandManager.Instance.CurrentContext.Name;
 
+         _AnyCommand = true;
          _PendFinished = true;
          _Suggested = null;
 
@@ -662,9 +658,7 @@ namespace Tildetool
          RefreshDisplay();
          _AnimateCommand(-1);
 
-         Thread trd = new Thread(new ThreadStart(_PlayBeep));
-         trd.IsBackground = true;
-         trd.Start();
+         App.PlayBeep("Resource\\beepC.mp3");
       }
 
       public void Execute(Command command, int index = -1)
@@ -734,17 +728,11 @@ namespace Tildetool
          if (waitSpawn)
             WaitForSpawn();
 
+         _AnyCommand = true;
+
          _Suggested = command;
          _AnimateCommand(index);
-         Thread trd2 = new Thread(new ThreadStart(_PlayBeep));
-         trd2.IsBackground = true;
-         trd2.Start();
-      }
-      void _PlayBeep()
-      {
-         MediaPlayer mediaPlayer = new MediaPlayer();
-         mediaPlayer.Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-         mediaPlayer.Play();
+         App.PlayBeep("Resource\\beepC.mp3");
       }
 
       #region Animation

@@ -12,6 +12,8 @@ using Tildetool.Status;
 using Tildetool.Explorer;
 using WindowsDesktop;
 using System.Diagnostics;
+using System.Threading;
+using System.Windows.Media;
 
 namespace Tildetool
 {
@@ -23,6 +25,19 @@ namespace Tildetool
       public static void WriteLog(string? log)
       {
          App.Current.Dispatcher.Invoke(() => Debug.Write(log + "\n"));
+      }
+
+      public static void PlayBeep(string beep)
+      {
+         void _PlayBeep()
+         {
+            MediaPlayer mediaPlayer = new MediaPlayer();
+            mediaPlayer.Open(new Uri(beep, UriKind.Relative));
+            mediaPlayer.Play();
+         }
+         Thread trd = new Thread(new ThreadStart(_PlayBeep));
+         trd.IsBackground = true;
+         trd.Start();
       }
 
       [DllImport("user32.dll", SetLastError = true)]
@@ -155,7 +170,10 @@ namespace Tildetool
             StatusBarAwake?.Invoke(_StatusBar, true);
          }
          else if (_StatusBar.IsShowing)
+         {
             _StatusBar.AnimateClose();
+            App.PlayBeep("Resource\\beepA.mp3");
+         }
          else
          {
             _StatusBar.ClearTimer();
