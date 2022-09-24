@@ -103,7 +103,7 @@ namespace Tildetool
                   }
                   else if (!_StatusBar.IsShowing)
                      _StatusBar.AnimateShow();
-                  _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdateStatusBar(args.Index, args.CacheChanged)));
+                  _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdatePanel(args.Index, args.CacheChanged)));
                }));
             };
          SourceManager.Instance.SourceQuery += (s, args) =>

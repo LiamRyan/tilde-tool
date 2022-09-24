@@ -6,9 +6,34 @@
         xmlns:local="clr-namespace:Tildetool.Status"
         xmlns:Shape="clr-namespace:Tildetool.Shape" x:Name="window" x:Class="Tildetool.Status.StatusBar"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal"
-        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="146">
+        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="172">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">
+            <Grid x:Name="Box" Margin="1,1,1,1" MaxWidth="242" Height="24" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="Title" Text="local vm" HorizontalAlignment="Left" TextAlignment="Center" VerticalAlignment="Top" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" Margin="8,6,0,0" Grid.Column="0"/>
+                <TextBlock x:Name="Status" Text="15/9/22" HorizontalAlignment="Left" TextAlignment="Left" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="8,24,0,0" Grid.Column="0"/>
+                <Grid x:Name="Divider" Background="#FF449637" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="1" Margin="8,4,10,4" Grid.Column="1"/>
+                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title Really Long Title" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" Margin="0,0,8,0" TextWrapping="Wrap" TextTrimming="WordEllipsis" Grid.Column="2"/>
+                <Grid x:Name="ProgressGrid" Width="27" Margin="-8,0,8,0" Grid.Column="3">
+                    <Ellipse x:Name="Progress" Stroke="#FF449637" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0.25,0.25,0"/>
+                    <Shape:Arc x:Name="ProgressArc" StrokeThickness="2.5" Width="13.5" Height="13.5" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,0,0" StartAngle="90" EndAngle="270" RenderTransformOrigin="0.5,0.5">
+                        <Shape:Arc.Stroke>
+                            <LinearGradientBrush EndPoint="0.5,0" StartPoint="0.5,1">
+                                <GradientStop Color="#00C3F1AF" Offset="0.149"/>
+                                <GradientStop Color="#FFC3F1AF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Shape:Arc.Stroke>
+                    </Shape:Arc>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="FeedBox">
             <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock x:Name="Title" Text="local vm" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,4,0,0"/>
                 <Ellipse x:Name="Progress" Stroke="#FF449637" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,4,8,0"/>
@@ -48,13 +73,18 @@
                     </LinearGradientBrush>
                 </Rectangle.Stroke>
             </Rectangle>
-            <Grid x:Name="Border" Background="#FF031F07" Margin="20,4,20,20" Height="82" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
-            <StackPanel x:Name="StatusPanel" Margin="20,4,20,20" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
-                <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"/>
-                <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
-                    <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
-                </Grid>
-            </StackPanel>
+            <Grid x:Name="Border" Background="#FF031F07" Margin="20,4,20,20" Height="108" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
+            <Grid x:Name="Inner" Margin="20,2,20,20" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <StackPanel x:Name="FeedPanel" Height="120" Margin="0,26,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+                    <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource FeedBox}}"/>
+                    <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+                <StackPanel x:Name="StatusPanel" Height="52" Margin="0,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+                    <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

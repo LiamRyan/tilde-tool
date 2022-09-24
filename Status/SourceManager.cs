@@ -98,11 +98,17 @@ namespace Tildetool.Status
          TickTimer.Start();
       }
 
+      public DateTime GetUpdateTime(Source src)
+      {
+         return SourceCache.SourceData[src.Guid].LastUpdate;
+      }
+      public TimeSpan GetTimeSinceUpdate(Source src)
+      {
+         return DateTime.Now - GetUpdateTime(src);
+      }
       public bool NeedRefresh(Source src)
       {
-         SourceCacheData data = SourceCache.SourceData[src.Guid];
-         TimeSpan interval = DateTime.Now - data.LastUpdate;
-         return src.NeedsRefresh(interval);
+         return src.NeedsRefresh(GetTimeSinceUpdate(src));
       }
 
       public void Query(int index)
@@ -120,16 +126,6 @@ namespace Tildetool.Status
          // We'll handle when it finishes.
          task.ContinueWith(t =>
          {
-            // Now that we've queried, refresh the visuals from it.
-            try
-            {
-               Sources[index].Display();
-            }
-            catch (Exception ex2)
-            {
-               App.WriteLog(ex2.ToString());
-            }
-
             // Always update the data.
             string cache = Sources[index].GetCache();
             SourceCacheData data = SourceCache.SourceData[Sources[index].Guid];
@@ -139,6 +135,16 @@ namespace Tildetool.Status
             data.State = Sources[index].State;
             data.LastCache = cache;
             data.LastUpdate = DateTime.Now;
+
+            // Refresh the visuals using the new date.
+            try
+            {
+               Sources[index].Display();
+            }
+            catch (Exception ex2)
+            {
+               App.WriteLog(ex2.ToString());
+            }
 
             // If something changed, save it.  Even if nothing changed, if we update rarely, save the
             //  new LastUpdate so if we close and open we don't update again.

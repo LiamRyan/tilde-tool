@@ -128,8 +128,10 @@ namespace Tildetool.Status
             State = StateType.Inactive;
       }
 
+      public override bool IsFeed { get { return false; } }
       public override bool Ephemeral { get { return false; } }
       public override bool Important { get { return State == StateType.Error; } }
+      public override int Order { get { return -1; } }
       public override string Domain { get { return URL; } }
       public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 4.0f; }
 

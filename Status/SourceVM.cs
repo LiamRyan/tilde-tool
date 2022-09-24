@@ -125,8 +125,10 @@ namespace Tildetool.Status
             State = StateType.Alert;
       }
 
+      public override bool IsFeed { get { return false; } }
       public override bool Ephemeral { get { return true; } }
       public override bool Important { get { return false; } }
+      public override int Order { get { return -2; } }
       public override string Domain { get { return VmIp; } }
       public override bool NeedsRefresh(TimeSpan interval)
       {

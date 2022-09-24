@@ -273,8 +273,10 @@ namespace Tildetool.Status
          Article = cache.Title;
       }
 
+      public override bool IsFeed { get { return true; } }
       public override bool Ephemeral { get { return false; } }
       public override bool Important { get { return State != StateType.Inactive; } }
+      public override int Order { get { if (Cache == null) return 0; return (int)(DateTime.Now - (Cache as CacheStruct).Date).TotalSeconds; } }
       public override string Domain { get { return Site; } }
       public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 2.0f; }
 

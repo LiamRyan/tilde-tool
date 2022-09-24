@@ -108,8 +108,10 @@ namespace Tildetool.Status
       protected abstract void _Query();
       public abstract void Display();
 
+      public abstract bool IsFeed { get; }
       public abstract bool Ephemeral { get; }
       public abstract bool Important { get; }
+      public abstract int Order { get; }
       public abstract string Domain { get; }
       public abstract bool NeedsRefresh(TimeSpan interval);
       public abstract void HandleClick();

@@ -35,9 +35,44 @@ namespace Tildetool.Status
          ExpandBox.MouseEnter += (s, e) => Grid_MouseEnter(s, e, -1);
          ExpandBox.MouseLeave += (s, e) => Grid_MouseLeave(s, e, -1);
 
-         // Spawn controls
-         StatusPanel.Children.RemoveRange(0, StatusPanel.Children.Count - 1);
-         PopulateStatusBar(true);
+         // Spawn feed controls
+         FeedPanel.Children.RemoveRange(0, FeedPanel.Children.Count - 1);
+         PopulateFeedBar(true);
+
+         // Spawn status controls
+         {
+            // Clear out old or preview controls
+            StatusPanel.Children.RemoveRange(0, StatusPanel.Children.Count);
+
+            // Now spawn new ones for each non-feed source.
+            for (int i = 0; i < SourceManager.Instance.Sources.Count; i++)
+            {
+               if (SourceManager.Instance.Sources[i].IsFeed)
+                  continue;
+
+               // insert to the gui
+               DataTemplate? template = Resources["StatusBox"] as DataTemplate;
+               ContentControl content = new ContentControl { ContentTemplate = template };
+               StatusPanel.Children.Add(content);
+               content.ApplyTemplate();
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               presenter.ApplyTemplate();
+
+               FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+               {
+                  int sourceIndex = i;
+                  grid.PreviewMouseDown += (s, e) => Grid_PreviewMouseDown(s, e, sourceIndex);
+                  grid.MouseEnter += (s, e) => Grid_MouseEnter(s, e, sourceIndex);
+                  grid.MouseLeave += (s, e) => Grid_MouseLeave(s, e, sourceIndex);
+               }
+
+               // Track gui to source linkage
+               StatusDisplayIndex.Add(i);
+
+               // Do an initial refresh.
+               UpdatePanel(i, false);
+            }
+         }
 
          // Fade in.
          _HasTimer = hasTimer;
@@ -71,15 +106,14 @@ namespace Tildetool.Status
             ExpandText.Text = _ShowAll ? "-" : "+";
 
             // Spawn controls
-            PopulateStatusBar(false);
+            PopulateFeedBar(false);
          });
       }
 
       private void Grid_MouseEnter(object sender, MouseEventArgs e, int sourceIndex)
       {
          Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
-         int index = DisplaySource.IndexOf(src);
-         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+         Color color = src == null ? Extension.FromArgb(0xFF042508) : src.ColorBack;
          color = new Color { R = (byte)(color.R << 1), G = (byte)(color.G << 1), B = (byte)(color.B << 1), A = 255 };
 
          Storyboard storyboard = new Storyboard();
@@ -88,18 +122,18 @@ namespace Tildetool.Status
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
             flashAnimation.To = color;
             storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTarget(flashAnimation, sender as Panel);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
          }
          if (sourceIndex != -1)
          {
             var flashAnimation = new DoubleAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
-            flashAnimation.To = 120.0f;
+            flashAnimation.To = src.IsFeed ? 120.0f : 42.0f;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
             storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Grid);
-            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.HeightProperty));
+            Storyboard.SetTarget(flashAnimation, sender as Panel);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
@@ -108,8 +142,7 @@ namespace Tildetool.Status
       private void Grid_MouseLeave(object sender, MouseEventArgs e, int sourceIndex)
       {
          Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
-         int index = DisplaySource.IndexOf(src);
-         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+         Color color = src == null ? Extension.FromArgb(0xFF042508) : src.ColorBack;
 
          Storyboard storyboard = new Storyboard();
          {
@@ -117,18 +150,18 @@ namespace Tildetool.Status
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.3f));
             flashAnimation.To = color;
             storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Grid);
+            Storyboard.SetTarget(flashAnimation, sender as Panel);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
          }
          if (sourceIndex != -1)
          {
             var flashAnimation = new DoubleAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            flashAnimation.To = 80.0f;
+            flashAnimation.To = src.IsFeed ? 80.0f : 24.0f;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
             storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Grid);
-            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.HeightProperty));
+            Storyboard.SetTarget(flashAnimation, sender as Panel);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
@@ -137,8 +170,7 @@ namespace Tildetool.Status
       private void Grid_PreviewMouseDown(object sender, MouseEventArgs e, int sourceIndex)
       {
          Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
-         int index = DisplaySource.IndexOf(src);
-         Color color = index == -1 ? Extension.FromArgb(0xFF042508) : DisplaySource[index].ColorBack;
+         Color color = src == null ? Extension.FromArgb(0xFF042508) : src.ColorBack;
 
          if (e.RightButton == MouseButtonState.Pressed)
          {
@@ -149,7 +181,7 @@ namespace Tildetool.Status
                flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
                flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(color, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
                storyboard.Children.Add(flashAnimation);
-               Storyboard.SetTarget(flashAnimation, sender as Grid);
+               Storyboard.SetTarget(flashAnimation, sender as Panel);
                Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
             }
             _Storyboards.Add(storyboard);
@@ -158,8 +190,8 @@ namespace Tildetool.Status
 
             Dispatcher.Invoke(() =>
             {
-               SourceManager.Instance.Query(DisplayIndex[index]);
-               UpdateStatusBar(DisplayIndex[index], false);
+               SourceManager.Instance.Query(sourceIndex);
+               UpdatePanel(sourceIndex, false);
             });
          }
          else
@@ -188,7 +220,7 @@ namespace Tildetool.Status
             _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; Close(); };
             _StoryboardHide.Begin(this);
 
-            Dispatcher.Invoke(() => DisplaySource[index].HandleClick());
+            Dispatcher.Invoke(() => src.HandleClick());
          }
       }
 
@@ -215,7 +247,7 @@ namespace Tildetool.Status
 
       private void Instance_SourceChanged(object? sender, SourceManager.SourceEventArgs args)
       {
-         Dispatcher.Invoke(() => UpdateStatusBar(args.Index, args.CacheChanged));
+         Dispatcher.Invoke(() => UpdatePanel(args.Index, args.CacheChanged));
       }
       private void Instance_SourceQuery(object? sender, int e)
       {
@@ -223,21 +255,22 @@ namespace Tildetool.Status
          {
             if (SourceManager.Instance.Sources[e].Ephemeral)
                return;
-            PopulateStatusBar(false);
-            UpdateStatusBar(e, false);
+            PopulateFeedBar(false);
+            UpdatePanel(e, false);
          });
       }
 
+      List<int> StatusDisplayIndex = new List<int>();
       List<int> DisplayIndex = new List<int>();
       List<Source> DisplaySource = new List<Source>();
       Dictionary<int, DateTime> DisplayShow = new Dictionary<int, DateTime>();
       HashSet<int> DisplayShown = new HashSet<int>();
-      protected void AddStatusElement(int sourceIndex, int guiIndex)
+      protected void AddFeedElement(int sourceIndex, int guiIndex)
       {
          // insert to the gui
-         DataTemplate? template = Resources["StatusBox"] as DataTemplate;
+         DataTemplate? template = Resources["FeedBox"] as DataTemplate;
          ContentControl content = new ContentControl { ContentTemplate = template };
-         StatusPanel.Children.Insert(guiIndex, content);
+         FeedPanel.Children.Insert(guiIndex, content);
          content.ApplyTemplate();
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
@@ -256,9 +289,9 @@ namespace Tildetool.Status
          DisplaySource.Insert(guiIndex, SourceManager.Instance.Sources[sourceIndex]);
 
          // Do an initial refresh.
-         UpdateStatusBar(sourceIndex, false);
+         UpdatePanel(sourceIndex, false);
       }
-      protected void RemoveStatusElement(int sourceIndex)
+      protected void RemoveFeedElement(int sourceIndex)
       {
          int guiIndex = DisplayIndex.IndexOf(sourceIndex);
          if (guiIndex == -1)
@@ -270,11 +303,18 @@ namespace Tildetool.Status
          // animate disappearance -- this will clear everything else when done.
          _AnimateHide(guiIndex);
       }
-      protected void PopulateStatusBar(bool initial)
+      protected void PopulateFeedBar(bool initial)
       {
+         // Start by sorting.
+         List<int> sourceList = new List<int>();
+         for (int sourceIndex = 0; sourceIndex < SourceManager.Instance.Sources.Count; sourceIndex++)
+            if (SourceManager.Instance.Sources[sourceIndex].IsFeed)
+               sourceList.Add(sourceIndex);
+         sourceList.Sort((a, b) => SourceManager.Instance.Sources[a].Order.CompareTo(SourceManager.Instance.Sources[b].Order));
+
          //
          int nextGuiIndex = 0;
-         for (int sourceIndex = 0; sourceIndex < SourceManager.Instance.Sources.Count; sourceIndex++)
+         foreach (int sourceIndex in sourceList)
          {
             // Decide whether to show this source.
             bool showThis = true;
@@ -299,7 +339,8 @@ namespace Tildetool.Status
             }
 
             // Track how many guis are visible (even if fading out).
-            bool isVisible = DisplayIndex.Contains(sourceIndex);
+            int prevGuiIndex = DisplayIndex.IndexOf(sourceIndex);
+            bool isVisible = prevGuiIndex != -1;
             if (isVisible || showThis)
                nextGuiIndex++;
             bool isFadeIn = DisplayShown.Contains(sourceIndex);
@@ -309,71 +350,125 @@ namespace Tildetool.Status
             {
                // If it wanted to be shown, clear it out.
                if (DisplayShown.Contains(sourceIndex))
-                  RemoveStatusElement(sourceIndex);
+                  RemoveFeedElement(sourceIndex);
                continue;
             }
 
             // We want to show.  Check if it's altogether missing, and insert if so.
             if (!isVisible)
-               AddStatusElement(sourceIndex, nextGuiIndex - 1);
+               AddFeedElement(sourceIndex, nextGuiIndex - 1);
+            // If it was showing, make sure it's in the right order.
+            else if (prevGuiIndex != nextGuiIndex - 1)
+            {
+               // We know prevGuiIndex is greater than nextGuiIndex - 1, because we've already checked for all the
+               //  indices before nextGuiIndex - 1 and know they match what they're supposed to.
+               DisplayIndex.RemoveAt(prevGuiIndex);
+               DisplaySource.RemoveAt(prevGuiIndex);
+               DisplayIndex.Insert(nextGuiIndex - 1, sourceIndex);
+               DisplaySource.Insert(nextGuiIndex - 1, SourceManager.Instance.Sources[sourceIndex]);
+
+               // change the gui order
+               ContentControl content = FeedPanel.Children[prevGuiIndex] as ContentControl;
+               FeedPanel.Children.RemoveAt(prevGuiIndex);
+               FeedPanel.Children.Insert(nextGuiIndex - 1, content);
+
+               // TODO: animated movement transition
+            }
 
             // If it was either missing or in the process of fading out, do the appear animation.
             if (!isFadeIn)
             {
                if (!initial)
-                  _AnimateShow(sourceIndex);
+                  _AnimateShow(nextGuiIndex - 1);
                DisplayShown.Add(sourceIndex);
             }
          }
       }
 
       private List<Storyboard> _Storyboards = new List<Storyboard>();
-      public void UpdateStatusBar(int sourceIndex, bool fromUpdate)
+      public void UpdatePanel(int sourceIndex, bool fromUpdate)
       {
-         // Look up which display index this corresponds to.
+         // Look up the source
          Source src = SourceManager.Instance.Sources[sourceIndex];
-         int guiIndex = DisplaySource.IndexOf(src);
 
-         // Make sure to show it at least 5 seconds after an update.
-         if (fromUpdate)
-            DisplayShow[sourceIndex] = DateTime.Now + TimeSpan.FromSeconds(5);
-
-         // If there was none, either add it (for an update), or ignore.
-         if (guiIndex == -1)
+         // If it's a feed, handle using the normal feed code.
+         Panel grid;
+         Grid? progressGrid = null;
+         if (src.IsFeed)
          {
-            if (!fromUpdate)
-               return;
-            PopulateStatusBar(false);
-            guiIndex = DisplaySource.IndexOf(src);
+            int guiIndex = DisplaySource.IndexOf(src);
+
+            // Make sure to show it at least 5 seconds after an update.
+            if (fromUpdate)
+               DisplayShow[sourceIndex] = DateTime.Now + TimeSpan.FromSeconds(5);
+
+            // If there was none, either add it (for an update), or ignore.
+            if (guiIndex == -1)
+            {
+               if (!fromUpdate)
+                  return;
+               PopulateFeedBar(false);
+               guiIndex = DisplaySource.IndexOf(src);
+            }
+
+            // Grab the controls.
+            ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
+            ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            presenter.ApplyTemplate();
+            grid = VisualTreeHelper.GetChild(presenter, 0) as Panel;
+            TextBlock title = grid.FindElementByName<TextBlock>("Title");
+            Grid divider = grid.FindElementByName<Grid>("Divider");
+            TextBlock article = grid.FindElementByName<TextBlock>("Article");
+            TextBlock status = grid.FindElementByName<TextBlock>("Status");
+
+            // Update.
+            title.Text = src.Subtitle;
+            status.Text = src.Status;
+            article.Text = src.Article;
+            article.Margin = new Thickness(article.Margin.Left, article.Margin.Top, article.Margin.Right, String.IsNullOrEmpty(src.Status) ? 0 : 17);
+            title.Foreground = new SolidColorBrush(src.ColorDim);
+            divider.Background = new SolidColorBrush(src.ColorDim);
+            status.Foreground = new SolidColorBrush(src.ColorDim);
+            article.Foreground = new SolidColorBrush(src.Color);
+         }
+         else
+         {
+            int guiIndex = StatusDisplayIndex.IndexOf(sourceIndex);
+
+            // Grab the controls.
+            ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
+            ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            presenter.ApplyTemplate();
+            grid = VisualTreeHelper.GetChild(presenter, 0) as Panel;
+            TextBlock title = grid.FindElementByName<TextBlock>("Title");
+            Grid divider = grid.FindElementByName<Grid>("Divider");
+            TextBlock article = grid.FindElementByName<TextBlock>("Article");
+            TextBlock status = grid.FindElementByName<TextBlock>("Status");
+            progressGrid = grid.FindElementByName<Grid>("ProgressGrid");
+
+            // Update.
+            title.Text = src.Subtitle;
+            status.Text = src.Status;
+            article.Text = src.Article;
+            title.Foreground = new SolidColorBrush(src.ColorDim);
+            divider.Background = new SolidColorBrush(src.ColorDim);
+            status.Foreground = new SolidColorBrush(src.ColorDim);
+            article.Foreground = new SolidColorBrush(src.Color);
+
+            title.VerticalAlignment = string.IsNullOrEmpty(src.Status) ? VerticalAlignment.Center : VerticalAlignment.Top;
+            title.Margin = new Thickness(title.Margin.Left, string.IsNullOrEmpty(src.Status) ? 0 : 6, title.Margin.Right, title.Margin.Bottom);
          }
 
-         // Grab the controls.
-         ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
-         ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-         presenter.ApplyTemplate();
-         Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-         TextBlock title = grid.FindElementByName<TextBlock>("Title");
-         Grid divider = grid.FindElementByName<Grid>("Divider");
-         TextBlock article = grid.FindElementByName<TextBlock>("Article");
-         TextBlock status = grid.FindElementByName<TextBlock>("Status");
+         // These are common to all types
+         grid.Background = new SolidColorBrush(src.ColorBack);
+
          Ellipse progress = grid.FindElementByName<Ellipse>("Progress");
          Shape.Arc progressArc = grid.FindElementByName<Shape.Arc>("ProgressArc");
-
-         // Update.
-         title.Text = DisplaySource[guiIndex].Subtitle;
-         status.Text = DisplaySource[guiIndex].Status;
-         article.Text = DisplaySource[guiIndex].Article;
-         article.Margin = new Thickness(article.Margin.Left, article.Margin.Top, article.Margin.Right, String.IsNullOrEmpty(DisplaySource[guiIndex].Status) ? 0 : 17);
-         grid.Background = new SolidColorBrush(DisplaySource[guiIndex].ColorBack);
-         title.Foreground = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
-         divider.Background = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
-         status.Foreground = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
-         article.Foreground = new SolidColorBrush(DisplaySource[guiIndex].Color);
-         progress.Stroke = new SolidColorBrush(DisplaySource[guiIndex].ColorDim);
+         progress.Stroke = new SolidColorBrush(src.ColorDim);
          {
             GradientStopCollection collection = new GradientStopCollection(2);
             collection.Add((progressArc.Stroke as LinearGradientBrush).GradientStops[0]);
-            collection.Add(new GradientStop(DisplaySource[guiIndex].Color, 1.0));
+            collection.Add(new GradientStop(src.Color, 1.0));
             collection.Freeze();
             LinearGradientBrush oldBrush = progressArc.Stroke as LinearGradientBrush;
             progressArc.Stroke = new LinearGradientBrush(collection, oldBrush.StartPoint, oldBrush.EndPoint);
@@ -381,6 +476,8 @@ namespace Tildetool.Status
 
          // Progress animation.
          bool pendQuery = !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src));
+         if (progressGrid != null)
+            progressGrid.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          progress.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          progressArc.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          if (pendQuery)
@@ -411,7 +508,7 @@ namespace Tildetool.Status
                var flashAnimation = new ColorAnimationUsingKeyFrames();
                flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.25f));
                flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(Extension.FromArgb(0xFFF0F0FF), KeyTime.FromPercent(0.5), new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut }));
-               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(DisplaySource[guiIndex].ColorBack, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+               flashAnimation.KeyFrames.Add(new EasingColorKeyFrame(src.ColorBack, KeyTime.FromPercent(1.0), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
                storyboard.Children.Add(flashAnimation);
                Storyboard.SetTarget(flashAnimation, grid);
                Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
@@ -425,7 +522,7 @@ namespace Tildetool.Status
       protected void _AnimateShow(int guiIndex)
       {
          //
-         ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
+         ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
@@ -466,7 +563,7 @@ namespace Tildetool.Status
       protected void _AnimateHide(int guiIndex)
       {
          //
-         ContentControl content = StatusPanel.Children[guiIndex] as ContentControl;
+         ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
@@ -508,11 +605,19 @@ namespace Tildetool.Status
 
             // finalize the removal
             int _guiIndex = DisplayIndex.IndexOf(sourceIndex);
-            StatusPanel.Children.RemoveAt(_guiIndex);
+            FeedPanel.Children.RemoveAt(_guiIndex);
             DisplayIndex.RemoveAt(_guiIndex);
             DisplaySource.RemoveAt(_guiIndex);
          };
          storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+      protected void _AnimateReorder(int oldGuiIndex, int newGuiIndex)
+      {
+         //
+         ContentControl content = FeedPanel.Children[newGuiIndex] as ContentControl;
+         ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+         presenter.ApplyTemplate();
+         FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
       }
 
       public bool IsShowing { get; protected set; }
@@ -581,10 +686,10 @@ namespace Tildetool.Status
             var animation = new DoubleAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.3f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            StatusPanel.Opacity = 0.0f;
+            Inner.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardHide.Children.Add(animation);
-            Storyboard.SetTarget(animation, StatusPanel);
+            Storyboard.SetTarget(animation, Inner);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; };
@@ -656,7 +761,7 @@ namespace Tildetool.Status
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardHide.Children.Add(animation);
-            Storyboard.SetTarget(animation, StatusPanel);
+            Storyboard.SetTarget(animation, Inner);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          {
