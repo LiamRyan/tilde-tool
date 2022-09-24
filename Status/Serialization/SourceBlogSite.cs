@@ -22,7 +22,9 @@ namespace Tildetool.Status.Serialization
       public string Site { get; set; }
       public string URL { get; set; }
       public SourceBlogUrl[] UrlLookup { get; set; }
-      public string OpenToURL { get; set; }
+      public string? OpenToURL { get; set; }
+      public string? OpenCommand { get; set; }
+      public string[] OpenArgumentList { get; set; }
       public SourceBlogLookup DateLookup { get; set; }
       public string DateFormat { get; set; }
       public SourceBlogLookup TitleLookup { get; set; }

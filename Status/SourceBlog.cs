@@ -6,7 +6,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using Tildetool.Status.Serialization;
 
@@ -24,18 +26,22 @@ namespace Tildetool.Status
 
       protected string Site;
       protected SourceBlogUrl[] Url;
-      protected string OpenToUrl;
+      protected string? OpenToUrl;
+      protected string? OpenCommand;
+      protected string[] OpenArgumentList;
       protected SourceBlogLookup DateLookup;
       protected string DateFormat;
       protected SourceBlogLookup TitleLookup;
       protected string Reference;
-      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string openToUrl, SourceBlogLookup dateLookup, string dateFormat, SourceBlogLookup titleLookup, string reference)
+      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string? openToUrl, string? openCommand, string[] openArgumentList, SourceBlogLookup dateLookup, string dateFormat, SourceBlogLookup titleLookup, string reference)
          : base(title, name, typeof(CacheStruct))
       {
          Reference = reference;
          Site = site.Replace("@REFERENCE@", Reference);
          Url = url;
-         OpenToUrl = openToUrl.Replace("@REFERENCE@", Reference);
+         OpenToUrl = openToUrl?.Replace("@REFERENCE@", Reference);
+         OpenCommand = openCommand;
+         OpenArgumentList = openArgumentList?.Select(arg => arg.Replace("@REFERENCE@", Reference))?.ToArray();
          DateLookup = dateLookup;
          DateFormat = dateFormat;
          TitleLookup = titleLookup;
@@ -274,7 +280,34 @@ namespace Tildetool.Status
 
       public override void HandleClick()
       {
-         if (OpenToUrl.StartsWith("http://") || OpenToUrl.StartsWith("https://"))
+         if (!string.IsNullOrEmpty(OpenCommand))
+         {
+            Thread trd = new Thread(new ThreadStart(() =>
+            {
+               try
+               {
+                  Process process = new Process();
+                  ProcessStartInfo startInfo = new ProcessStartInfo();
+                  startInfo.FileName = OpenCommand;
+                  if (OpenArgumentList != null)
+                  {
+                     foreach (string argument in OpenArgumentList)
+                        startInfo.ArgumentList.Add(argument);
+                  }
+                  process.StartInfo = startInfo;
+                  process.Start();
+                  process.Dispose();
+               }
+               catch (Exception ex)
+               {
+                  MessageBox.Show(ex.ToString());
+                  App.WriteLog(ex.ToString());
+               }
+            }));
+            trd.IsBackground = true;
+            trd.Start();
+         }
+         else if (!string.IsNullOrEmpty(OpenToUrl) && (OpenToUrl.StartsWith("http://") || OpenToUrl.StartsWith("https://")))
             Process.Start(new ProcessStartInfo(OpenToUrl) { UseShellExecute = true });
       }
    }
