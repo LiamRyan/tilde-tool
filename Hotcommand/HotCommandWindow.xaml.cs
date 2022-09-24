@@ -518,14 +518,6 @@ namespace Tildetool
          if (_Finished)
             return handled;
 
-         // Handle escape
-         switch (key)
-         {
-            case Key.Escape:
-               Cancel();
-               return true;
-         }
-
          // Handle shift-commands
          if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
          {

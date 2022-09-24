@@ -85,7 +85,8 @@ namespace Tildetool.Status
          }
 
          // Handle 
-         cache.Date = DateTime.Now;
+         if (!cache.Online)
+            cache.Date = DateTime.Now;
          cache.Online = true;
          cache.Status = "online";
          Cache = cache;
@@ -96,11 +97,15 @@ namespace Tildetool.Status
          if (cache == null)
             return;
 
-         DateTime infoDate = cache.Date;
+         // Pick either time since last update, or current downtime.
+         DateTime infoDate;
+         if (cache.Online)
+            infoDate = SourceManager.Instance.GetUpdateTime(this);
+         else
+            infoDate = cache.Date;
+         TimeSpan delta = DateTime.Now - infoDate;
 
          // Figure out which bucket it belongs in.
-         DateTime now = DateTime.Now;
-         TimeSpan delta = now - infoDate;
          if (delta.TotalDays >= 70)
             Status = infoDate.Year.ToString() + "/" + infoDate.Month.ToString() + "/" + infoDate.Day.ToString();
          else if (delta.Days >= 14)

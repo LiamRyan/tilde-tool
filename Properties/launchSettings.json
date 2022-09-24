@@ -2,7 +2,7 @@
   "profiles": {
     "Tildetool": {
       "commandName": "Project",
-      "workingDirectory": "D:\\dev\\Tildetool\\bin\\Release\\net6.0-windows",
+      "workingDirectory": "D:\\dev\\Tildetool\\Internal\\Stable",
       "nativeDebugging": true
     }
   }

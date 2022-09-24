@@ -82,4 +82,8 @@
     </Page>
   </ItemGroup>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="taskkill /im Tildetool.exe /f 2&gt;nul 1&gt;nul  &amp;set errorlevel=0&#xD;&#xA;EXIT 0" />
+  </Target>
+
 </Project>
