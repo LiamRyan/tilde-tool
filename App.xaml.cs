@@ -10,7 +10,7 @@ using Hardcodet.Wpf.TaskbarNotification;
 using Tildetool.Hotcommand;
 using Tildetool.Status;
 using Tildetool.Explorer;
-using WindowsDesktop;
+//using WindowsDesktop;
 using System.Diagnostics;
 using System.Threading;
 using System.Windows.Media;
@@ -27,17 +27,20 @@ namespace Tildetool
          App.Current.Dispatcher.Invoke(() => Debug.Write(log + "\n"));
       }
 
+      static Thread? _MediaThread;
       public static void PlayBeep(string beep)
       {
+         if (_MediaThread != null && _MediaThread.IsAlive)
+            return;
          void _PlayBeep()
          {
             MediaPlayer mediaPlayer = new MediaPlayer();
             mediaPlayer.Open(new Uri(beep, UriKind.Relative));
             mediaPlayer.Play();
          }
-         Thread trd = new Thread(new ThreadStart(_PlayBeep));
-         trd.IsBackground = true;
-         trd.Start();
+         _MediaThread = new Thread(new ThreadStart(_PlayBeep));
+         _MediaThread.IsBackground = true;
+         _MediaThread.Start();
       }
 
       [DllImport("user32.dll", SetLastError = true)]
@@ -87,19 +90,19 @@ namespace Tildetool
          //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
-         Hotkey.Register(KeyMod.Win, Keys.Y, HotkeyStatus);
+         Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.S, HotkeyStatus);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.D, HotkeyDesktop);
 
-         VirtualDesktop.Configure();
-         VirtualDesktop.CurrentChanged += (s, e) =>
-         {
-            Dispatcher.Invoke(() =>
-            {
-               if (_DesktopIcon == null)
-                  HotkeyDesktop(0);
-            });
-         };
+         //VirtualDesktop.Configure();
+         //VirtualDesktop.CurrentChanged += (s, e) =>
+         //{
+         //   Dispatcher.Invoke(() =>
+         //   {
+         //      if (_DesktopIcon == null)
+         //         HotkeyDesktop(0);
+         //   });
+         //};
 
          SourceManager.Instance.SourceChanged += (s, args) =>
             {
@@ -135,13 +138,15 @@ namespace Tildetool
                   if (shouldShow)
                   {
                      _StatusProgress = new StatusProgress();
-                     _StatusProgress.Closing += (sender, e) => { _StatusProgress = null; };
+                     _StatusProgress.Closing += (sender, e) => { if (sender == _StatusProgress) _StatusProgress = null; };
 
                      _StatusProgress.Show();
                      _StatusProgress.Topmost = true;
                   }
                   else
+                  {
                      oldProgressUi.Cancel();
+                  }
                }));
             };
 

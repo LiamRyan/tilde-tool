@@ -14,7 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using WindowsDesktop;
+//using WindowsDesktop;
 
 namespace Tildetool
 {
@@ -26,6 +26,14 @@ namespace Tildetool
       public delegate void PopupEvent(object sender);
       public event PopupEvent? OnFinish;
 
+      public void Cancel()
+      {
+      }
+      void OnLoaded(object sender, RoutedEventArgs args)
+      {
+      }
+
+      /*
       public DesktopIcon()
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
@@ -306,5 +314,6 @@ namespace Tildetool
          _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; _Timer.Dispose(); Close(); };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
+      */
    }
 }
