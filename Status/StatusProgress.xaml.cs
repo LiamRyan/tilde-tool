@@ -5,11 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Timers;
 using System.Windows.Media.Animation;
@@ -29,17 +25,11 @@ namespace Tildetool.Status
       {
          InitializeComponent();
 
-         if (App.StatusBar == null)
-            _AnimateShow();
-         else
-            Opacity = 0.0f;
-
-         App.StatusBarAwake += App_StatusBarAwake;
+         _AnimateShow();
       }
       protected override void OnClosing(CancelEventArgs e)
       {
          base.OnClosing(e);
-         App.StatusBarAwake -= App_StatusBarAwake;
       }
       void OnLoaded(object sender, RoutedEventArgs args)
       {
@@ -47,46 +37,13 @@ namespace Tildetool.Status
          App.Clickthrough(this);
       }
 
-      private void App_StatusBarAwake(Window window, bool awake)
-      {
-         if (Finished)
-            return;
-
-         if (awake)
-            _AnimateShow();
-         else
-            _AnimateHide();
-      }
-
       public void Cancel()
       {
-         if (Finished)
-            return;
-
-         if (!_Showing)
-            Close();
-         else
-            _AnimateHide();
-
-         Finished = true;
+         _AnimateHide();
       }
 
-      bool _Showing = false;
       void _AnimateShow()
       {
-         if (Finished)
-            return;
-
-         if (_Showing)
-            return;
-         _Showing = true;
-
-         if (_StoryboardFade != null)
-         {
-            _StoryboardFade.Stop(this);
-            _StoryboardFade.Remove(this);
-         }
-
          Opacity = 1.0f;
 
          _StoryboardFade = new Storyboard();
@@ -165,12 +122,7 @@ namespace Tildetool.Status
       public bool Finished { get; protected set; }
       void _AnimateHide()
       {
-         if (Finished)
-            return;
-
-         if (!_Showing)
-            return;
-         _Showing = false;
+         Finished = true;
 
          if (_StoryboardFade != null)
          {
@@ -244,8 +196,7 @@ namespace Tildetool.Status
             _StoryboardSpin.Remove(this);
             _StoryboardSpin = null;
 
-            if (Finished)
-               Close();
+            Close();
          };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }

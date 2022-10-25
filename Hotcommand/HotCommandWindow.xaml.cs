@@ -111,8 +111,9 @@ namespace Tildetool
       public HotCommandWindow()
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
-
          InitializeComponent();
+         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * Height);
+
          CommandBox.Opacity = 0;
          CommandEntry.Text = "";
          CommandPreviewPre.Text = "";
@@ -209,97 +210,7 @@ namespace Tildetool
          return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
       }
 
-      System.Timers.Timer? _SpawnTimer = null;
-      int _SpawnCountLeft = 0;
-      Dictionary<CommandSpawn, Process> _SpawnProcess = new Dictionary<CommandSpawn, Process>();
-      void WaitForSpawn()
-      {
-         _SpawnTimer = new System.Timers.Timer();
-         _SpawnTimer.Interval = 50;
-         _SpawnTimer.Elapsed += (s, e) =>
-         {
-            _SpawnTimer.Stop();
-
-            //
-            Dictionary<CommandSpawn, Process> spawnProcess = new Dictionary<CommandSpawn, Process>();
-            foreach (var entry in _SpawnProcess)
-            {
-               if (entry.Value.MainWindowHandle != IntPtr.Zero)
-               {
-                  // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
-                  if ((entry.Key.WindowX != null && entry.Key.WindowY != null) || entry.Key.Monitor != null)
-                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWNORMAL);
-
-                  // Switch monitors.
-                  int baseX = 0, baseY = 0;
-                  if (entry.Key.Monitor != null)
-                  {
-                     // Translate out of its current screen space.
-                     RECT rect;
-                     GetWindowRect(entry.Value.MainWindowHandle, out rect);
-                     System.Windows.Forms.Screen curScreen = null;
-                     try
-                     {
-                        curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
-                     }
-                     catch (Exception ex) { }
-                     if (curScreen != null)
-                     {
-                        baseX = rect.left - curScreen.WorkingArea.X;
-                        baseY = rect.top - curScreen.WorkingArea.Y;
-                     }
-
-                     // Translate into the new screen space.
-                     System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[entry.Key.Monitor.Value];
-                     baseX += targetScreen.WorkingArea.X;
-                     baseY += targetScreen.WorkingArea.Y;
-                  }
-
-                  // Move and resize.
-                  int moveBit = ((entry.Key.WindowX != null && entry.Key.WindowY != null) || entry.Key.Monitor != null) ? 0 : SWP_NOMOVE;
-                  int sizeBit = (entry.Key.WindowW != null && entry.Key.WindowH != null) ? 0 : SWP_NOSIZE;
-                  if (moveBit == 0 || sizeBit == 0)
-                  {
-                     int wx = ((entry.Key.WindowX != null) ? entry.Key.WindowX.Value : 0) + baseX;
-                     int wy = ((entry.Key.WindowY != null) ? entry.Key.WindowY.Value : 0) + baseY;
-                     int ww = (entry.Key.WindowW != null) ? entry.Key.WindowW.Value : 0;
-                     int wh = (entry.Key.WindowH != null) ? entry.Key.WindowH.Value : 0;
-                     SetWindowPos(entry.Value.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
-                  }
-
-                  // Maximize and minimize.
-                  if (entry.Key.Maximize)
-                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWMAXIMIZED);
-                  else if (entry.Key.Minimize)
-                     ShowWindow(entry.Value.MainWindowHandle, SW_SHOWMINIMIZED);
-
-                  _SpawnCountLeft--;
-                  entry.Value.Dispose();
-               }
-               else if (entry.Value.HasExited)
-               {
-                  App.WriteLog("App exited before move: " + entry.Key.FileName);
-
-                  _SpawnCountLeft--;
-                  entry.Value.Dispose();
-               }
-               else
-                  spawnProcess[entry.Key] = entry.Value;
-            }
-            _SpawnProcess = spawnProcess;
-
-            //
-            if (_SpawnCountLeft == 0)
-            {
-               _SpawnTimer.Stop();
-               _SpawnTimer.Dispose();
-               _SpawnTimer = null;
-            }
-            else
-               _SpawnTimer.Start();
-         };
-         _SpawnTimer.Start();
-      }
+      List<CommandRun> _RunList = new List<CommandRun>();
 
       string _Text = "";
       bool _AnyCommand = false;
@@ -653,56 +564,193 @@ namespace Tildetool
          App.PlayBeep("Resource\\beepC.mp3");
       }
 
+      class CommandRun
+      {
+         public bool Done = false;
+
+         CommandSpawn _Spawn;
+         Process? _Process;
+         System.Timers.Timer? _Timer;
+         public CommandRun(CommandSpawn spawn)
+         {
+            _Spawn = spawn;
+            if (spawn.PauseSec > 0)
+            {
+               _Timer = new System.Timers.Timer();
+               _Timer.Interval = (int)(1000 * spawn.PauseSec);
+               _Timer.Elapsed += (s, e) =>
+               {
+                  _Timer.Stop();
+                  _Timer.Dispose();
+                  _Timer = null;
+                  Execute(spawn);
+               };
+               _Timer.Start();
+            }
+            else
+               Execute(spawn);
+         }
+         public void Dispose()
+         {
+            if (_Process != null)
+            {
+               _Process.Dispose();
+               _Process = null;
+            }
+            if (_Timer != null)
+            {
+               _Timer.Stop();
+               _Timer.Dispose();
+               _Timer = null;
+            }
+            Done = true;
+         }
+
+         void Execute(CommandSpawn spawn)
+         {
+            bool wantSpawn = (spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null) || spawn.Monitor != null || spawn.Maximize || spawn.Minimize;
+            Thread trd = new Thread(new ThreadStart(() =>
+            {
+               try
+               {
+                  Process process = new Process();
+                  ProcessStartInfo startInfo = new ProcessStartInfo();
+                  if (!string.IsNullOrEmpty(spawn.ShellOpen))
+                  {
+                     startInfo.UseShellExecute = true;
+                     startInfo.FileName = spawn.ShellOpen;
+                  }
+                  else
+                     startInfo.FileName = spawn.FileName;
+                  if (spawn.AsAdmin)
+                  {
+                     startInfo.UseShellExecute = true;
+                     startInfo.Verb = "runas";
+                  }
+                  if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
+                  {
+                     foreach (string argument in spawn.ArgumentList)
+                        startInfo.ArgumentList.Add(argument);
+                  }
+                  else
+                     startInfo.Arguments = spawn.Arguments;
+                  startInfo.WorkingDirectory = spawn.WorkingDirectory;
+                  process.StartInfo = startInfo;
+                  process.Start();
+                  if (wantSpawn)
+                     _Process = process;
+                  else
+                     process.Dispose();
+               }
+               catch (Exception ex)
+               {
+                  MessageBox.Show(ex.ToString());
+                  App.WriteLog(ex.ToString());
+               }
+            }));
+            trd.IsBackground = true;
+            trd.Start();
+
+            if (wantSpawn)
+            {
+               _Timer = new System.Timers.Timer();
+               _Timer.Interval = 50;
+               _Timer.Elapsed += (s, e) => Reposition();
+               _Timer.Start();
+            }
+            else
+               Dispose();
+         }
+         void Reposition()
+         {
+            _Timer.Stop();
+
+            //
+            if (_Process.MainWindowHandle != IntPtr.Zero)
+            {
+               // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
+               if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null)
+                  ShowWindow(_Process.MainWindowHandle, SW_SHOWNORMAL);
+
+               // Switch monitors.
+               int baseX = 0, baseY = 0;
+               if (_Spawn.Monitor != null)
+               {
+                  // Translate out of its current screen space.
+                  RECT rect;
+                  GetWindowRect(_Process.MainWindowHandle, out rect);
+                  System.Windows.Forms.Screen curScreen = null;
+                  try
+                  {
+                     curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
+                  }
+                  catch (Exception ex) { }
+                  if (curScreen != null)
+                  {
+                     baseX = rect.left - curScreen.WorkingArea.X;
+                     baseY = rect.top - curScreen.WorkingArea.Y;
+                  }
+
+                  // Translate into the new screen space.
+                  System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[_Spawn.Monitor.Value];
+                  baseX += targetScreen.WorkingArea.X;
+                  baseY += targetScreen.WorkingArea.Y;
+               }
+
+               // Move and resize.
+               int moveBit = ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null) ? 0 : SWP_NOMOVE;
+               int sizeBit = (_Spawn.WindowW != null && _Spawn.WindowH != null) ? 0 : SWP_NOSIZE;
+               if (moveBit == 0 || sizeBit == 0)
+               {
+                  int wx = ((_Spawn.WindowX != null) ? _Spawn.WindowX.Value : 0) + baseX;
+                  int wy = ((_Spawn.WindowY != null) ? _Spawn.WindowY.Value : 0) + baseY;
+                  int ww = (_Spawn.WindowW != null) ? _Spawn.WindowW.Value : 0;
+                  int wh = (_Spawn.WindowH != null) ? _Spawn.WindowH.Value : 0;
+                  SetWindowPos(_Process.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+               }
+
+               // Maximize and minimize.
+               if (_Spawn.Maximize)
+                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMAXIMIZED);
+               else if (_Spawn.Minimize)
+                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMINIMIZED);
+
+               _Process.Dispose();
+               _Process = null;
+            }
+            else if (_Process.HasExited)
+            {
+               App.WriteLog("App exited before move: " + _Spawn.FileName);
+
+               _Process.Dispose();
+               _Process = null;
+            }
+
+            //
+            if (_Process == null)
+            {
+               _Timer.Stop();
+               _Timer.Dispose();
+               _Timer = null;
+            }
+            else
+               _Timer.Start();
+         }
+      }
+
       public void Execute(Command command, int index = -1)
       {
-         bool waitSpawn = false;
+         bool anyAdmin = false;
          try
          {
             foreach (CommandSpawn spawn in command.Spawns)
             {
-               bool wantSpawn = (spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null) || spawn.Monitor != null || spawn.Maximize || spawn.Minimize;
-               Thread trd = new Thread(new ThreadStart(() =>
-               {
-                  try
-                  {
-                     Process process = new Process();
-                     ProcessStartInfo startInfo = new ProcessStartInfo();
-                     if (!string.IsNullOrEmpty(spawn.ShellOpen))
-                     {
-                        startInfo.UseShellExecute = true;
-                        startInfo.FileName = spawn.ShellOpen;
-                     }
-                     else
-                        startInfo.FileName = spawn.FileName;
-                     if (spawn.ArgumentList != null && spawn.ArgumentList.Length > 0)
-                     {
-                        foreach (string argument in spawn.ArgumentList)
-                           startInfo.ArgumentList.Add(argument);
-                     }
-                     else
-                        startInfo.Arguments = spawn.Arguments;
-                     startInfo.WorkingDirectory = spawn.WorkingDirectory;
-                     process.StartInfo = startInfo;
-                     process.Start();
-                     if (wantSpawn)
-                        _SpawnProcess[spawn] = process;
-                     else
-                        process.Dispose();
-                  }
-                  catch (Exception ex)
-                  {
-                     MessageBox.Show(ex.ToString());
-                     App.WriteLog(ex.ToString());
-                  }
-               }));
-               trd.IsBackground = true;
-               trd.Start();
+               CommandRun run = new CommandRun(spawn);
+               if (!run.Done)
+                  _RunList.Add(run);
 
-               if (wantSpawn)
-               {
-                  waitSpawn = true;
-                  _SpawnCountLeft++;
-               }
+               if (spawn.AsAdmin)
+                  anyAdmin = true;
             }
          }
          catch (Exception ex)
@@ -717,14 +765,14 @@ namespace Tildetool
          //HotcommandManager.Instance.IncFrequency(_Text, command, 0.66f);
          HotcommandManager.Instance.SaveUsageLater();
 
-         if (waitSpawn)
-            WaitForSpawn();
-
          _AnyCommand = true;
 
          _Suggested = command;
          _AnimateCommand(index);
          App.PlayBeep("Resource\\beepC.mp3");
+
+         if (anyAdmin)
+            Cancel();
       }
 
       #region Animation
@@ -793,18 +841,28 @@ namespace Tildetool
       {
          _StoryboardAppear = new Storyboard();
          {
-            var animation = new DoubleAnimation();
+            var animation = new ThicknessAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.From = 0.0f;
-            animation.To = Width;
-            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            animation.From = new Thickness(0, 10, 0, 10);
+            animation.To = new Thickness(0, 0, 0, 0);
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
             _StoryboardAppear.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+         }
+         {
+            var animation = new ColorAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.0f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.To = Extension.FromArgb(0xFF021204);
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardAppear.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath("Fill.Color"));
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
             animation.From = 16.0f;
             animation.To = 2.0f;
             _StoryboardAppear.Children.Add(animation);
@@ -813,7 +871,7 @@ namespace Tildetool
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
             animation.From = 16.0f;
             animation.To = 2.0f;
             _StoryboardAppear.Children.Add(animation);
@@ -821,19 +879,20 @@ namespace Tildetool
             Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
          {
-            var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.From = 6.0f;
-            animation.To = Height;
-            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            Content.Height = 6.0f;
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, TimeSpan.FromSeconds(0)));
+            //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
             _StoryboardAppear.Children.Add(animation);
             Storyboard.SetTarget(animation, Content);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
             Border.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardAppear.Children.Add(animation);
@@ -963,14 +1022,13 @@ namespace Tildetool
       {
          _StoryboardCancel = new Storyboard();
          {
-            var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.05f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.35f));
-            animation.To = 0.0f;
+            var animation = new ThicknessAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = new Thickness(0, 10, 0, 10);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardCancel.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          {
             var animation = new DoubleAnimation();

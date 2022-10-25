@@ -22,9 +22,8 @@ namespace Tildetool.Status
       public StatusBar(bool hasTimer)
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
-
-         // Initialize
          InitializeComponent();
+         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * Height);
 
          // Bind event
          SourceManager.Instance.SourceChanged += Instance_SourceChanged;
@@ -200,6 +199,12 @@ namespace Tildetool.Status
          {
             IsShowing = false;
 
+            if (_StoryboardHide != null)
+            {
+               _StoryboardHide.Stop(this);
+               _StoryboardHide.Remove(this);
+            }
+
             _StoryboardHide = new Storyboard();
             {
                var myDoubleAnimation = new DoubleAnimation();
@@ -247,6 +252,11 @@ namespace Tildetool.Status
             process.Start();
             AnimateClose();
             App.PlayBeep("Resource\\beepC.mp3");
+         }
+         else if (e.Key == Key.Escape)
+         {
+            AnimateClose();
+            App.PlayBeep("Resource\\beepA.mp3");
          }
       }
 
@@ -640,18 +650,28 @@ namespace Tildetool.Status
          //
          _StoryboardHide = new Storyboard();
          {
-            var animation = new DoubleAnimation();
+            var animation = new ThicknessAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.From = 0.0f;
-            animation.To = Width;
-            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            animation.From = new Thickness(-10, 10, -10, 40);
+            animation.To = new Thickness(-10, 0, -10, 30);
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+         }
+         {
+            var animation = new ColorAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.0f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.To = Extension.FromArgb(0xFF021204);
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath("Fill.Color"));
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
             animation.From = 8.0f;
             animation.To = 2.0f;
             _StoryboardHide.Children.Add(animation);
@@ -660,7 +680,7 @@ namespace Tildetool.Status
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
             animation.From = 8.0f;
             animation.To = 2.0f;
             _StoryboardHide.Children.Add(animation);
@@ -668,34 +688,44 @@ namespace Tildetool.Status
             Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
          {
-            var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.From = 46.0f;
-            animation.To = Height;
-            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            Content.Height = 46.0f;
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(46.0f, TimeSpan.FromSeconds(0)));
+            //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Content);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
-         {
+         /*{
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
             Border.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Border);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.OpacityProperty));
-         }
+         }*/
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
             Inner.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Inner);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
+            animation.To = 1.0f;
+            _StoryboardHide.Children.Add(animation);
+            Storyboard.SetTarget(animation, this);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; };
          _StoryboardHide.Begin(this);
@@ -745,15 +775,15 @@ namespace Tildetool.Status
          //
          _StoryboardHide = new Storyboard();
          {
-            var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.05f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.35f));
-            animation.To = 0.0f;
+            var animation = new ThicknessAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = new Thickness(-10, 10, -10, 40);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
+         /*
          {
             var animation = new DoubleAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
@@ -762,6 +792,7 @@ namespace Tildetool.Status
             Storyboard.SetTarget(animation, Border);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.OpacityProperty));
          }
+         */
          {
             var animation = new DoubleAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));

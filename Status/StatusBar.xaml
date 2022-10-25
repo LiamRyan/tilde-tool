@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Tildetool.Status"
         xmlns:Shape="clr-namespace:Tildetool.Shape" x:Name="window" x:Class="Tildetool.Status.StatusBar"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal"
-        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="172">
+        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="202">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">
             <Grid x:Name="Box" Margin="1,1,1,1" MaxWidth="242" Height="24" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -51,30 +51,39 @@
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid HorizontalAlignment="Left">
-        <Grid x:Name="Backfill" HorizontalAlignment="Left" Background="#FF021204" Margin="0,0,0,40"></Grid>
-        <Grid x:Name="Content" HorizontalAlignment="Left">
-            <Rectangle x:Name="Glow1" Margin="10 -8 10 50" StrokeThickness="2" RadiusX="2" RadiusY="2">
-                <Rectangle.Effect>
+    <Grid HorizontalAlignment="Stretch">
+        <Grid x:Name="Content" HorizontalAlignment="Stretch">
+            <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 40" StrokeThickness="2" Stretch="Fill">
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <Path x:Name="Glow1" Margin="-10 10 -10 40" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
+                <Path.Effect>
                     <BlurEffect Radius="8" KernelType="Gaussian"/>
-                </Rectangle.Effect>
-                <Rectangle.Stroke>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                </Path.Effect>
+                <Path.Stroke>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                        <GradientStop Color="#FFAAF99D" Offset="1"/>
                     </LinearGradientBrush>
-                </Rectangle.Stroke>
-            </Rectangle>
-            <Rectangle x:Name="Glow2" Margin="10 -8 10 50" StrokeThickness="2" RadiusX="2" RadiusY="2">
-                <Rectangle.Stroke>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                </Path.Stroke>
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <Path x:Name="Glow2" Margin="-10 10 -10 40" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
+                <Path.Stroke>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                        <GradientStop Color="#FFAAF99D" Offset="1"/>
                     </LinearGradientBrush>
-                </Rectangle.Stroke>
-            </Rectangle>
-            <Grid x:Name="Border" Background="#FF031F07" Margin="20,4,20,20" Height="108" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
-            <Grid x:Name="Inner" Margin="20,2,20,20" HorizontalAlignment="Left" VerticalAlignment="Center">
+                </Path.Stroke>
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <Grid x:Name="Inner" Margin="20,32,20,20" HorizontalAlignment="Left" VerticalAlignment="Center">
                 <StackPanel x:Name="FeedPanel" Height="120" Margin="0,26,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
                     <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource FeedBox}}"/>
                     <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">

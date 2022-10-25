@@ -15,6 +15,9 @@ namespace Tildetool.Hotcommand.Serialization
       public string? WorkingDirectory { get; set; }
       public string? Arguments { get; set; }
       public string[] ArgumentList { get; set; }
+      public bool AsAdmin { get; set; }
+
+      public float PauseSec { get; set; }
 
       public int? WindowX { get; set; }
       public int? WindowY { get; set; }
@@ -22,6 +25,6 @@ namespace Tildetool.Hotcommand.Serialization
       public int? WindowH { get; set; }
       public int? Monitor { get; set; }
       public bool Maximize { get; set; } = false;
-      public bool Minimize{ get; set; } = false;
+      public bool Minimize { get; set; } = false;
    }
 }
