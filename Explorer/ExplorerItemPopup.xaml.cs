@@ -15,6 +15,8 @@ using System.Diagnostics;
 using System.Timers;
 using Tildetool.Explorer.Serialization;
 using System.Threading;
+using Windows.Storage;
+using System.Windows.Interop;
 
 namespace Tildetool.Explorer
 {
@@ -89,15 +91,30 @@ namespace Tildetool.Explorer
       {
          if (string.IsNullOrEmpty(FilePath))
             AsFile = false;
-         List<ExplorerCommand> actions = _IterAction(AsFile, !AsFile);
-         _SetArray(actions.ToArray());
+         List<ExplorerCommand> innerActions = _IterAction(AsFile, !AsFile);
+         List<ExplorerCommand> outerActions = _IterAction(!AsFile, AsFile);
+         _SetArray(innerActions, outerActions);
+
+         OptionIcon.Visibility = ((AsFile && FileIcon != null) || (!AsFile && FolderIcon != null)) ? Visibility.Visible : Visibility.Hidden;
+         if (AsFile)
+         {
+            if (FileIcon != null)
+               OptionIcon.Source = Imaging.CreateBitmapSourceFromHIcon(FileIcon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            OptionName.Text = FilePath.Split('\\', '/').Last();
+         }
+         else
+         {
+            if (FolderIcon != null)
+               OptionIcon.Source = Imaging.CreateBitmapSourceFromHIcon(FolderIcon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            OptionName.Text = FolderPath.Split('\\', '/').Last();
+         }
       }
 
-      void _SetArray(ExplorerCommand[] actions)
+      void _SetArray(List<ExplorerCommand> innerActions, List<ExplorerCommand> outerActions)
       {
-         _Options = new Grid[actions.Length];
-         double angleDelta = 360.0 / actions.Length;
-         for (int i = 0; i < actions.Length; i++)
+         _Options = new Grid[innerActions.Count];
+         double angleDelta = 360.0 / Math.Max(innerActions.Count, 2);
+         for (int i = 0; i < innerActions.Count; i++)
          {
             // Spawn the control and apply the templates so child controls are created.
             ContentControl content = new ContentControl { ContentTemplate = Resources["OptionTemplate"] as DataTemplate };
@@ -126,12 +143,12 @@ namespace Tildetool.Explorer
             hotkey.RenderTransform = new RotateTransform { Angle = -(angleDelta - 20.0) / 2.0 };
 
             // Set text.
-            text.Text = actions[i].Title;
-            hotkey.Text = actions[i].Hotkey.ToLower();
+            text.Text = innerActions[i].Title;
+            hotkey.Text = innerActions[i].Hotkey.ToLower();
          }
 
          // Store the callbacks for the options.
-         _OptionFns = actions;
+         _OptionFns = innerActions.ToArray();
       }
 
       #endregion
@@ -149,8 +166,18 @@ namespace Tildetool.Explorer
             myDoubleAnimation.To = 1.0;
             myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
             _StoryboardAppear.Children.Add(myDoubleAnimation);
-            Storyboard.SetTarget(myDoubleAnimation, RootWindow);
-            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Window.OpacityProperty));
+            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Grid.OpacityProperty));
+         }
+         if (false)
+         {
+            var myDoubleAnimation = new DoubleAnimation();
+            myDoubleAnimation.From = 0.0;
+            myDoubleAnimation.To = 1.0;
+            myDoubleAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            _StoryboardAppear.Children.Add(myDoubleAnimation);
+            Storyboard.SetTarget(myDoubleAnimation, RootFrame);
+            Storyboard.SetTargetProperty(myDoubleAnimation, new PropertyPath(Image.OpacityProperty));
          }
 
          double deltaAngle = Math.PI * 2.0 / _Options.Length;
@@ -322,6 +349,16 @@ namespace Tildetool.Explorer
             process.Dispose();
             ResultProcess = null;
          }
+         if (FileIcon != null)
+         {
+            FileIcon.Dispose();
+            FileIcon = null;
+         }
+         if (FolderIcon != null)
+         {
+            FolderIcon.Dispose();
+            FolderIcon = null;
+         }
       }
       void _Finish()
       {
@@ -341,6 +378,8 @@ namespace Tildetool.Explorer
       public static string? FolderPath;
       public static string? FilePath;
       public static string[]? AllFilePaths;
+      public static System.Drawing.Icon? FolderIcon;
+      public static System.Drawing.Icon? FileIcon;
       public static bool LoadFolderData()
       {
          // Get information about the folder and selected files
@@ -348,6 +387,8 @@ namespace Tildetool.Explorer
          FolderPath = null;
          FilePath = null;
          AllFilePaths = null;
+         FolderIcon = null;
+         FileIcon = null;
 
          List<string> selected = new List<string>();
          Shell32.Shell shell = new Shell32.Shell();
@@ -360,10 +401,28 @@ namespace Tildetool.Explorer
                continue;
 
             FolderPath = new Uri(window.LocationURL).LocalPath;
+            try
+            {
+               FolderIcon = System.Drawing.Icon.ExtractAssociatedIcon(FolderPath);
+            }
+            catch (Exception ex)
+            {
+               App.WriteLog(ex.ToString());
+            }
 
             Shell32.FolderItems items = shellWindow.SelectedItems();
             if (items.Count > 0)
+            {
                FilePath = items.Item(0).Path;
+               try
+               {
+                  FileIcon = System.Drawing.Icon.ExtractAssociatedIcon(FilePath);
+               }
+               catch (Exception ex)
+               {
+                  App.WriteLog(ex.ToString());
+               }
+            }
 
             AllFilePaths = new string[items.Count];
             for (int i = 0; i < items.Count; i++)
