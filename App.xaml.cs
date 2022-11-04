@@ -14,6 +14,7 @@ using Tildetool.Explorer;
 using System.Diagnostics;
 using System.Threading;
 using System.Windows.Media;
+using System.Collections.Generic;
 
 namespace Tildetool
 {
@@ -27,20 +28,18 @@ namespace Tildetool
          App.Current.Dispatcher.Invoke(() => Debug.Write(log + "\n"));
       }
 
-      static Thread? _MediaThread;
-      public static void PlayBeep(string beep)
+      public enum BeepSound
       {
-         if (_MediaThread != null && _MediaThread.IsAlive)
-            return;
-         void _PlayBeep()
-         {
-            MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.Open(new Uri(beep, UriKind.Relative));
-            mediaPlayer.Play();
-         }
-         _MediaThread = new Thread(new ThreadStart(_PlayBeep));
-         _MediaThread.IsBackground = true;
-         _MediaThread.Start();
+         Wake,
+         Accept,
+         Cancel
+      }
+
+      static Dictionary<BeepSound, MediaPlayer> MediaPlayer;
+      public static void PlayBeep(BeepSound sound)
+      {
+         MediaPlayer[sound].Position = TimeSpan.Zero;
+         MediaPlayer[sound].Play();
       }
 
       [DllImport("user32.dll", SetLastError = true)]
@@ -77,6 +76,12 @@ namespace Tildetool
       protected override void OnStartup(StartupEventArgs e)
       {
          AppNotifyIcon = (TaskbarIcon)FindResource("AppNotifyIcon");
+
+         MediaPlayer = new Dictionary<BeepSound, MediaPlayer>()
+            { { BeepSound.Wake, new MediaPlayer() }, { BeepSound.Accept, new MediaPlayer() }, { BeepSound.Cancel, new MediaPlayer() } };
+         MediaPlayer[BeepSound.Wake].Open(  new Uri("Resource\\beepG.mp3", UriKind.Relative));
+         MediaPlayer[BeepSound.Accept].Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
+         MediaPlayer[BeepSound.Cancel].Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
 
          HotcommandManager.Instance.Load();
          HotcommandManager.Instance.LoadUsage();
@@ -177,7 +182,7 @@ namespace Tildetool
          else if (_StatusBar.IsShowing)
          {
             _StatusBar.AnimateClose();
-            App.PlayBeep("Resource\\beepA.mp3");
+            App.PlayBeep(App.BeepSound.Cancel);
          }
          else
          {

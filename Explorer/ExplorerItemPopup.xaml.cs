@@ -319,7 +319,7 @@ namespace Tildetool.Explorer
 
          OptionGrid.Children.Clear();
 
-         App.PlayBeep("Resource\\beepG.mp3");
+         App.PlayBeep(App.BeepSound.Wake);
       }
       protected override void OnLostFocus(RoutedEventArgs e)
       {
@@ -483,7 +483,7 @@ namespace Tildetool.Explorer
 
          _Finish();
          _AnimateCancel(true);
-         App.PlayBeep("Resource\\beepA.mp3");
+         App.PlayBeep(App.BeepSound.Cancel);
       }
 
       Dictionary<Key, int>[] KeyToIndex =
@@ -616,7 +616,7 @@ namespace Tildetool.Explorer
             e.Handled = true;
             _Finish();
             _AnimateSelect(index);
-            App.PlayBeep("Resource\\beepC.mp3");
+            App.PlayBeep(App.BeepSound.Accept);
             return;
          }
       }

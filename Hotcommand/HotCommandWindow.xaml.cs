@@ -128,7 +128,7 @@ namespace Tildetool
          _AnimateColor(true);
 
          //
-         App.PlayBeep("Resource\\beepG.mp3");
+         App.PlayBeep(App.BeepSound.Wake);
       }
       void OnLoaded(object sender, RoutedEventArgs args)
       {
@@ -168,7 +168,7 @@ namespace Tildetool
             return;
          _AnimateFadeOut();
          if (!_AnyCommand)
-            App.PlayBeep("Resource\\beepA.mp3");
+            App.PlayBeep(App.BeepSound.Cancel);
          _Finished = true;
          OnFinish?.Invoke(this);
       }
@@ -561,7 +561,7 @@ namespace Tildetool
          RefreshDisplay();
          _AnimateCommand(-1);
 
-         App.PlayBeep("Resource\\beepC.mp3");
+         App.PlayBeep(App.BeepSound.Accept);
       }
 
       class CommandRun
@@ -769,7 +769,7 @@ namespace Tildetool
 
          _Suggested = command;
          _AnimateCommand(index);
-         App.PlayBeep("Resource\\beepC.mp3");
+         App.PlayBeep(App.BeepSound.Accept);
 
          if (anyAdmin)
             Cancel();
