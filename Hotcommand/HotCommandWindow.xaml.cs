@@ -5,8 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Diagnostics;
@@ -173,6 +171,8 @@ namespace Tildetool
          OnFinish?.Invoke(this);
       }
 
+      bool _AnyInput = false;
+
       [MethodImpl(MethodImplOptions.NoInlining)]
       public int KeyboardHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
       {
@@ -195,8 +195,11 @@ namespace Tildetool
                      Key key = KeyInterop.KeyFromVirtualKey(vkCode);
                      if (key == Key.LWin || key == Key.LWin)
                      {
-                        Cancel();
-                        return 0;
+                        if (_AnyInput)
+                        {
+                           Cancel();
+                           return 0;
+                        }
                      }
                   }
                }
@@ -475,6 +478,7 @@ namespace Tildetool
             else
                _Text += text;
             handled = true;
+            _AnyInput = true;
          }
 
          // Handle key entry.
@@ -486,7 +490,7 @@ namespace Tildetool
             _handleText(_Number[key - Key.NumPad0]);
          else if (key == Key.Space)
             _handleText(' ');
-         else if (key == Key.Back && _Text.Length > 0)
+         else if (key == Key.Back && (_Text.Length > 0 || _PendFinished))
          {
             if (_PendFinished)
                _Text = "";
@@ -494,10 +498,13 @@ namespace Tildetool
                _Text = _Text.Substring(0, _Text.Length - 1);
             _PendFinished = false;
             handled = true;
+            _AnyInput = true;
          }
          else if (key == Key.Return)
          {
-            if (_Text.Length == 0)
+            if (_PendFinished)
+               Cancel();
+            else if (_Text.Length == 0)
             {
                Process process = new Process();
                ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -516,8 +523,19 @@ namespace Tildetool
             else
                Cancel();
 
-            return true;
+            handled = true;
+            _AnyInput = true;
+            return handled;
          }
+         else if (key == Key.Escape || (key == Key.OemTilde && (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin))))
+         {
+            Cancel();
+            handled = true;
+            _AnyInput = true;
+            return handled;
+         }
+         else
+            return handled;
 
          //
          CommandEntry.Text = _Text;
