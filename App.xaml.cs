@@ -10,6 +10,7 @@ using Hardcodet.Wpf.TaskbarNotification;
 using Tildetool.Hotcommand;
 using Tildetool.Status;
 using Tildetool.Explorer;
+using Tildetool.Time;
 //using WindowsDesktop;
 using System.Diagnostics;
 using System.Threading;
@@ -91,11 +92,15 @@ namespace Tildetool
          SourceManager.Instance.StartTick();
          ExplorerManager.Instance.Load();
          ExplorerManager.Instance.WatchFile();
+         TimeManager.Instance.LoadCache();
+         TimeManager.Instance.ConnectSqlite();
+         TimeManager.Instance.StartTick();
 
          //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
          Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
          Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.S, HotkeyStatus);
+         Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.P, HotkeyTimekeep);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.D, HotkeyDesktop);
 
@@ -245,6 +250,36 @@ namespace Tildetool
          }
          else
             _HotCommandWindow.Cancel();
+      }
+
+      Timekeep? _Timekeep = null;
+      public void ShowTimekeep(bool temporary)
+      {
+         if (_Timekeep != null)
+            return;
+         _Timekeep = new Timekeep();
+         _Timekeep.OnFinish += (sender) => { if (_Timekeep == sender) _Timekeep = null; };
+         _Timekeep.Closing += (sender, e) => { if (_Timekeep == sender) _Timekeep = null; };
+
+         _Timekeep.Show();
+         _Timekeep.Topmost = true;
+         _Timekeep.Activate();
+
+         if (temporary)
+            _Timekeep.ScheduleCancel();
+      }
+      protected void HotkeyTimekeep(Keys keys)
+      {
+         if (_Timekeep == null)
+         {
+            ShowTimekeep(false);
+            App.PlayBeep(App.BeepSound.Wake);
+         }
+         else
+         {
+            _Timekeep.Cancel();
+            App.PlayBeep(App.BeepSound.Cancel);
+         }
       }
 
       WordLookup? _WordLookup = null;
