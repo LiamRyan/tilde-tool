@@ -1,20 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-//using WindowsDesktop;
+using VirtualDesktopApi;
 
 namespace Tildetool
 {
@@ -26,31 +20,20 @@ namespace Tildetool
       public delegate void PopupEvent(object sender);
       public event PopupEvent? OnFinish;
 
-      public void Cancel()
-      {
-      }
-      void OnLoaded(object sender, RoutedEventArgs args)
-      {
-      }
-
-      /*
       public DesktopIcon()
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
-
          InitializeComponent();
+         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5f * Height);
 
          _ShowDesktop(VirtualDesktop.Current, false);
 
          UpdateLayout();
 
-         Left = (System.Windows.SystemParameters.PrimaryScreenWidth - Width) / 2;
-         Top = 0;
-
          _AnimateIn();
 
          VirtualDesktop.CurrentChanged += VirtualDesktop_CurrentChanged;
-         _Timer = new Timer { Interval = 1000 };
+         _Timer = new Timer { Interval = 700 };
          _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => _AnimateOut()); };
          _Timer.Start();
       }
@@ -64,8 +47,6 @@ namespace Tildetool
          base.OnSourceInitialized(e);
 
          this.MoveToDesktop(VirtualDesktop.Current);
-         Left = (System.Windows.SystemParameters.PrimaryScreenWidth - Width) / 2;
-         Top = 0;
       }
       protected override void OnClosing(CancelEventArgs e)
       {
@@ -77,7 +58,7 @@ namespace Tildetool
       protected void _ShowDesktop(VirtualDesktop current, bool animate)
       {
          // Make sure we have the right number of name lines
-         VirtualDesktop[] desktops = VirtualDesktop.GetDesktops();
+         VirtualDesktop[] desktops = VirtualDesktop.GetDesktops().ToArray();
          while (Border.Children.Count > desktops.Length)
             Border.Children.RemoveAt(Border.Children.Count - 1);
 
@@ -163,14 +144,13 @@ namespace Tildetool
          }
       }
 
-      private void VirtualDesktop_CurrentChanged(object? sender, VirtualDesktopChangedEventArgs e)
+      private void VirtualDesktop_CurrentChanged(VirtualDesktop oldDesktop, VirtualDesktop newDesktop)
       {
          Dispatcher.Invoke(() =>
          {
-            _ShowDesktop(e.NewDesktop, true);
+            _ShowDesktop(newDesktop, true);
             UpdateLayout();
-            this.MoveToDesktop(e.NewDesktop);
-            Left = (System.Windows.SystemParameters.PrimaryScreenWidth - Width) / 2;
+            this.MoveToDesktop(newDesktop);
 
             if (!_Finished)
             {
@@ -179,7 +159,7 @@ namespace Tildetool
                   _Timer.Stop();
                   _Timer.Dispose();
                }
-               _Timer = new Timer { Interval = 1000 };
+               _Timer = new Timer { Interval = 700 };
                _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => _AnimateOut()); };
                _Timer.Start();
             }
@@ -199,52 +179,72 @@ namespace Tildetool
       {
          _StoryboardFade = new Storyboard();
          {
-            var animation = new DoubleAnimation();
+            var animation = new ThicknessAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.From = 0.0f;
-            animation.To = Width;
-            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            animation.From = new Thickness(-10, 10, -10, 10);
+            animation.To = new Thickness(-10, 0, -10, 0);
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          {
-            var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.From = 8.0f;
-            animation.To = 2.0f;
-            _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, Glow);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
-         }
-         {
-            var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.From = 8.0f;
-            animation.To = 2.0f;
-            _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, GlowBlur);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
-         }
-         {
-            var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.From = 6.0f;
-            animation.To = Height;
+            var animation = new ColorAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.0f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.To = Extension.FromArgb(0xFF021204);
             animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath("Fill.Color"));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.From = 8.0f;
+            animation.To = 2.0f;
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow1);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            animation.From = 8.0f;
+            animation.To = 2.0f;
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, Glow2);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
+         }
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            Content.Height = 6.0f;
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, TimeSpan.FromSeconds(0)));
+            //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Content);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.3f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
             Border.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Border);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
+         }
+         {
+            var animation = new DoubleAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(0.2f);
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
+            animation.To = 1.0f;
+            _StoryboardFade.Children.Add(animation);
+            Storyboard.SetTarget(animation, this);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
          _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
@@ -254,24 +254,26 @@ namespace Tildetool
          if (_Finished)
             return;
          _Finished = true;
+
          _Timer.Stop();
+         _Timer.Dispose();
+         _Timer = null;
 
          OnFinish?.Invoke(this);
 
          _StoryboardFade = new Storyboard();
          {
-            var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.17f);
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.To = 0.0f;
-            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
+            var animation = new ThicknessAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = new Thickness(-10, 10, -10, 10);
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.WidthProperty));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Border);
@@ -282,7 +284,7 @@ namespace Tildetool
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
             animation.To = 8.0f;
             _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, Glow);
+            Storyboard.SetTarget(animation, Glow1);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
          {
@@ -290,30 +292,29 @@ namespace Tildetool
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
             animation.To = 8.0f;
             _StoryboardFade.Children.Add(animation);
-            Storyboard.SetTarget(animation, GlowBlur);
+            Storyboard.SetTarget(animation, Glow2);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
          {
             var animation = new DoubleAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
             animation.To = 6.0f;
-            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, Content);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
             var animation = new DoubleAnimation();
-            animation.BeginTime = TimeSpan.FromSeconds(0.35f);
+            animation.BeginTime = TimeSpan.FromSeconds(0.25f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardFade.Children.Add(animation);
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Window.OpacityProperty));
          }
-         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; _Timer.Dispose(); Close(); };
+         _StoryboardFade.Completed += (sender, e) => { if (_StoryboardFade != null) _StoryboardFade.Remove(this); _StoryboardFade = null; Close(); };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
-      */
    }
 }

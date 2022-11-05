@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool"
         Title="Virtual Desktop"
-        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal" Height="62"
+        mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal" Left="0" Height="92"
         HorizontalAlignment="Stretch" VerticalAlignment="Top" ShowInTaskbar="False" Background="{x:Null}" SizeToContent="Manual" Loaded="OnLoaded">
     <Window.Resources>
         <DataTemplate x:Key="DesktopName">
@@ -13,28 +13,38 @@
         </DataTemplate>
     </Window.Resources>
     <Grid HorizontalAlignment="Stretch">
-        <Grid x:Name="Backfill" HorizontalAlignment="Center" Background="#FF021204"></Grid>
-        <Grid x:Name="Content" HorizontalAlignment="Center">
-            <Rectangle x:Name="GlowBlur" Margin="10 -8 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
-                <Rectangle.Effect>
+        <Grid x:Name="Content" HorizontalAlignment="Stretch">
+            <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <Path x:Name="Glow1" Margin="-10 10 -10 10" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
+                <Path.Effect>
                     <BlurEffect Radius="8" KernelType="Gaussian"/>
-                </Rectangle.Effect>
-                <Rectangle.Stroke>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                </Path.Effect>
+                <Path.Stroke>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                        <GradientStop Color="#FFAAF99D" Offset="1"/>
                     </LinearGradientBrush>
-                </Rectangle.Stroke>
-            </Rectangle>
-            <Rectangle x:Name="Glow" Margin="10 -8 10 10" StrokeThickness="2" RadiusX="2" RadiusY="2">
-                <Rectangle.Stroke>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                </Path.Stroke>
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <Path x:Name="Glow2" Margin="-10 10 -10 10" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
+                <Path.Stroke>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="0.8"/>
+                        <GradientStop Color="#FFAAF99D" Offset="1"/>
                     </LinearGradientBrush>
-                </Rectangle.Stroke>
-            </Rectangle>
-            <StackPanel x:Name="Border" Background="#FF042508" Margin="20,4,20,20" HorizontalAlignment="Left" Orientation="Horizontal">
+                </Path.Stroke>
+                <Path.Data>
+                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                </Path.Data>
+            </Path>
+            <StackPanel x:Name="Border" Background="#FF042508" HorizontalAlignment="Center" VerticalAlignment="Center" Height="38" Orientation="Horizontal">
                 <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource DesktopName}}"></ContentControl>
             </StackPanel>
         </Grid>

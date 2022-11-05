@@ -11,7 +11,7 @@ using Tildetool.Hotcommand;
 using Tildetool.Status;
 using Tildetool.Explorer;
 using Tildetool.Time;
-//using WindowsDesktop;
+using VirtualDesktopApi;
 using System.Diagnostics;
 using System.Threading;
 using System.Windows.Media;
@@ -104,15 +104,15 @@ namespace Tildetool
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.D, HotkeyDesktop);
 
-         //VirtualDesktop.Configure();
-         //VirtualDesktop.CurrentChanged += (s, e) =>
-         //{
-         //   Dispatcher.Invoke(() =>
-         //   {
-         //      if (_DesktopIcon == null)
-         //         HotkeyDesktop(0);
-         //   });
-         //};
+         VirtualDesktopManager.Initialize();
+         VirtualDesktop.CurrentChanged += (s, e) =>
+         {
+            Dispatcher.Invoke(() =>
+            {
+               if (_DesktopIcon == null)
+                  HotkeyDesktop(0);
+            });
+         };
 
          SourceManager.Instance.SourceChanged += (s, args) =>
             {
