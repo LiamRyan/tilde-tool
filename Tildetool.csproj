@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Internal\**" />
+    <EmbeddedResource Remove="Internal\**" />
+    <None Remove="Internal\**" />
+    <Page Remove="Internal\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Resource\beepA.mp3" />
     <None Remove="Resource\beepC.mp3" />
     <None Remove="Resource\beepG.mp3" />
