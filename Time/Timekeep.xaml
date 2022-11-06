@@ -31,10 +31,8 @@
             <Grid Background="#80042508" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
         </DataTemplate>
         <DataTemplate x:Key="ScheduleEntry">
-            <Grid Background="#2058611F" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <Grid Background="#407F8C29" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
-                <Grid Background="#407F8C29" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch"/>
-                <TextBlock x:Name="ScheduleText" Text="Sketch" Margin="0,0,0,10" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFAFC52D" FontSize="12"/>
+            <Grid Background="#20A8611F" Margin="1,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock x:Name="ScheduleText" Text="Sketch" Margin="0,0,0,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFAFC52D" FontSize="12"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="DailyCell">
@@ -43,9 +41,9 @@
                     <Grid.Background>
                         <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                             <GradientStop Color="#00042508"/>
-                            <GradientStop Color="#FF24751F" Offset="0.9"/>
-                            <GradientStop Color="#FF449637" Offset="0.97"/>
-                            <GradientStop Color="#FFE0FFE0" Offset="1"/>
+                            <GradientStop Color="#FF24751F" Offset="0.85"/>
+                            <GradientStop Color="#FF66C657" Offset="0.95"/>
+                            <GradientStop Color="#FFF0FFF0" Offset="1"/>
                         </LinearGradientBrush>
                     </Grid.Background>
                 </Grid>
@@ -68,18 +66,21 @@
                     <TextBlock x:Name="HeaderTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Bottom"/>
                     <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                 </StackPanel>
+                <Grid x:Name="RowNowGrid" Margin="160,0,60,0">
+                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FF66C657" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
+                </Grid>
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid HorizontalAlignment="Stretch">
-        <Grid x:Name="Daily" HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="100,100,100,0">
-            <Grid x:Name="BackfillDaily" Background="#FFF1F7E5"></Grid>
-            <Grid x:Name="DailyContent" Margin="20,25,20,20" HorizontalAlignment="Stretch">
-                <TextBlock x:Name="DailyDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
-                <Grid x:Name="HeaderRow" Margin="160,0,60,0" HorizontalAlignment="Stretch">
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top">
+        <Grid x:Name="Daily" HorizontalAlignment="Stretch" VerticalAlignment="Top" MinWidth="500" Margin="100,100,100,0">
+            <Grid x:Name="BackfillDaily" Background="#FFF1F7E5"/>
+            <Grid x:Name="DailyContent" Margin="20,25,20,20" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                <TextBlock x:Name="DailyDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="14"/>
+                <Grid x:Name="HeaderRow" Margin="160,0,60,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                     <ContentControl ContentTemplate="{StaticResource DailyHeaderCell}"></ContentControl>
                 </Grid>
-                <Grid x:Name="DailyDividers" Margin="160,20,60,0" HorizontalAlignment="Stretch">
+                <Grid x:Name="DailyDividers" Margin="160,20,60,27" HorizontalAlignment="Stretch">
                     <ContentControl ContentTemplate="{StaticResource DailyDivider}"></ContentControl>
                 </Grid>
                 <Grid x:Name="ScheduleGrid" Margin="160,20,60,0" HorizontalAlignment="Stretch">
@@ -90,26 +91,37 @@
                         <ContentControl ContentTemplate="{StaticResource DailyRow}"></ContentControl>
                     </StackPanel>
                     <Grid Background="#40449637" Width="80" Height="1" HorizontalAlignment="Right"/>
-                    <StackPanel Width="50" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <StackPanel Width="50" Height="18" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
                         <TextBlock x:Name="SumTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Bottom"/>
                         <TextBlock x:Name="SumTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                     </StackPanel>
                 </StackPanel>
-                <Grid x:Name="NowDividerGrid" Margin="160,20,60,0" HorizontalAlignment="Stretch">
-                    <Grid Background="#FF449637" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
+                <Grid x:Name="NowDividerGrid" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <Grid Background="#FF66C657" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
                 </Grid>
             </Grid>
-            <Path x:Name="GlowDaily2" Margin="0 0 0 0" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
-                <Path.Stroke>
+            <Grid x:Name="GlowDaily2" Margin="0 0 0 0" HorizontalAlignment="Left" Width="2">
+                <Grid.Background>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                        <GradientStop Color="{DynamicResource ColorGlow1}"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+            </Grid>
+            <Grid x:Name="GlowDaily3" Margin="0 0 0 0" VerticalAlignment="Bottom" Height="2">
+                <Grid.Background>
                     <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="{DynamicResource ColorGlow1}"/>
                         <GradientStop Color="{DynamicResource ColorGlow2}" Offset="1"/>
                     </LinearGradientBrush>
-                </Path.Stroke>
-                <Path.Data>
-                    <PathGeometry Figures="M 0,0 V 0,100 H 100,100 V 100,0" />
-                </Path.Data>
-            </Path>
+                </Grid.Background>
+            </Grid>
+            <Grid x:Name="GlowDaily4" Margin="0 0 0 0" HorizontalAlignment="Right" Width="2">
+                <Grid.Background>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                        <GradientStop Color="{DynamicResource ColorGlow2}" Offset="1"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+            </Grid>
         </Grid>
         <Grid x:Name="Content" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="124">
             <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">

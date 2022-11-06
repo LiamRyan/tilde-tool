@@ -8,13 +8,10 @@ using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
-using Tildetool.Hotcommand.Serialization;
 using Tildetool.Shape;
-using Tildetool.Status;
 using Tildetool.Time.Serialization;
 
 namespace Tildetool.Time
@@ -40,6 +37,7 @@ namespace Tildetool.Time
          Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - 62.0f;
 
          InitialProject = TimeManager.Instance.CurrentProject;
+         DailyFocus = InitialProject;
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
          RebuildList();
          Refresh();
@@ -109,13 +107,13 @@ namespace Tildetool.Time
                return;
 
             case Key.Left:
-               DailyDay = DailyDay.AddDays(DailyFocus != null ? -7 : -1);
+               DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? -1 : -7);
                RefreshDaily();
                e.Handled = true;
                return;
 
             case Key.Right:
-               DailyDay = DailyDay.AddDays(DailyFocus != null ? 7 : 1);
+               DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? 1 : 7);
                RefreshDaily();
                e.Handled = true;
                return;
@@ -133,10 +131,7 @@ namespace Tildetool.Time
                return;
 
             case Key.Tab:
-               if (DailyFocus != null)
-                  DailyFocus = null;
-               else
-                  DailyFocus = InitialProject ?? GuiToProject[0];
+               CurDailyMode = (DailyMode)((int)(CurDailyMode + 1) % (int)DailyMode.COUNT);
                RefreshDaily();
                e.Handled = true;
                return;
@@ -179,7 +174,7 @@ namespace Tildetool.Time
          if (!TimeManager.Instance.HotkeyToProject.TryGetValue(key, out project))
             return;
 
-         if (DailyFocus != null)
+         if (CurDailyMode != DailyMode.Today)
          {
             DailyFocus = project;
             RefreshDaily();
@@ -385,6 +380,14 @@ namespace Tildetool.Time
          //_StoryboardRefresh.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
+      enum DailyMode
+      {
+         Today = 0,
+         WeekProgress,
+         WeekSchedule,
+         COUNT
+      }
+      DailyMode CurDailyMode;
       DateTime DailyDay;
       Project DailyFocus;
       void RefreshDaily()
@@ -394,10 +397,12 @@ namespace Tildetool.Time
 
          DateTime dayBegin = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
          DateTime weekBegin = dayBegin.AddDays(-(int)DailyDay.DayOfWeek);
-         if (DailyFocus != null)
+         if (CurDailyMode == DailyMode.WeekProgress)
             DailyDate.Text = DailyFocus.Name;
-         else
+         else if (CurDailyMode == DailyMode.Today)
             DailyDate.Text = DailyDay.ToString("yy/MM/dd ddd");
+         else
+            DailyDate.Text = "Schedule";
 
          DataTemplate? templateRow = Resources["DailyRow"] as DataTemplate;
          DataTemplate? templateHeaderCell = Resources["DailyHeaderCell"] as DataTemplate;
@@ -425,10 +430,10 @@ namespace Tildetool.Time
 
          List<List<TimePeriod>> projectPeriods = new List<List<TimePeriod>>();
          {
-            if (DailyFocus == null)
+            if (CurDailyMode == DailyMode.Today)
             {
                DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
-               DateTime todayE = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 23, 59, 0).ToUniversalTime();
+               DateTime todayE = todayS.AddDays(1);
                for (int i = 0; i < GuiToProject.Count; i++)
                   projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(GuiToProject[i], todayS, todayE));
             }
@@ -437,7 +442,13 @@ namespace Tildetool.Time
                {
                   DateTime todayS = weekBegin.AddDays(i).ToUniversalTime();
                   DateTime todayE = weekBegin.AddDays(i + 1).ToUniversalTime();
-                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(DailyFocus, todayS, todayE));
+                  if (CurDailyMode == DailyMode.WeekProgress)
+                     projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(DailyFocus, todayS, todayE));
+                  else
+                  {
+                     WeeklySchedule[] schedule = TimeManager.Instance.ScheduleByDayOfWeek[i];
+                     projectPeriods.Add(schedule.Select(s => new TimePeriod { Ident = s.Name, StartTime = todayS.AddHours(s.HourBegin), EndTime = todayS.AddHours(s.HourEnd) }).ToList());
+                  }
                }
 
             foreach (List<TimePeriod> periods in projectPeriods)
@@ -493,7 +504,7 @@ namespace Tildetool.Time
          }
 
          // Show the current time.
-         bool showNowLine = (DailyFocus == null) && dayBegin.AddDays(1) > DateTime.Now;
+         bool showNowLine = (CurDailyMode == DailyMode.Today) && dayBegin <= DateTime.Now && DateTime.Now < dayBegin.AddDays(1);
          NowDividerGrid.Visibility = showNowLine ? Visibility.Visible : Visibility.Collapsed;
          if (showNowLine)
          {
@@ -504,8 +515,8 @@ namespace Tildetool.Time
          }
 
          // Scheduled events
-         ScheduleGrid.Visibility = (DailyFocus == null) ? Visibility.Visible : Visibility.Collapsed;
-         if (DailyFocus == null)
+         ScheduleGrid.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
+         if (CurDailyMode == DailyMode.Today)
          {
             WeeklySchedule[] schedule = TimeManager.Instance.ScheduleByDayOfWeek[(int)DailyDay.DayOfWeek];
 
@@ -540,7 +551,8 @@ namespace Tildetool.Time
          _populate(DailyRows, templateRow, projectPeriods.Count);
          for (int i = 0; i < projectPeriods.Count; i++)
          {
-            DateTime thisDateBegin = (DailyFocus != null ? weekBegin.AddDays(i) : dayBegin).AddHours(minHour).ToUniversalTime();
+            DateTime thisDateBeginLocal = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).AddHours(minHour);
+            DateTime thisDateBegin = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).ToUniversalTime().AddHours(minHour);
             DateTime thisDateEnd = thisDateBegin.AddHours(maxHour - minHour);
 
             List<TimePeriod> periods = projectPeriods[i];
@@ -562,10 +574,22 @@ namespace Tildetool.Time
                TextBlock headerTimeM = grid.FindElementByName<TextBlock>("HeaderTimeM");
                cellParent = grid.FindElementByName<Grid>("DailyCells");
 
-               // Update the text
-               if (DailyFocus == null && GuiToProject[i] == InitialProject)
+               // Show the current time.
+               bool showNowLineRow = (CurDailyMode != DailyMode.Today) && thisDateBeginLocal <= DateTime.Now;
+               Grid rowNowGrid = grid.FindElementByName<Grid>("RowNowGrid");
+               rowNowGrid.Visibility = showNowLineRow ? Visibility.Visible : Visibility.Collapsed;
+               if (showNowLineRow)
                {
-                  grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x20284A20));
+                  double hourProgress = Math.Min(1.0, (DateTime.Now - thisDateBeginLocal).TotalHours / (double)(maxHour - minHour));
+                  rowNowGrid.ColumnDefinitions.Clear();
+                  rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
+                  rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
+               }
+
+               // Update the text
+               if (CurDailyMode == DailyMode.Today && GuiToProject[i] == InitialProject)
+               {
+                  grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x40284A20));
                   headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
                }
                else
@@ -573,8 +597,8 @@ namespace Tildetool.Time
                   grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((i % 2) == 0 ? 0x00042508 : 0x38042508)));
                   headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
                }
-               headerName.Text = DailyFocus != null ? thisDateBegin.ToString("ddd") : GuiToProject[i].Name;
-               headerDate.Visibility = DailyFocus != null ? Visibility.Visible : Visibility.Collapsed;
+               headerName.Text = CurDailyMode != DailyMode.Today ? thisDateBegin.ToString("ddd") : GuiToProject[i].Name;
+               headerDate.Visibility = CurDailyMode != DailyMode.Today ? Visibility.Visible : Visibility.Collapsed;
                headerDate.Text = thisDateBegin.ToString("yy/MM/dd");
                headerTimeH.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((totalMinutes > 0) ? 0xC3F1AF : 0x449637)));
                headerTimeM.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((totalMinutes > 0) ? 0xC3F1AF : 0x449637)));
@@ -603,23 +627,37 @@ namespace Tildetool.Time
                TextBlock cellTimeM = grid.FindElementByName<TextBlock>("CellTimeM");
                Grid activeGlow = grid.FindElementByName<Grid>("ActiveGlow");
 
-               bool isActiveCell = TimeManager.Instance.CurrentTimePeriod == periodsFilter[o].DbId;
-               activeGlow.Visibility = isActiveCell ? Visibility.Visible : Visibility.Collapsed;
-
-               double periodMinutes = (periodsFilter[o].EndTime - periodsFilter[o].StartTime).TotalMinutes;
-               cellTimeH.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-               cellTimeM.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-               cellTimeH.Text = ((int)periodMinutes / 60).ToString();
-               cellTimeM.Text = $"{((int)periodMinutes % 60):D2}";
-
-               startTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-               endTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-               if (periodMinutes >= 45)
+               grid.Background = new SolidColorBrush(Extension.FromArgb(CurDailyMode == DailyMode.WeekSchedule ? 0xFF28310F : 0xFF143518));
+               if (CurDailyMode == DailyMode.WeekSchedule)
                {
-                  startTime.Text = $"{periodsFilter[o].StartTime.ToLocalTime().Hour:D2}{periodsFilter[o].StartTime.ToLocalTime().Minute:D2}";
-                  endTime.Text = $"{periodsFilter[o].EndTime.ToLocalTime().Hour:D2}{periodsFilter[o].EndTime.ToLocalTime().Minute:D2}";
+                  activeGlow.Visibility = Visibility.Collapsed;
+                  cellTimeH.Visibility = Visibility.Collapsed;
+                  startTime.Visibility = Visibility.Collapsed;
+                  endTime.Visibility = Visibility.Collapsed;
+                  cellTimeM.Visibility = Visibility.Visible;
+                  cellTimeM.Text = periodsFilter[o].Ident;
+               }
+               else
+               {
+                  bool isActiveCell = TimeManager.Instance.CurrentTimePeriod == periodsFilter[o].DbId;
+                  activeGlow.Visibility = isActiveCell ? Visibility.Visible : Visibility.Collapsed;
+
+                  double periodMinutes = (periodsFilter[o].EndTime - periodsFilter[o].StartTime).TotalMinutes;
+                  cellTimeH.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
+                  cellTimeM.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
+                  cellTimeH.Text = ((int)periodMinutes / 60).ToString();
+                  cellTimeM.Text = $"{((int)periodMinutes % 60):D2}";
+
+                  startTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
+                  endTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
+                  if (periodMinutes >= 45)
+                  {
+                     startTime.Text = $"{periodsFilter[o].StartTime.ToLocalTime().Hour:D2}{periodsFilter[o].StartTime.ToLocalTime().Minute:D2}";
+                     endTime.Text = $"{periodsFilter[o].EndTime.ToLocalTime().Hour:D2}{periodsFilter[o].EndTime.ToLocalTime().Minute:D2}";
+                  }
                }
 
+               // Show the current time.
                DateTime periodStartTime = periodsFilter[o].StartTime > lastDate ? periodsFilter[o].StartTime : lastDate;
                DateTime periodEndTime = periodsFilter[o].EndTime < thisDateEnd ? periodsFilter[o].EndTime : thisDateEnd;
                if (periodEndTime > periodStartTime)
