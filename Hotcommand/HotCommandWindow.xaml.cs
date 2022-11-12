@@ -18,6 +18,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using Tildetool.Hotcommand.Serialization;
 using System.Reflection;
+using VirtualDesktopApi;
 
 namespace Tildetool
 {
@@ -626,7 +627,7 @@ namespace Tildetool
 
          void Execute(CommandSpawn spawn)
          {
-            bool wantSpawn = (spawn.WindowX != null && spawn.WindowY != null) || (spawn.WindowW != null && spawn.WindowH != null) || spawn.Monitor != null || spawn.Maximize || spawn.Minimize;
+            bool wantSpawn = spawn.HasWindowParameter;
             Thread trd = new Thread(new ThreadStart(() =>
             {
                try
@@ -683,11 +684,31 @@ namespace Tildetool
          {
             _Timer.Stop();
 
-            //
-            if (_Process.MainWindowHandle != IntPtr.Zero)
+            // Make sure the process is valid.
+            bool isValid = false;
+            try
+            {
+               isValid = !_Process.HasExited;
+               if (!isValid)
+                  App.WriteLog("App exited before move: " + _Spawn.FileName);
+            }
+            catch (Exception e)
+            {
+               App.WriteLog("App exception");
+               App.WriteLog(e.ToString());
+               isValid = false;
+            }
+
+            // Alright, handle it.
+            if (!isValid)
+            {
+               _Process.Dispose();
+               _Process = null;
+            }
+            else if (_Process.MainWindowHandle != IntPtr.Zero)
             {
                // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
-               if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null)
+               if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null || !string.IsNullOrEmpty(_Spawn.VirtualDesktop))
                   ShowWindow(_Process.MainWindowHandle, SW_SHOWNORMAL);
 
                // Switch monitors.
@@ -733,12 +754,16 @@ namespace Tildetool
                else if (_Spawn.Minimize)
                   ShowWindow(_Process.MainWindowHandle, SW_SHOWMINIMIZED);
 
-               _Process.Dispose();
-               _Process = null;
-            }
-            else if (_Process.HasExited)
-            {
-               App.WriteLog("App exited before move: " + _Spawn.FileName);
+               // Switch virtual desktop.
+               if (!string.IsNullOrEmpty(_Spawn.VirtualDesktop))
+               {
+                  int desktopIndex = VirtualDesktop.SearchDesktop(_Spawn.VirtualDesktop);
+                  if (desktopIndex != -1)
+                  {
+                     VirtualDesktop desktop = VirtualDesktop.FromIndex(desktopIndex);
+                     desktop.MoveWindow(_Process.MainWindowHandle);
+                  }
+               }
 
                _Process.Dispose();
                _Process = null;

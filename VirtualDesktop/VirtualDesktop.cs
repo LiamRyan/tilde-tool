@@ -74,11 +74,14 @@ namespace VirtualDesktopApi
    }
 
    [ComImport]
-	[InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 	[Guid("372E1D3B-38D3-42E4-A15B-8AB2B178F513")]
 	public interface IApplicationView
 	{
-		int SetFocus();
+      void Proc3();
+      void Proc4();
+      void Proc5();
+      int SetFocus();
 		int SwitchTo();
 		int TryInvokeBack(IntPtr /* IAsyncCallback* */ callback);
 		int GetThumbnailWindow(out IntPtr hwnd);
