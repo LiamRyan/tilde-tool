@@ -7,6 +7,7 @@ using System.Text;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -387,6 +388,27 @@ namespace Tildetool.Time
          WeekSchedule,
          COUNT
       }
+      class TimeBlock
+      {
+         public string Name;
+         public DateTime StartTime;
+         public DateTime EndTime;
+         public Color Color;
+         public int DbId;
+
+         public static TimeBlock FromTimePeriod(TimePeriod period)
+         {
+            return new TimeBlock { Name = period.Ident, StartTime = period.StartTime, EndTime = period.EndTime, Color = Extension.FromArgb(0xFF143518) };
+         }
+         public static TimeBlock FromWeeklySchedule(WeeklySchedule schedule, DateTime today)
+         {
+            return new TimeBlock { Name = schedule.Name, StartTime = today.AddHours(schedule.HourBegin), EndTime = today.AddHours(schedule.HourEnd), Color = Extension.FromArgb(0xD0A8611F) };
+         }
+         public static TimeBlock FromTimeEvent(TimeEvent evt)
+         {
+            return new TimeBlock { Name = evt.Name, StartTime = evt.StartTime, EndTime = evt.EndTime, Color = Extension.FromArgb(0xD0E0411F) };
+         }
+      }
       DailyMode CurDailyMode;
       DateTime DailyDay;
       Project DailyFocus;
@@ -428,14 +450,32 @@ namespace Tildetool.Time
          int minHour = 8;
          int maxHour = 21;
 
-         List<List<TimePeriod>> projectPeriods = new List<List<TimePeriod>>();
+         void _organizePeriod(List<TimeBlock> periods)
+         {
+            periods.Sort((a,b) => a.StartTime.CompareTo(b.StartTime));
+
+            TimeBlock prevPeriod = null;
+            foreach (TimeBlock period in periods)
+            {
+               if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours < minHour)
+                  minHour = period.StartTime.ToLocalTime().Hour;
+               if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours > maxHour)
+                  maxHour = period.EndTime.ToLocalTime().Hour + 1;
+
+               if (prevPeriod != null && prevPeriod.EndTime > period.StartTime)
+                  prevPeriod.EndTime = period.StartTime;
+               prevPeriod = period;
+            }
+         }
+
+         List<List<TimeBlock>> projectPeriods = new List<List<TimeBlock>>();
          {
             if (CurDailyMode == DailyMode.Today)
             {
                DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
                DateTime todayE = todayS.AddDays(1);
                for (int i = 0; i < GuiToProject.Count; i++)
-                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(GuiToProject[i], todayS, todayE));
+                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(GuiToProject[i], todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
             }
             else
                for (int i = 0; i < 7; i++)
@@ -443,22 +483,18 @@ namespace Tildetool.Time
                   DateTime todayS = weekBegin.AddDays(i).ToUniversalTime();
                   DateTime todayE = weekBegin.AddDays(i + 1).ToUniversalTime();
                   if (CurDailyMode == DailyMode.WeekProgress)
-                     projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(DailyFocus, todayS, todayE));
+                     projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(DailyFocus, todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
                   else
                   {
-                     WeeklySchedule[] schedule = TimeManager.Instance.ScheduleByDayOfWeek[i];
-                     projectPeriods.Add(schedule.Select(s => new TimePeriod { Ident = s.Name, StartTime = todayS.AddHours(s.HourBegin), EndTime = todayS.AddHours(s.HourEnd) }).ToList());
+                     List<TimeBlock> block = new List<TimeBlock>();
+                     block.AddRange(TimeManager.Instance.ScheduleByDayOfWeek[i].Select(s => TimeBlock.FromWeeklySchedule(s, todayS)));
+                     block.AddRange(TimeManager.Instance.QueryTimeEvent(todayS, todayE).Select(s => TimeBlock.FromTimeEvent(s)));
+                     projectPeriods.Add(block);
                   }
                }
 
-            foreach (List<TimePeriod> periods in projectPeriods)
-               foreach (TimePeriod period in periods)
-               {
-                  if (period.StartTime.ToLocalTime().Hour < minHour)
-                     minHour = period.StartTime.ToLocalTime().Hour;
-                  if (period.EndTime.ToLocalTime().Hour >= maxHour)
-                     maxHour = period.EndTime.ToLocalTime().Hour + 1;
-               }
+            foreach (List<TimeBlock> periods in projectPeriods)
+               _organizePeriod(periods);
          }
 
          // Figure out the time ranges
@@ -518,20 +554,26 @@ namespace Tildetool.Time
          ScheduleGrid.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
          if (CurDailyMode == DailyMode.Today)
          {
-            WeeklySchedule[] schedule = TimeManager.Instance.ScheduleByDayOfWeek[(int)DailyDay.DayOfWeek];
+            DateTime dayBeginUtc = dayBegin.ToUniversalTime();
+            List<TimeBlock> block = new List<TimeBlock>();
+            block.AddRange(TimeManager.Instance.ScheduleByDayOfWeek[(int)DailyDay.DayOfWeek].Select(s => TimeBlock.FromWeeklySchedule(s, dayBeginUtc)));
+            block.AddRange(TimeManager.Instance.QueryTimeEvent(dayBeginUtc, dayBeginUtc.AddDays(1)).Select(s => TimeBlock.FromTimeEvent(s)));
+            _organizePeriod(block);
 
             ScheduleGrid.ColumnDefinitions.Clear();
-            float lastHour = minHour;
-            for (int i = 0; i < schedule.Length; i++)
+            double lastHour = minHour;
+            for (int i = 0; i < block.Count; i++)
             {
-               ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(schedule[i].HourBegin - lastHour, GridUnitType.Star) });
-               ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(schedule[i].HourEnd - schedule[i].HourBegin, GridUnitType.Star) });
-               lastHour = schedule[i].HourEnd;
+               double hourBegin = (block[i].StartTime - dayBeginUtc).TotalHours;
+               double hourEnd = (block[i].EndTime - dayBeginUtc).TotalHours;
+               ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(hourBegin - lastHour, 0), GridUnitType.Star) });
+               ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
+               lastHour = hourEnd;
             }
             ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(maxHour - lastHour, GridUnitType.Star) });
 
-            _populate(ScheduleGrid, templateSchedule, schedule.Length);
-            for (int i = 0; i < schedule.Length; i++)
+            _populate(ScheduleGrid, templateSchedule, block.Count);
+            for (int i = 0; i < block.Count; i++)
             {
                ContentControl content = ScheduleGrid.Children[i] as ContentControl;
                content.ApplyTemplate();
@@ -542,7 +584,9 @@ namespace Tildetool.Time
                TextBlock scheduleTextCtrl = grid.FindElementByName<TextBlock>("ScheduleText");
 
                Grid.SetColumn(content, (i * 2) + 1);
-               scheduleTextCtrl.Text = schedule[i].Name;
+               grid.Background = new SolidColorBrush(block[i].Color.Alpha(0x20));
+               scheduleTextCtrl.Foreground = new SolidColorBrush(block[i].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
+               scheduleTextCtrl.Text = block[i].Name;
             }
          }
 
@@ -554,8 +598,9 @@ namespace Tildetool.Time
             DateTime thisDateBeginLocal = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).AddHours(minHour);
             DateTime thisDateBegin = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).ToUniversalTime().AddHours(minHour);
             DateTime thisDateEnd = thisDateBegin.AddHours(maxHour - minHour);
+            bool today = weekBegin.AddDays(i).Date.CompareTo(dayBegin.Date) == 0;
 
-            List<TimePeriod> periods = projectPeriods[i];
+            List<TimeBlock> periods = projectPeriods[i];
             int totalMinutes = (int)periods.Sum(p => (p.EndTime - p.StartTime).TotalMinutes);
             sumMinutes += totalMinutes;
 
@@ -587,7 +632,7 @@ namespace Tildetool.Time
                }
 
                // Update the text
-               if (CurDailyMode == DailyMode.Today && GuiToProject[i] == InitialProject)
+               if ((CurDailyMode == DailyMode.Today && GuiToProject[i] == InitialProject) || (CurDailyMode != DailyMode.Today && today))
                {
                   grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x40284A20));
                   headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
@@ -607,7 +652,7 @@ namespace Tildetool.Time
             }
 
             // 
-            List<TimePeriod> periodsFilter = periods.Where(p => (p.EndTime - p.StartTime).TotalMinutes >= 10.0f || TimeManager.Instance.CurrentTimePeriod == p.DbId).ToList();
+            List<TimeBlock> periodsFilter = periods.Where(p => (p.EndTime - p.StartTime).TotalMinutes >= 10.0f || TimeManager.Instance.CurrentTimePeriod == p.DbId).ToList();
             _populate(cellParent, templateCell, periodsFilter.Count);
 
             DateTime lastDate = thisDateBegin;
@@ -627,7 +672,7 @@ namespace Tildetool.Time
                TextBlock cellTimeM = grid.FindElementByName<TextBlock>("CellTimeM");
                Grid activeGlow = grid.FindElementByName<Grid>("ActiveGlow");
 
-               grid.Background = new SolidColorBrush(Extension.FromArgb(CurDailyMode == DailyMode.WeekSchedule ? 0xFF28310F : 0xFF143518));
+               grid.Background = new SolidColorBrush(periodsFilter[o].Color);
                if (CurDailyMode == DailyMode.WeekSchedule)
                {
                   activeGlow.Visibility = Visibility.Collapsed;
@@ -635,7 +680,8 @@ namespace Tildetool.Time
                   startTime.Visibility = Visibility.Collapsed;
                   endTime.Visibility = Visibility.Collapsed;
                   cellTimeM.Visibility = Visibility.Visible;
-                  cellTimeM.Text = periodsFilter[o].Ident;
+                  cellTimeM.Foreground = new SolidColorBrush(periodsFilter[o].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
+                  cellTimeM.Text = periodsFilter[o].Name;
                }
                else
                {
@@ -645,6 +691,7 @@ namespace Tildetool.Time
                   double periodMinutes = (periodsFilter[o].EndTime - periodsFilter[o].StartTime).TotalMinutes;
                   cellTimeH.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
                   cellTimeM.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
+                  cellTimeM.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
                   cellTimeH.Text = ((int)periodMinutes / 60).ToString();
                   cellTimeM.Text = $"{((int)periodMinutes % 60):D2}";
 

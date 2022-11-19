@@ -22,6 +22,16 @@ namespace Tildetool.Time
       public float HourBegin { get; }
       public float HourEnd { get; }
    }
+   public class TimeEvent : ISchedule
+   {
+      public string Description;
+      public DateTime StartTime;
+      public DateTime EndTime;
+
+      public string Name => Description;
+      public float HourBegin => (float)StartTime.ToLocalTime().TimeOfDay.TotalHours;
+      public float HourEnd => (float)EndTime.ToLocalTime().TimeOfDay.TotalHours;
+   }
 
    public class TimeManager
    {
@@ -274,6 +284,12 @@ namespace Tildetool.Time
          command.ExecuteNonQuery();
          command.Dispose();
 
+         // Create the event table.
+         command = _Sqlite.CreateCommand();
+         command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
+         command.ExecuteNonQuery();
+         command.Dispose();
+
          //
          RefreshTodayTime();
       }
@@ -371,6 +387,27 @@ namespace Tildetool.Time
                DateTime startTime = reader.GetDateTime(1);
                DateTime endTime = reader.GetDateTime(2);
                result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime });
+            }
+         command.Dispose();
+
+         return result;
+      }
+
+      public List<TimeEvent> QueryTimeEvent(DateTime minTimeLocal, DateTime maxTimeLocal)
+      {
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "SELECT description,start_time,end_time FROM time_event WHERE end_time >= $minTime AND start_time <= $maxTime;";
+         command.Parameters.AddWithValue("$minTime", minTimeLocal);
+         command.Parameters.AddWithValue("$maxTime", maxTimeLocal);
+
+         List<TimeEvent> result = new List<TimeEvent>();
+         using (var reader = command.ExecuteReader())
+            while (reader.Read())
+            {
+               string desc = reader.GetString(0);
+               DateTime startTime = reader.GetDateTime(1).ToUniversalTime();
+               DateTime endTime = reader.GetDateTime(2).ToUniversalTime();
+               result.Add(new TimeEvent { Description = desc, StartTime = startTime, EndTime = endTime });
             }
          command.Dispose();
 

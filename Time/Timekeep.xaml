@@ -32,7 +32,7 @@
         </DataTemplate>
         <DataTemplate x:Key="ScheduleEntry">
             <Grid Background="#20A8611F" Margin="1,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <TextBlock x:Name="ScheduleText" Text="Sketch" Margin="0,0,0,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFAFC52D" FontSize="12"/>
+                <TextBlock x:Name="ScheduleText" Text="Sketch" Margin="0,0,0,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFA8611F" FontSize="12"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="DailyCell">
@@ -80,7 +80,7 @@
                 <Grid x:Name="HeaderRow" Margin="160,0,60,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                     <ContentControl ContentTemplate="{StaticResource DailyHeaderCell}"></ContentControl>
                 </Grid>
-                <Grid x:Name="DailyDividers" Margin="160,20,60,27" HorizontalAlignment="Stretch">
+                <Grid x:Name="DailyDividers" Margin="160,16,60,27" HorizontalAlignment="Stretch">
                     <ContentControl ContentTemplate="{StaticResource DailyDivider}"></ContentControl>
                 </Grid>
                 <Grid x:Name="ScheduleGrid" Margin="160,20,60,0" HorizontalAlignment="Stretch">

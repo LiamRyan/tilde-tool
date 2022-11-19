@@ -78,5 +78,16 @@ namespace Tildetool
       {
          return Color.FromRgb((byte)((rgb >> 16) & 0xFF), (byte)((rgb >> 8) & 0xFF), (byte)(rgb & 0xFF));
       }
+      public static Color Alpha(this Color color, byte alpha)
+      {
+         return Color.FromArgb(alpha, color.R, color.G, color.B);
+      }
+      public static Color Lerp(this Color colorA, Color colorB, float pct)
+      {
+         return Color.FromArgb((byte)( ((1.0f - pct) * (float)colorA.A) + (pct * (float)colorB.A) ),
+                               (byte)( ((1.0f - pct) * (float)colorA.R) + (pct * (float)colorB.R) ),
+                               (byte)( ((1.0f - pct) * (float)colorA.G) + (pct * (float)colorB.G) ),
+                               (byte)( ((1.0f - pct) * (float)colorA.B) + (pct * (float)colorB.B) ));
+      }
    }
 }
