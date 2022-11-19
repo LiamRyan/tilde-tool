@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using System.Diagnostics;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -587,11 +588,14 @@ namespace Tildetool
       {
          public bool Done = false;
 
+         Dispatcher Dispatcher;
          CommandSpawn _Spawn;
          Process? _Process;
          System.Timers.Timer? _Timer;
-         public CommandRun(CommandSpawn spawn)
+         bool _DidSpawn = false;
+         public CommandRun(CommandSpawn spawn, Dispatcher dispatcher)
          {
+            Dispatcher = dispatcher;
             _Spawn = spawn;
             if (spawn.PauseSec > 0)
             {
@@ -654,12 +658,18 @@ namespace Tildetool
                   else
                      startInfo.Arguments = spawn.Arguments;
                   startInfo.WorkingDirectory = spawn.WorkingDirectory;
+
                   process.StartInfo = startInfo;
                   process.Start();
+
                   if (wantSpawn)
                      _Process = process;
                   else
                      process.Dispose();
+                  _DidSpawn = true;
+
+                  if (wantSpawn)
+                     Dispatcher.Invoke(Reposition);
                }
                catch (Exception ex)
                {
@@ -682,6 +692,9 @@ namespace Tildetool
          }
          void Reposition()
          {
+            if (!_DidSpawn)
+               return;
+
             _Timer.Stop();
 
             // Make sure the process is valid.
@@ -690,12 +703,16 @@ namespace Tildetool
             {
                isValid = !_Process.HasExited;
                if (!isValid)
-                  App.WriteLog("App exited before move: " + _Spawn.FileName);
+               {
+                  App.WriteLog($"App exited before move: {_Spawn.FileName}");
+                  MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exited before move: {_Spawn.FileName}");
+               }
             }
             catch (Exception e)
             {
-               App.WriteLog("App exception");
+               App.WriteLog("Process exception");
                App.WriteLog(e.ToString());
+               MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nProcess exception: {e.ToString()}");
                isValid = false;
             }
 
@@ -707,62 +724,71 @@ namespace Tildetool
             }
             else if (_Process.MainWindowHandle != IntPtr.Zero)
             {
-               // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
-               if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null || !string.IsNullOrEmpty(_Spawn.VirtualDesktop))
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWNORMAL);
-
-               // Switch monitors.
-               int baseX = 0, baseY = 0;
-               if (_Spawn.Monitor != null)
+               try
                {
-                  // Translate out of its current screen space.
-                  RECT rect;
-                  GetWindowRect(_Process.MainWindowHandle, out rect);
-                  System.Windows.Forms.Screen curScreen = null;
-                  try
+                  // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
+                  if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null || !string.IsNullOrEmpty(_Spawn.VirtualDesktop))
+                     ShowWindow(_Process.MainWindowHandle, SW_SHOWNORMAL);
+
+                  // Switch monitors.
+                  int baseX = 0, baseY = 0;
+                  if (_Spawn.Monitor != null)
                   {
-                     curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
-                  }
-                  catch (Exception ex) { }
-                  if (curScreen != null)
-                  {
-                     baseX = rect.left - curScreen.WorkingArea.X;
-                     baseY = rect.top - curScreen.WorkingArea.Y;
+                     // Translate out of its current screen space.
+                     RECT rect;
+                     GetWindowRect(_Process.MainWindowHandle, out rect);
+                     System.Windows.Forms.Screen curScreen = null;
+                     try
+                     {
+                        curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
+                     }
+                     catch (Exception ex) { }
+                     if (curScreen != null)
+                     {
+                        baseX = rect.left - curScreen.WorkingArea.X;
+                        baseY = rect.top - curScreen.WorkingArea.Y;
+                     }
+
+                     // Translate into the new screen space.
+                     System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[_Spawn.Monitor.Value];
+                     baseX += targetScreen.WorkingArea.X;
+                     baseY += targetScreen.WorkingArea.Y;
                   }
 
-                  // Translate into the new screen space.
-                  System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[_Spawn.Monitor.Value];
-                  baseX += targetScreen.WorkingArea.X;
-                  baseY += targetScreen.WorkingArea.Y;
+                  // Move and resize.
+                  int moveBit = ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null) ? 0 : SWP_NOMOVE;
+                  int sizeBit = (_Spawn.WindowW != null && _Spawn.WindowH != null) ? 0 : SWP_NOSIZE;
+                  if (moveBit == 0 || sizeBit == 0)
+                  {
+                     int wx = ((_Spawn.WindowX != null) ? _Spawn.WindowX.Value : 0) + baseX;
+                     int wy = ((_Spawn.WindowY != null) ? _Spawn.WindowY.Value : 0) + baseY;
+                     int ww = (_Spawn.WindowW != null) ? _Spawn.WindowW.Value : 0;
+                     int wh = (_Spawn.WindowH != null) ? _Spawn.WindowH.Value : 0;
+                     SetWindowPos(_Process.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+                  }
+
+                  // Maximize and minimize.
+                  if (_Spawn.Maximize)
+                     ShowWindow(_Process.MainWindowHandle, SW_SHOWMAXIMIZED);
+                  else if (_Spawn.Minimize)
+                     ShowWindow(_Process.MainWindowHandle, SW_SHOWMINIMIZED);
+
+                  // Switch virtual desktop.
+                  if (!string.IsNullOrEmpty(_Spawn.VirtualDesktop))
+                  {
+                     int desktopIndex = VirtualDesktop.SearchDesktop(_Spawn.VirtualDesktop);
+                     if (desktopIndex != -1)
+                     {
+                        VirtualDesktop desktop = VirtualDesktop.FromIndex(desktopIndex);
+                        desktop.MoveWindow(_Process.MainWindowHandle);
+                     }
+                  }
                }
-
-               // Move and resize.
-               int moveBit = ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null) ? 0 : SWP_NOMOVE;
-               int sizeBit = (_Spawn.WindowW != null && _Spawn.WindowH != null) ? 0 : SWP_NOSIZE;
-               if (moveBit == 0 || sizeBit == 0)
+               catch (Exception e)
                {
-                  int wx = ((_Spawn.WindowX != null) ? _Spawn.WindowX.Value : 0) + baseX;
-                  int wy = ((_Spawn.WindowY != null) ? _Spawn.WindowY.Value : 0) + baseY;
-                  int ww = (_Spawn.WindowW != null) ? _Spawn.WindowW.Value : 0;
-                  int wh = (_Spawn.WindowH != null) ? _Spawn.WindowH.Value : 0;
-                  SetWindowPos(_Process.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
-               }
-
-               // Maximize and minimize.
-               if (_Spawn.Maximize)
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMAXIMIZED);
-               else if (_Spawn.Minimize)
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMINIMIZED);
-
-               // Switch virtual desktop.
-               if (!string.IsNullOrEmpty(_Spawn.VirtualDesktop))
-               {
-                  int desktopIndex = VirtualDesktop.SearchDesktop(_Spawn.VirtualDesktop);
-                  if (desktopIndex != -1)
-                  {
-                     VirtualDesktop desktop = VirtualDesktop.FromIndex(desktopIndex);
-                     desktop.MoveWindow(_Process.MainWindowHandle);
-                  }
+                  App.WriteLog("App exception");
+                  App.WriteLog(e.ToString());
+                  MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exception: {e.ToString()}");
                }
 
                _Process.Dispose();
@@ -788,7 +814,7 @@ namespace Tildetool
          {
             foreach (CommandSpawn spawn in command.Spawns)
             {
-               CommandRun run = new CommandRun(spawn);
+               CommandRun run = new CommandRun(spawn, Dispatcher);
                if (!run.Done)
                   _RunList.Add(run);
 
