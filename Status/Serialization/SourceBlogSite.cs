@@ -27,6 +27,7 @@ namespace Tildetool.Status.Serialization
       public string[] OpenArgumentList { get; set; }
       public SourceBlogLookup DateLookup { get; set; }
       public string DateFormat { get; set; }
+      public string? DateTimeZone { get; set; }
       public SourceBlogLookup TitleLookup { get; set; }
    }
 }

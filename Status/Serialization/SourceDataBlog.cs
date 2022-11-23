@@ -17,7 +17,7 @@ namespace Tildetool.Status.Serialization
          if (!parent.Sites.TryGetValue(Site, out SourceBlogSite site))
             return null;
          SourceBlogUrl[] siteUrl = string.IsNullOrEmpty(site.URL) ? site.UrlLookup : new SourceBlogUrl[] { new SourceBlogUrl { URL = site.URL } };
-         return new SourceBlog(site.Tag, Title, site.Site, siteUrl, site.OpenToURL, site.OpenCommand, site.OpenArgumentList, site.DateLookup, site.DateFormat, site.TitleLookup, Reference);
+         return new SourceBlog(site.Tag, Title, site.Site, siteUrl, site.OpenToURL, site.OpenCommand, site.OpenArgumentList, site.DateLookup, site.DateFormat, site.DateTimeZone, site.TitleLookup, Reference);
       }
    }
 }

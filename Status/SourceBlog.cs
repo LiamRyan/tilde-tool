@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -31,9 +33,10 @@ namespace Tildetool.Status
       protected string[] OpenArgumentList;
       protected SourceBlogLookup DateLookup;
       protected string DateFormat;
+      protected TimeZoneInfo? DateTimeZone;
       protected SourceBlogLookup TitleLookup;
       protected string Reference;
-      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string? openToUrl, string? openCommand, string[] openArgumentList, SourceBlogLookup dateLookup, string dateFormat, SourceBlogLookup titleLookup, string reference)
+      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string? openToUrl, string? openCommand, string[] openArgumentList, SourceBlogLookup dateLookup, string dateFormat, string? dateTimeZone, SourceBlogLookup titleLookup, string reference)
          : base(title, name, typeof(CacheStruct))
       {
          Reference = reference;
@@ -44,6 +47,7 @@ namespace Tildetool.Status
          OpenArgumentList = openArgumentList?.Select(arg => arg.Replace("@REFERENCE@", Reference))?.ToArray();
          DateLookup = dateLookup;
          DateFormat = dateFormat;
+         DateTimeZone = !string.IsNullOrEmpty(dateTimeZone) ? TimeZoneInfo.FindSystemTimeZoneById(dateTimeZone) : null;
          TitleLookup = titleLookup;
       }
 
@@ -183,6 +187,10 @@ namespace Tildetool.Status
                      cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
                   else
                      cache.Date = DateTime.ParseExact(infoTimeStr, DateFormat, CultureInfo.CreateSpecificCulture("en-us"));
+
+                  // convert to local time
+                  if (DateTimeZone != null)
+                     cache.Date = TimeZoneInfo.ConvertTimeToUtc(cache.Date, DateTimeZone).ToLocalTime();
                }
                else
                   isValid = false;
