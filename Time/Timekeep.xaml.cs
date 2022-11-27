@@ -200,21 +200,6 @@ namespace Tildetool.Time
          if (project != null)
             _AnimateCommand(GuiToProject.IndexOf(project));
 
-         // Update the coloring of the text.
-         for (int i = 0; i < GuiToProject.Count; i++)
-         {
-            Grid area = ProjectGui[i].FindElementByName<Grid>("Area");
-            TextBlock hotkey = ProjectGui[i].FindElementByName<TextBlock>("Hotkey");
-            TextBlock text = ProjectGui[i].FindElementByName<TextBlock>("Text");
-            bool isCurrent = GuiToProject[i] == TimeManager.Instance.CurrentProject;
-            area.Height = isCurrent ? 54 : 40;
-            hotkey.Foreground = isCurrent ? (Resources["ColorTextFore"] as SolidColorBrush) : (Resources["ColorTextBack"] as SolidColorBrush);
-            text.Foreground = isCurrent ? (Resources["ColorTextFore"] as SolidColorBrush) : (Resources["ColorTextBack"] as SolidColorBrush);
-            text.FontSize = isCurrent ? 20 : 12;
-         }
-         CurrentTimeH.Foreground = Resources["ColorTextBack"] as SolidColorBrush;
-         CurrentTimeM.Foreground = Resources["ColorTextBack"] as SolidColorBrush;
-
          // Turn off a scheduled cancel since we'll finish on our own soon.
          if (_CancelTimer != null)
          {
@@ -224,37 +209,114 @@ namespace Tildetool.Time
          }
 
          //
-         /*
+         if (_StoryboardRefresh != null)
+         {
+            _StoryboardRefresh.Stop(this);
+            _StoryboardRefresh.Remove(this);
+            _StoryboardRefresh = null;
+         }
+         _StoryboardRefresh = new Storyboard();
+
+         // Update the coloring of the text.
+         for (int i = 0; i < GuiToProject.Count; i++)
+         {
+            Grid area = ProjectGui[i].FindElementByName<Grid>("Area");
+            TextBlock hotkey = ProjectGui[i].FindElementByName<TextBlock>("Hotkey");
+            TextBlock text = ProjectGui[i].FindElementByName<TextBlock>("Text");
+            bool isCurrent = GuiToProject[i] == TimeManager.Instance.CurrentProject;
+            {
+               var animation = new DoubleAnimation();
+               animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+               animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+               animation.To = isCurrent ? 54 : 40;
+               _StoryboardRefresh.Children.Add(animation);
+               Storyboard.SetTarget(animation, area);
+               Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+            }
+            {
+               var animation = new ColorAnimation();
+               animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+               hotkey.Foreground = new SolidColorBrush((hotkey.Foreground as SolidColorBrush).Color);
+               animation.To = isCurrent ? (Resources["ColorTextFore"] as SolidColorBrush).Color : (Resources["ColorTextBack"] as SolidColorBrush).Color;
+               _StoryboardRefresh.Children.Add(animation);
+               Storyboard.SetTarget(animation, hotkey);
+               Storyboard.SetTargetProperty(animation, new PropertyPath("Foreground.Color"));
+            }
+            {
+               var animation = new ColorAnimation();
+               animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
+               text.Foreground = new SolidColorBrush((text.Foreground as SolidColorBrush).Color);
+               animation.To = isCurrent ? (Resources["ColorTextFore"] as SolidColorBrush).Color : (Resources["ColorTextBack"] as SolidColorBrush).Color;
+               _StoryboardRefresh.Children.Add(animation);
+               Storyboard.SetTarget(animation, text);
+               Storyboard.SetTargetProperty(animation, new PropertyPath("Foreground.Color"));
+            }
+            {
+               var animation = new DoubleAnimation();
+               animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+               animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+               animation.To = isCurrent ? 20 : 12;
+               _StoryboardRefresh.Children.Add(animation);
+               Storyboard.SetTarget(animation, text);
+               Storyboard.SetTargetProperty(animation, new PropertyPath(TextBlock.FontSizeProperty));
+            }
+         }
+         CurrentTimeH.Foreground = Resources["ColorTextBack"] as SolidColorBrush;
+         CurrentTimeM.Foreground = Resources["ColorTextBack"] as SolidColorBrush;
+
+         _StoryboardRefresh.Completed += (sender, e) => { if (_StoryboardRefresh != null) _StoryboardRefresh.Remove(this); _StoryboardRefresh = null; };
+         _StoryboardRefresh.Begin(this, HandoffBehavior.SnapshotAndReplace);
+
+         //
          if (_StoryboardRefresh2 != null)
          {
             _StoryboardRefresh2.Stop(this);
             _StoryboardRefresh2.Remove(this);
+            _StoryboardRefresh2 = null;
          }
-         _StoryboardRefresh2 = new Storyboard();
-
-         double prevWidth = ProgressBox.ActualWidth;
-         ProgressBox.UpdateLayout();
-
-         var flashAnimation = new DoubleAnimationUsingKeyFrames();
-         flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
-         if (project == null)
+         if (CurDailyMode == DailyMode.Today)
          {
-            flashAnimation.KeyFrames.Add(new DiscreteDoubleKeyFrame(prevWidth, KeyTime.FromPercent(0.0)));
-            flashAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0f, KeyTime.FromPercent(1.0), new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut }));
-         }
-         else
-         {
-            flashAnimation.KeyFrames.Add(new DiscreteDoubleKeyFrame(prevWidth, KeyTime.FromPercent(0.0)));
-            flashAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(80, KeyTime.FromPercent(1.0), new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut }));
-            flashAnimation.KeyFrames.Add(new DiscreteDoubleKeyFrame(double.PositiveInfinity, KeyTime.FromPercent(1.0)));
-         }
-         _StoryboardRefresh2.Children.Add(flashAnimation);
-         Storyboard.SetTarget(flashAnimation, ProgressBox);
-         Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.MaxWidthProperty));
+            _StoryboardRefresh2 = new Storyboard();
 
-         _StoryboardRefresh2.Completed += (sender, e) => { if (_StoryboardRefresh2 != null) _StoryboardRefresh2.Remove(this); _StoryboardRefresh2 = null; };
-         _StoryboardRefresh2.Begin(this, HandoffBehavior.SnapshotAndReplace);
-         */
+            for (int i = 0; i < TimeManager.Instance.Data.Length; i++)
+            {
+               ContentControl content = DailyRows.Children[i] as ContentControl;
+               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+               TextBlock headerName = grid.FindElementByName<TextBlock>("HeaderName");
+               TextBlock headerDate = grid.FindElementByName<TextBlock>("HeaderDate");
+
+               bool isCurrent = TimeManager.Instance.Data[i] == TimeManager.Instance.CurrentProject;
+               {
+                  var animation = new ColorAnimation();
+                  animation.Duration = new Duration(TimeSpan.FromSeconds(isCurrent ? 0.2f : 0.33f));
+                  animation.To = Extension.FromArgb((uint)(isCurrent ? 0x404A6030 : ((i % 2) == 0 ? 0x00042508 : 0x38042508)));
+                  _StoryboardRefresh2.Children.Add(animation);
+                  Storyboard.SetTarget(animation, grid);
+                  Storyboard.SetTargetProperty(animation, new PropertyPath("Background.Color"));
+               }
+               {
+                  var animation = new ColorAnimation();
+                  animation.Duration = new Duration(TimeSpan.FromSeconds(isCurrent ? 0.2f : 0.33f));
+                  animation.To = Extension.FromArgb(isCurrent ? 0xFFC3F1AF : 0xFF449637);
+                  _StoryboardRefresh2.Children.Add(animation);
+                  Storyboard.SetTarget(animation, headerName);
+                  Storyboard.SetTargetProperty(animation, new PropertyPath("Foreground.Color"));
+               }
+               {
+                  var animation = new ColorAnimation();
+                  animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+                  animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+                  animation.To = Extension.FromArgb(isCurrent ? 0xFFC3F1AF : 0xFF449637);
+                  _StoryboardRefresh2.Children.Add(animation);
+                  Storyboard.SetTarget(animation, headerDate);
+                  Storyboard.SetTargetProperty(animation, new PropertyPath("Foreground.Color"));
+               }
+            }
+
+            _StoryboardRefresh2.Completed += (sender, e) => { if (_StoryboardRefresh2 != null) _StoryboardRefresh2.Remove(this); _StoryboardRefresh2 = null; };
+            _StoryboardRefresh2.Begin(this, HandoffBehavior.SnapshotAndReplace);
+         }
 
          // Stop the timer.
          if (_StoryboardArc != null)
@@ -296,7 +358,6 @@ namespace Tildetool.Time
       Project? InitialProject;
       List<Project> GuiToProject;
       List<Panel> ProjectGui;
-      Dictionary<Project,int> ProjectToGui;
       private Storyboard? _StoryboardRefresh;
       void RebuildList()
       {
@@ -305,8 +366,6 @@ namespace Tildetool.Time
          GuiToProject.Sort((a, b) => -a.TimeTodaySec.CompareTo(b.TimeTodaySec));
          if (InitialProject != null)
             GuiToProject.Insert(0, InitialProject);
-
-         //ProjectToGui = new Dictionary<Project, int>(GuiToProject.Count);
 
          // Add or remove to get the right quantity.
          DataTemplate? template = Resources["CommandOption"] as DataTemplate;
@@ -329,13 +388,6 @@ namespace Tildetool.Time
          int postCount = (GuiToProject.Count - 1) - preCount;
          _populate(GridPre, preCount);
          _populate(GridPost, postCount);
-
-         //if (_StoryboardRefresh != null)
-         //{
-         //   _StoryboardRefresh.Stop(this);
-         //   _StoryboardRefresh.Remove(this);
-         //}
-         //_StoryboardRefresh = new Storyboard();
 
          // Add the data
          ProjectGui = new List<Panel>(GuiToProject.Count);
@@ -377,10 +429,6 @@ namespace Tildetool.Time
             text.Foreground = isCurrent ? (Resources["ColorTextFore"] as SolidColorBrush) : (Resources["ColorTextBack"] as SolidColorBrush);
             text.FontSize = isCurrent ? 20 : 12;
          }
-
-         //
-         //_StoryboardRefresh.Completed += (sender, e) => { if (_StoryboardRefresh != null) _StoryboardRefresh.Remove(this); _StoryboardRefresh = null; };
-         //_StoryboardRefresh.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
       enum DailyMode
@@ -421,6 +469,13 @@ namespace Tildetool.Time
       Project DailyFocus;
       void RefreshDaily()
       {
+         if (_StoryboardRefresh2 != null)
+         {
+            _StoryboardRefresh2.Stop(this);
+            _StoryboardRefresh2.Remove(this);
+            _StoryboardRefresh2 = null;
+         }
+
          if (DailyDay > DateTime.Now)
             DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
 
@@ -514,8 +569,8 @@ namespace Tildetool.Time
             {
                DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
                DateTime todayE = todayS.AddDays(1);
-               for (int i = 0; i < GuiToProject.Count; i++)
-                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(GuiToProject[i], todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
+               for (int i = 0; i < TimeManager.Instance.Data.Length; i++)
+                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(TimeManager.Instance.Data[i], todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
             }
             else
                for (int i = 0; i < 7; i++)
@@ -675,7 +730,7 @@ namespace Tildetool.Time
                }
 
                // Update the text
-               if ((CurDailyMode == DailyMode.Today && GuiToProject[i] == InitialProject) || (CurDailyMode != DailyMode.Today && today))
+               if ((CurDailyMode == DailyMode.Today && TimeManager.Instance.Data[i] == InitialProject) || (CurDailyMode != DailyMode.Today && today))
                {
                   grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
                   headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
@@ -694,7 +749,7 @@ namespace Tildetool.Time
                   headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
                }
 
-               headerName.Text = CurDailyMode != DailyMode.Today ? thisDateBegin.ToString("ddd") : GuiToProject[i].Name;
+               headerName.Text = CurDailyMode != DailyMode.Today ? thisDateBegin.ToString("ddd") : TimeManager.Instance.Data[i].Name;
                headerDate.Visibility = CurDailyMode != DailyMode.Today ? Visibility.Visible : Visibility.Collapsed;
                headerDate.Text = thisDateBegin.ToString("yy/MM/dd");
 
