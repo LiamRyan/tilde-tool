@@ -371,6 +371,28 @@ namespace Tildetool.Time
          command.Dispose();
       }
 
+      public List<TimePeriod> QueryTimePeriod(DateTime minTimeUtc, DateTime maxTimeUtc)
+      {
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
+         command.Parameters.AddWithValue("$minTime", minTimeUtc);
+         command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
+
+         List<TimePeriod> result = new List<TimePeriod>();
+         using (var reader = command.ExecuteReader())
+            while (reader.Read())
+            {
+               long dbid = reader.GetInt64(0);
+               string projectIdent = reader.GetString(1);
+               DateTime startTime = reader.GetDateTime(2);
+               DateTime endTime = reader.GetDateTime(3);
+               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime });
+            }
+         command.Dispose();
+
+         return result;
+      }
+
       public List<TimePeriod> QueryTimePeriod(Project project, DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();

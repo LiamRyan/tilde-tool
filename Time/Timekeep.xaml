@@ -67,7 +67,7 @@
                     <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                 </StackPanel>
                 <Grid x:Name="RowNowGrid" Margin="160,0,60,0">
-                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FF66C657" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
+                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FFABE2A3" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
                 </Grid>
             </Grid>
         </DataTemplate>
@@ -97,7 +97,7 @@
                     </StackPanel>
                 </StackPanel>
                 <Grid x:Name="NowDividerGrid" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                    <Grid Background="#FF66C657" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
+                    <Grid Background="#FFABE2A3" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Column="0"/>
                 </Grid>
             </Grid>
             <Grid x:Name="GlowDaily2" Margin="0 0 0 0" HorizontalAlignment="Left" Width="2">
