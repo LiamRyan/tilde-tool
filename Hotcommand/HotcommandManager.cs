@@ -90,18 +90,21 @@ namespace Tildetool.Hotcommand
       }
 
       Timer? WatcherTimer = null;
+      int WatcherTryCount = 0;
       private void WatcherEvent(System.Func<bool> callback)
       {
          if (WatcherTimer != null)
             return;
          WatcherTimer = new Timer();
          WatcherTimer.Interval = 100;
+         WatcherTryCount = 0;
          WatcherTimer.Elapsed += (s, e) =>
          {
             WatcherTimer.Stop();
             bool result = callback();
             if (!result)
             {
+               WatcherTryCount++;
                WatcherTimer.Interval = 1000;
                WatcherTimer.Start();
             }
@@ -158,7 +161,8 @@ namespace Tildetool.Hotcommand
             }
             catch (Exception ex)
             {
-               MessageBox.Show(ex.ToString());
+               if (WatcherTryCount > 0)
+                  MessageBox.Show(ex.ToString());
                App.WriteLog(ex.Message);
             }
          }

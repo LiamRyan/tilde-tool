@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -126,38 +127,65 @@ namespace Tildetool.Hotcommand
 
          _Timer.Stop();
 
-         // Make sure the process is valid.
-         bool isValid = false;
-         try
+         // Our first step is to identify the window that will get spawned.  If
+         //  we are told a specific window name to search for, wait for that.
+         IntPtr windowHandle = IntPtr.Zero;
+         bool isDone = false;
+         if (!string.IsNullOrEmpty(_Spawn.WindowName))
          {
-            isValid = !_Process.HasExited;
-            if (!isValid)
+            bool EnumWindowsProc(IntPtr hWnd, int lParam)
             {
-               App.WriteLog($"App exited before move: {_Spawn.FileName}");
-               MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exited before move: {_Spawn.FileName}");
+               StringBuilder windowText = new StringBuilder(MAXTITLE);
+               int titleLength = GetWindowText(hWnd, windowText, windowText.Capacity + 1);
+               windowText.Length = titleLength;
+               string title = windowText.ToString();
+
+               if (!string.IsNullOrEmpty(title) && IsWindowVisible(hWnd))
+               {
+                  if (title.ToUpper().IndexOf(_Spawn.WindowName.ToUpper()) >= 0)
+                  {
+                     windowHandle = hWnd;
+                     return false;
+                  }
+               }
+               return true;
             }
+            EnumDelegate enumfunc = new EnumDelegate(EnumWindowsProc);
+            EnumDesktopWindows(IntPtr.Zero, enumfunc, IntPtr.Zero);
          }
-         catch (Exception e)
+         // Otherwise, we wait until the process itself spawns a window handle.
+         else
          {
-            App.WriteLog("Process exception");
-            App.WriteLog(e.ToString());
-            MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nProcess exception: {e.ToString()}");
-            isValid = false;
+            // Try to grab the window handle from the process.
+            try
+            {
+               isDone = _Process.HasExited;
+               if (!isDone)
+                  windowHandle = _Process.MainWindowHandle;
+               else
+               {
+                  App.WriteLog($"App exited before move: {_Spawn.FileName}");
+                  MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exited before move: {_Spawn.FileName}");
+               }
+            }
+            catch (Exception e)
+            {
+               // exception, show an error and give up.
+               App.WriteLog("Process exception");
+               App.WriteLog(e.ToString());
+               MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nProcess exception: {e.ToString()}");
+               isDone = true;
+            }
          }
 
          // Alright, handle it.
-         if (!isValid)
-         {
-            _Process.Dispose();
-            _Process = null;
-         }
-         else if (_Process.MainWindowHandle != IntPtr.Zero)
+         if (!isDone && windowHandle != IntPtr.Zero)
          {
             try
             {
                // If we're going to move it, and it's minimized or maximized, go back to normal so movement works.
                if ((_Spawn.WindowX != null && _Spawn.WindowY != null) || _Spawn.Monitor != null || !string.IsNullOrEmpty(_Spawn.VirtualDesktop))
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWNORMAL);
+                  ShowWindow(windowHandle, SW_SHOWNORMAL);
 
                // Switch monitors.
                int baseX = 0, baseY = 0;
@@ -165,7 +193,7 @@ namespace Tildetool.Hotcommand
                {
                   // Translate out of its current screen space.
                   RECT rect;
-                  GetWindowRect(_Process.MainWindowHandle, out rect);
+                  GetWindowRect(windowHandle, out rect);
                   System.Windows.Forms.Screen curScreen = null;
                   try
                   {
@@ -174,8 +202,10 @@ namespace Tildetool.Hotcommand
                   catch (Exception ex) { }
                   if (curScreen != null)
                   {
-                     baseX = rect.left - curScreen.WorkingArea.X;
-                     baseY = rect.top - curScreen.WorkingArea.Y;
+                     if (_Spawn.WindowX == null)
+                        baseX = rect.left - curScreen.WorkingArea.X;
+                     if (_Spawn.WindowY == null)
+                        baseY = rect.top - curScreen.WorkingArea.Y;
                   }
 
                   // Translate into the new screen space.
@@ -193,14 +223,14 @@ namespace Tildetool.Hotcommand
                   int wy = ((_Spawn.WindowY != null) ? _Spawn.WindowY.Value : 0) + baseY;
                   int ww = (_Spawn.WindowW != null) ? _Spawn.WindowW.Value : 0;
                   int wh = (_Spawn.WindowH != null) ? _Spawn.WindowH.Value : 0;
-                  SetWindowPos(_Process.MainWindowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
+                  SetWindowPos(windowHandle, IntPtr.Zero, wx, wy, ww, wh, SWP_NOZORDER | moveBit | sizeBit | SWP_SHOWWINDOW);
                }
 
                // Maximize and minimize.
                if (_Spawn.Maximize)
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMAXIMIZED);
+                  ShowWindow(windowHandle, SW_SHOWMAXIMIZED);
                else if (_Spawn.Minimize)
-                  ShowWindow(_Process.MainWindowHandle, SW_SHOWMINIMIZED);
+                  ShowWindow(windowHandle, SW_SHOWMINIMIZED);
 
                // Switch virtual desktop.
                if (!string.IsNullOrEmpty(_Spawn.VirtualDesktop))
@@ -209,7 +239,7 @@ namespace Tildetool.Hotcommand
                   if (desktopIndex != -1)
                   {
                      VirtualDesktop desktop = VirtualDesktop.FromIndex(desktopIndex);
-                     desktop.MoveWindow(_Process.MainWindowHandle);
+                     desktop.MoveWindow(windowHandle);
                   }
                }
             }
@@ -220,15 +250,21 @@ namespace Tildetool.Hotcommand
                MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exception: {e.ToString()}");
             }
 
-            _Process.Dispose();
-            _Process = null;
+            isDone = true;
          }
 
          //
-         if (_Process == null)
+         if (isDone)
          {
-            _Timer.Stop();
-            _Timer.Dispose();
+            if (_Process != null)
+               _Process.Dispose();
+            _Process = null;
+
+            if (_Timer != null)
+            {
+               _Timer.Stop();
+               _Timer.Dispose();
+            }
             _Timer = null;
          }
          else

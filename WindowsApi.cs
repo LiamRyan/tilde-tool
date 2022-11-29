@@ -59,6 +59,26 @@ namespace Tildetool
       [return: MarshalAs(UnmanagedType.Bool)]
       public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+      [DllImport("user32.dll", SetLastError = true)]
+      public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+      [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
+      public static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
+
+      public delegate bool EnumDelegate(IntPtr hWnd, int lParam);
+
+      public const int MAXTITLE = 255;
+
+      [DllImport("user32.dll")]
+      [return: MarshalAs(UnmanagedType.Bool)]
+      public static extern bool IsWindowVisible(IntPtr hWnd);
+
+      [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+      public static extern bool EnumDesktopWindows(IntPtr hDesktop, EnumDelegate lpEnumCallbackFunction, IntPtr lParam);
+
+      [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+      public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpWindowText, int nMaxCount);
+
       public const int SW_HIDE = 0;
       public const int SW_SHOWNORMAL = 1;
       public const int SW_SHOWMINIMIZED = 2;

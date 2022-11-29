@@ -21,6 +21,7 @@ namespace Tildetool.Hotcommand.Serialization
       public float PauseSec { get; set; }
 
       // Window Parameters
+      public string? WindowName { get; set; }
       public int? WindowX { get; set; }
       public int? WindowY { get; set; }
       public int? WindowW { get; set; }
