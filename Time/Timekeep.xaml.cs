@@ -446,13 +446,14 @@ namespace Tildetool.Time
          public Color Color;
          public int Priority;
 
-         public Project Project = null;
+         public Project? Project = null;
          public long DbId = -1;
 
          public static TimeBlock FromTimePeriod(TimePeriod period)
          {
-            Project project = TimeManager.Instance.IdentToProject[period.Ident];
-            return new TimeBlock { Priority = 0, Name = project.Name, StartTime = period.StartTime, EndTime = period.EndTime, Color = Extension.FromArgb(0xFF143518),
+            Project? project;
+            TimeManager.Instance.IdentToProject.TryGetValue(period.Ident, out project);
+            return new TimeBlock { Priority = 0, Name = project?.Name ?? period.Ident, StartTime = period.StartTime, EndTime = period.EndTime, Color = Extension.FromArgb(0xFF143518),
                                    Project = project, DbId = period.DbId };
          }
          public static TimeBlock FromWeeklySchedule(WeeklySchedule schedule, DateTime today)
