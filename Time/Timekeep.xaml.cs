@@ -477,8 +477,8 @@ namespace Tildetool.Time
             _StoryboardRefresh2 = null;
          }
 
-         if (DailyDay > DateTime.Now)
-            DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
+         if (DailyDay > DateTime.Now.AddDays(7))
+            DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
 
          DateTime dayBegin = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
          DateTime weekBegin = dayBegin.AddDays(-(int)DailyDay.DayOfWeek);

@@ -96,6 +96,7 @@ namespace Tildetool.Status
          CacheStruct cache = Cache as CacheStruct;
          if (cache == null)
             cache = new CacheStruct { Date = DateTime.Now };
+         string oldTitle = cache.Title;
 
          bool isValid = true;
 
@@ -226,7 +227,7 @@ namespace Tildetool.Status
          {
             // If we don't have a date lookup and the title changed, set the date to now.
             if (!hasDate)
-               if (Cache == null || string.IsNullOrEmpty((Cache as CacheStruct).Title) || string.Compare((Cache as CacheStruct).Title, cache.Title) != 0)
+               if (Cache == null || string.IsNullOrEmpty(oldTitle) || string.Compare(oldTitle, cache.Title) != 0)
                   cache.Date = DateTime.Now;
             // If we don't have a title lookup, use a default
             if (!hasTitle)
