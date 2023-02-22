@@ -113,7 +113,7 @@ namespace Tildetool.Status
       public abstract bool Important { get; }
       public abstract int Order { get; }
       public abstract string Domain { get; }
-      public abstract bool NeedsRefresh(TimeSpan interval);
+      public abstract bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval);
       public abstract void HandleClick();
    }
 }

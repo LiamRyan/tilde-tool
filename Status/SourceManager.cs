@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Formats.Asn1;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -108,7 +111,7 @@ namespace Tildetool.Status
       }
       public bool NeedRefresh(Source src)
       {
-         return src.NeedsRefresh(GetTimeSinceUpdate(src));
+         return src.NeedsRefresh(GetUpdateTime(src), GetTimeSinceUpdate(src));
       }
 
       public void Query(int index)
@@ -172,7 +175,11 @@ namespace Tildetool.Status
             try
             {
                string jsonString = File.ReadAllText("Source.json");
-               Source = JsonSerializer.Deserialize<SourceBundle>(jsonString)!;
+               Source = JsonSerializer.Deserialize<SourceBundle>(jsonString,
+                  new JsonSerializerOptions
+                  {
+                     Converters = { new TimeOnlyJsonConverter() }
+                  })!;
                result = true;
             }
             catch (Exception ex)
@@ -321,5 +328,27 @@ namespace Tildetool.Status
       }
 
       #endregion Serialize
+   }
+
+   public class TimeOnlyJsonConverter : JsonConverter<TimeOnly>
+   {
+      private readonly string serializationFormat;
+
+      public TimeOnlyJsonConverter() : this(null) { }
+
+      public TimeOnlyJsonConverter(string? serializationFormat)
+      {
+         this.serializationFormat = serializationFormat ?? "HH:mm:ss.fff";
+      }
+
+      public override TimeOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+      {
+         var value = reader.GetString();
+         return TimeOnly.Parse(value!);
+      }
+      public override void Write(Utf8JsonWriter writer, TimeOnly value, JsonSerializerOptions options)
+      {
+         writer.WriteStringValue(value.ToString(serializationFormat));
+      }
    }
 }

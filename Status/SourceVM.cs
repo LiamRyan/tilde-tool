@@ -130,7 +130,7 @@ namespace Tildetool.Status
       public override bool Important { get { return false; } }
       public override int Order { get { return -2; } }
       public override string Domain { get { return VmIp; } }
-      public override bool NeedsRefresh(TimeSpan interval)
+      public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval)
       {
          if (State == StateType.Inactive)
             return interval.TotalSeconds >= 1.0f;

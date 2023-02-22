@@ -21,12 +21,14 @@ namespace Tildetool.Status
       protected string Site;
       protected string URL;
       protected string ParseMethod;
-      public SourceUptime(string name, string site, string url, string parseMethod)
+      protected int RefreshRateSec;
+      public SourceUptime(string name, string site, string url, string parseMethod, int refreshRateSec)
          : base("Uptime", name, typeof(CacheStruct))
       {
          Site = site;
          URL = url;
          ParseMethod = parseMethod;
+         RefreshRateSec = refreshRateSec;
       }
 
       protected override void _Query()
@@ -40,11 +42,26 @@ namespace Tildetool.Status
             // Set up an HTTP GET request.
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(Site);
+            httpClient.Timeout = TimeSpan.FromSeconds(2.0f);
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, URL);
 
             // Send it, make sure we get a result.
             Task<HttpResponseMessage> taskGet = httpClient.SendAsync(request);
-            taskGet.Wait();
+            try
+            {
+               taskGet.Wait();
+            }
+            catch(Exception ex)
+            {
+               App.WriteLog(ex.Message);
+
+               if (cache.Online)
+                  cache.Date = DateTime.Now;
+               cache.Online = false;
+               cache.Status = "offline";
+               Cache = cache;
+               return;
+            }
 
             // Not Modified, we're good!
             if (taskGet.Result.StatusCode == System.Net.HttpStatusCode.NotModified)
@@ -134,11 +151,11 @@ namespace Tildetool.Status
       }
 
       public override bool IsFeed { get { return false; } }
-      public override bool Ephemeral { get { return false; } }
+      public override bool Ephemeral { get { return true; } }
       public override bool Important { get { return State == StateType.Error; } }
       public override int Order { get { return -1; } }
       public override string Domain { get { return URL; } }
-      public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 4.0f; }
+      public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval) { return interval.TotalSeconds >= RefreshRateSec; }
 
       public override void HandleClick()
       {

@@ -287,7 +287,7 @@ namespace Tildetool.Status
       public override bool Important { get { return State != StateType.Inactive; } }
       public override int Order { get { if (Cache == null) return 0; return (int)(DateTime.Now - (Cache as CacheStruct).Date).TotalSeconds; } }
       public override string Domain { get { return Site; } }
-      public override bool NeedsRefresh(TimeSpan interval) { return interval.TotalHours >= 2.0f; }
+      public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval) { return interval.TotalHours >= 2.0f; }
 
       public override void HandleClick()
       {

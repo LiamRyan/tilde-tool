@@ -268,8 +268,8 @@ namespace Tildetool.Status
       {
          Dispatcher.Invoke(() =>
          {
-            if (SourceManager.Instance.Sources[e].Ephemeral)
-               return;
+            //if (SourceManager.Instance.Sources[e].Ephemeral)
+            //   return;
             PopulateFeedBar(false);
             UpdatePanel(e, false);
          });
@@ -347,7 +347,7 @@ namespace Tildetool.Status
 
                if (DateTime.Now < showUntil)
                   showThis = true;
-               else if (!source.Ephemeral && (source.IsQuerying || SourceManager.Instance.NeedRefresh(source)))
+               else if (source.IsQuerying || SourceManager.Instance.NeedRefresh(source))
                   showThis = true;
                else if (!source.Important)
                   showThis = false;
@@ -490,7 +490,7 @@ namespace Tildetool.Status
          }
 
          // Progress animation.
-         bool pendQuery = !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src));
+         bool pendQuery = src.IsQuerying || SourceManager.Instance.NeedRefresh(src);
          if (progressGrid != null)
             progressGrid.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
          progress.Visibility = pendQuery ? Visibility.Visible : Visibility.Collapsed;
