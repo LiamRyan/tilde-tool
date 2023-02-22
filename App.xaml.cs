@@ -98,7 +98,7 @@ namespace Tildetool
 
          //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
-         Hotkey.Register(KeyMod.Win, Keys.Oemtilde, HotkeyTilde);
+         Hotkey.Register(KeyMod.Alt, Keys.Oemtilde, HotkeyTilde);
          Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.S, HotkeyStatus);
          Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.P, HotkeyTimekeep);
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);

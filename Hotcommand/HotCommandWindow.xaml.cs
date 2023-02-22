@@ -349,7 +349,7 @@ namespace Tildetool
                else
                   expand.Text = "";
 
-               grid.Background = new SolidColorBrush { Color = Extension.FromArgb(_AltCmds[i].IsContextual ? 0xFF001310 : 0xFF021204) };
+               grid.Background = new SolidColorBrush { Color = _AltCmds[i].Context != null ? _AltCmds[i].Context.Colors[(int)ColorIndex.Background].Lerp(Extension.FromRgb(0x000000), 0.5f) : Extension.FromArgb(0xFF021204) };
                area.Background = _AltCmds[i].IsContextual ? (Resources["ColorBackground"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF042508) };
                number.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
                text.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
@@ -556,32 +556,32 @@ namespace Tildetool
       private Storyboard? _StoryboardColor;
       void _AnimateColor(bool immediate)
       {
-         void animateBrush(string resourceName, uint argb)
+         void animateBrush(string resourceName, Color color)
          {
             if (immediate)
             {
-               (Resources[resourceName] as SolidColorBrush).Color = Extension.FromArgb(argb);
+               (Resources[resourceName] as SolidColorBrush).Color = color;
                return;
             }
 
             var flashAnimation = new ColorAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            flashAnimation.To = Extension.FromArgb(argb);
+            flashAnimation.To = color;
             _StoryboardColor.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, Resources[resourceName] as SolidColorBrush);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(SolidColorBrush.ColorProperty));
          }
-         void animateColor(string resourceName, uint argb)
+         void animateColor(string resourceName, Color color)
          {
             //if (immediate)
             //{
-            Resources[resourceName] = Extension.FromArgb(argb);
+            Resources[resourceName] = color;
             return;
             //}
 
             var flashAnimation = new ColorAnimation();
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            flashAnimation.To = Extension.FromArgb(argb);
+            flashAnimation.To = color;
             _StoryboardColor.Children.Add(flashAnimation);
             //Storyboard.SetTargetName(flashAnimation, resourceName);
             //Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(SolidColorBrush.ColorProperty));
@@ -592,21 +592,22 @@ namespace Tildetool
          _StoryboardColor = new Storyboard();
          if (HotcommandManager.Instance.CurrentContext.Name == "DEFAULT")
          {
-            animateBrush("ColorBackfill", 0xFF021204);
-            animateBrush("ColorBackground", 0xFF042508);
-            animateBrush("ColorTextFore", 0xFFC3F1AF);
-            animateBrush("ColorTextBack", 0xFF449637);
-            animateColor("ColorGlow1", 0xFFDEEFBA);
-            animateColor("ColorGlow2", 0xFFAAF99D);
+            animateBrush("ColorBackfill", Extension.FromArgb(0xFF021204));
+            animateBrush("ColorBackground", Extension.FromArgb(0xFF042508));
+            animateBrush("ColorTextFore", Extension.FromArgb(0xFFC3F1AF));
+            animateBrush("ColorTextBack", Extension.FromArgb(0xFF449637));
+            animateColor("ColorGlow1", Extension.FromArgb(0xFFDEEFBA));
+            animateColor("ColorGlow2", Extension.FromArgb(0xFFAAF99D));
          }
          else
          {
-            animateBrush("ColorBackfill", 0xFF001310);
-            animateBrush("ColorBackground", 0xFF002720);
-            animateBrush("ColorTextFore", 0xFF8ff8e0);
-            animateBrush("ColorTextBack", 0xFF009d7f);
-            animateColor("ColorGlow1", 0xFFadf8e5);
-            animateColor("ColorGlow2", 0xFF4fffdf);
+            Color[] colors = HotcommandManager.Instance.CurrentContext.Colors;
+            animateBrush("ColorBackfill", colors[(int)ColorIndex.Background].Lerp(Extension.FromRgb(0x000000), 0.5f));
+            animateBrush("ColorBackground", colors[(int)ColorIndex.Background]);
+            animateBrush("ColorTextFore", colors[(int)ColorIndex.TextFore]);
+            animateBrush("ColorTextBack", colors[(int)ColorIndex.TextBack]);
+            animateColor("ColorGlow1", colors[(int)ColorIndex.Glow].Lerp(Extension.FromRgb(0xFFFFFF), 0.5f));
+            animateColor("ColorGlow2", colors[(int)ColorIndex.Glow]);
          }
          _StoryboardColor.Completed += (sender, e) => { if (_StoryboardColor != null) { _StoryboardColor.Stop(); _StoryboardColor.Remove(this); _StoryboardColor = null; } };
          _StoryboardColor.Begin(this, HandoffBehavior.SnapshotAndReplace);

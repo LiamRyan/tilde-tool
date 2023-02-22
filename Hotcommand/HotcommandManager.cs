@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
+using System.Windows.Media;
 using Tildetool.Hotcommand.Serialization;
 
 namespace Tildetool.Hotcommand
@@ -21,6 +22,7 @@ namespace Tildetool.Hotcommand
    public class HmContext
    {
       public string Name;
+      public Color[] Colors;
       public Dictionary<string, Command> Commands = new Dictionary<string, Command>();
       public Dictionary<string, Command> QuickTags = new Dictionary<string, Command>();
       public Dictionary<string, List<HmUsage>> UsageByText = new Dictionary<string, List<HmUsage>>();
@@ -194,7 +196,7 @@ namespace Tildetool.Hotcommand
          if (Data.Context != null)
             foreach (var dcontext in Data.Context)
             {
-               context = new HmContext { Name = dcontext.Name };
+               context = new HmContext { Name = dcontext.Name, Colors = dcontext.Colors.Select(i => Extension.FromRgb(i)).ToArray() };
                if (dcontext.Hotcommand != null)
                   foreach (Command command in dcontext.Hotcommand)
                      context.Commands[command.Tag] = command;
