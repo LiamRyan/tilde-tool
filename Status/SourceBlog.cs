@@ -36,19 +36,23 @@ namespace Tildetool.Status
       protected TimeZoneInfo? DateTimeZone;
       protected SourceBlogLookup TitleLookup;
       protected string Reference;
-      public SourceBlog(string title, string name, string site, SourceBlogUrl[] url, string? openToUrl, string? openCommand, string[] openArgumentList, SourceBlogLookup dateLookup, string dateFormat, string? dateTimeZone, SourceBlogLookup titleLookup, string reference)
-         : base(title, name, typeof(CacheStruct))
+      protected float UpdateTimeMin;
+      protected TimeOnly[] UpdateTimes;
+      public SourceBlog(SourceBlogSite site, string name, SourceBlogUrl[] url, string reference, float updateIntervalMin, TimeOnly[] updateTimes)
+         : base(site.Tag, name, typeof(CacheStruct))
       {
          Reference = reference;
-         Site = site.Replace("@REFERENCE@", Reference);
+         Site = site.Site.Replace("@REFERENCE@", Reference);
          Url = url;
-         OpenToUrl = openToUrl?.Replace("@REFERENCE@", Reference);
-         OpenCommand = openCommand;
-         OpenArgumentList = openArgumentList?.Select(arg => arg.Replace("@REFERENCE@", Reference))?.ToArray();
-         DateLookup = dateLookup;
-         DateFormat = dateFormat;
-         DateTimeZone = !string.IsNullOrEmpty(dateTimeZone) ? TimeZoneInfo.FindSystemTimeZoneById(dateTimeZone) : null;
-         TitleLookup = titleLookup;
+         OpenToUrl = site.OpenToURL?.Replace("@REFERENCE@", Reference);
+         OpenCommand = site.OpenCommand;
+         OpenArgumentList = site.OpenArgumentList?.Select(arg => arg.Replace("@REFERENCE@", Reference))?.ToArray();
+         DateLookup = site.DateLookup;
+         DateFormat = site.DateFormat;
+         DateTimeZone = !string.IsNullOrEmpty(site.DateTimeZone) ? TimeZoneInfo.FindSystemTimeZoneById(site.DateTimeZone) : null;
+         TitleLookup = site.TitleLookup;
+         UpdateTimeMin = updateIntervalMin;
+         UpdateTimes = updateTimes;
       }
 
       protected override void _Query()
@@ -113,6 +117,7 @@ namespace Tildetool.Status
                // Set up an HTTP GET request.
                HttpClient httpClient = new HttpClient();
                httpClient.BaseAddress = new Uri(Site);
+               httpClient.Timeout = TimeSpan.FromSeconds(15.0f);
                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
                if (isFirst)
                {
@@ -124,7 +129,19 @@ namespace Tildetool.Status
 
                // Send it, make sure we get a result.
                Task<HttpResponseMessage> taskGet = httpClient.SendAsync(request);
-               taskGet.Wait();
+               try
+               {
+                  taskGet.Wait();
+               }
+               catch (Exception ex)
+               {
+                  App.WriteLog(ex.Message);
+
+                  Status = "offline";
+                  State = StateType.Error;
+                  Cache = null;
+                  return;
+               }
 
                // Not Modified, we're good!
                if (taskGet.Result.StatusCode == System.Net.HttpStatusCode.NotModified)
@@ -185,7 +202,7 @@ namespace Tildetool.Status
 
                   // parse
                   if (DateFormat == "unix")
-                     cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr));
+                     cache.Date = DateTime.UnixEpoch.AddSeconds(int.Parse(infoTimeStr)).ToLocalTime();
                   else
                      cache.Date = DateTime.ParseExact(infoTimeStr, DateFormat, CultureInfo.CreateSpecificCulture("en-us"));
 
@@ -287,7 +304,24 @@ namespace Tildetool.Status
       public override bool Important { get { return State != StateType.Inactive; } }
       public override int Order { get { if (Cache == null) return 0; return (int)(DateTime.Now - (Cache as CacheStruct).Date).TotalSeconds; } }
       public override string Domain { get { return Site; } }
-      public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval) { return interval.TotalHours >= 2.0f; }
+      public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval)
+      {
+         if (UpdateTimes == null || UpdateTimes.Length == 0)
+         {
+            int lastUpdateIndex = (int)Math.Floor(lastUpdate.TimeOfDay.TotalMinutes / UpdateTimeMin);
+            int nowIndex = (int)Math.Floor(DateTime.Now.TimeOfDay.TotalMinutes / UpdateTimeMin);
+            return lastUpdateIndex != nowIndex;
+         }
+         else
+         {
+            TimeOnly lastUpdateTime = TimeOnly.FromDateTime(lastUpdate);
+            int lastUpdateIndex = Enumerable.Range(0, UpdateTimes.Length).FirstOrDefault(i => lastUpdateTime < UpdateTimes[i], -1);
+            TimeOnly nowTime = TimeOnly.FromDateTime(DateTime.Now);
+            int nowIndex = Enumerable.Range(0, UpdateTimes.Length).FirstOrDefault(i => nowTime < UpdateTimes[i], -1);
+
+            return lastUpdateIndex != nowIndex;
+         }
+      }
 
       public override void HandleClick()
       {
