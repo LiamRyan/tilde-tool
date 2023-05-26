@@ -192,8 +192,11 @@ namespace Tildetool.Status
                _StoryboardFade.Remove(this);
             _StoryboardFade = null;
 
-            _StoryboardSpin.Stop(this);
-            _StoryboardSpin.Remove(this);
+            if (_StoryboardSpin != null)
+            {
+               _StoryboardSpin.Stop(this);
+               _StoryboardSpin.Remove(this);
+            }
             _StoryboardSpin = null;
 
             Close();

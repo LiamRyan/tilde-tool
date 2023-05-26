@@ -464,6 +464,22 @@ namespace Tildetool.Time
          {
             return new TimeBlock { Priority = 2, Name = evt.Name, StartTime = evt.StartTime, EndTime = evt.EndTime, Color = Extension.FromArgb(0xD0E0411F) };
          }
+
+         public bool CanMerge(TimeBlock next)
+         {
+            if (Project != next.Project)
+               return false;
+            if (Project == null && Name.CompareTo(next.Name) != 0)
+               return false;
+
+            if (EndTime < next.StartTime)
+               return false;
+            return (EndTime - next.StartTime).TotalMinutes <= 1.0;
+         }
+         public TimeBlock Merge(TimeBlock next)
+         {
+            return new TimeBlock { Name = Name, StartTime = StartTime, EndTime = next.EndTime, Color = Color, Priority = Priority, Project = Project, DbId = next.DbId };
+         }
       }
       DailyMode CurDailyMode;
       DateTime DailyDay;
@@ -768,8 +784,23 @@ namespace Tildetool.Time
                headerTimeM.Text = $"{((int)totalMinutes % 60):D2}";
             }
 
-            // 
-            List<TimeBlock> periodsFilter = periods.Where(p => (p.EndTime - p.StartTime).TotalMinutes >= 10.0f || TimeManager.Instance.CurrentTimePeriod == p.DbId).ToList();
+            // Merge time blocks that are adjacent.
+            List<TimeBlock> periodsFilter = new List<TimeBlock>(periods.Count);
+            TimeBlock pendingBlock = null;
+            for (int r = 0; r < periods.Count; r++)
+            {
+               if (pendingBlock != null && pendingBlock.CanMerge(periods[r]))
+                  pendingBlock = pendingBlock.Merge(periods[r]);
+               else
+               {
+                  if (pendingBlock != null)
+                     periodsFilter.Add(pendingBlock);
+                  pendingBlock = periods[r];
+               }
+            }
+            if (pendingBlock != null)
+               periodsFilter.Add(pendingBlock);
+
             _populate(cellParent, templateCell, periodsFilter.Count);
 
             DateTime lastDate = thisDateBegin;

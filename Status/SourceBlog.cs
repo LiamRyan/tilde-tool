@@ -109,10 +109,10 @@ namespace Tildetool.Status
          else
          {
             bool isFirst = true;
-            string curReference = Reference;
+            string curLookup = Reference;
             foreach (SourceBlogUrl urlLink in Url)
             {
-               string url = urlLink.URL.Replace("@REFERENCE@", curReference);
+               string url = urlLink.URL.Replace("@REFERENCE@", Reference).Replace("@LOOKUP@", curLookup);
 
                // Set up an HTTP GET request.
                HttpClient httpClient = new HttpClient();
@@ -174,7 +174,7 @@ namespace Tildetool.Status
                {
                   try
                   {
-                     curReference = lookupData(urlLink.Lookup);
+                     curLookup = lookupData(urlLink.Lookup);
                   }
                   catch (Exception ex)
                   {
@@ -197,7 +197,7 @@ namespace Tildetool.Status
                if (!string.IsNullOrEmpty(infoTimeStr))
                {
                   // do some preprocessing to standardize some dates
-                  infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8");
+                  infoTimeStr = infoTimeStr.Replace("PDT", "-7").Replace("PST", "-8").Replace("GMT", "+0");
                   infoTimeStr = infoTimeStr.Trim('\t', '\n', '\r');
 
                   // parse
@@ -308,19 +308,37 @@ namespace Tildetool.Status
       {
          if (UpdateTimes == null || UpdateTimes.Length == 0)
          {
+            // check if we're in a different bucket
             int lastUpdateIndex = (int)Math.Floor(lastUpdate.TimeOfDay.TotalMinutes / UpdateTimeMin);
             int nowIndex = (int)Math.Floor(DateTime.Now.TimeOfDay.TotalMinutes / UpdateTimeMin);
-            return lastUpdateIndex != nowIndex;
+
+            if (lastUpdateIndex != nowIndex)
+               return true;
+
+            // check if we're in the same bucket for a different day.
+            DateTime lastUpdateBucket = lastUpdate.Date.AddMinutes(lastUpdateIndex * UpdateTimeMin);
+            if ((DateTime.Now - lastUpdateBucket).TotalHours >= 24.0f)
+               return true;
          }
          else
          {
+            // check if we're in a different bucket
             TimeOnly lastUpdateTime = TimeOnly.FromDateTime(lastUpdate);
             int lastUpdateIndex = Enumerable.Range(0, UpdateTimes.Length).FirstOrDefault(i => lastUpdateTime < UpdateTimes[i], -1);
             TimeOnly nowTime = TimeOnly.FromDateTime(DateTime.Now);
             int nowIndex = Enumerable.Range(0, UpdateTimes.Length).FirstOrDefault(i => nowTime < UpdateTimes[i], -1);
 
-            return lastUpdateIndex != nowIndex;
+            if (lastUpdateIndex != nowIndex)
+               return true;
+
+            // check if we're in the same bucket for a different day.
+            TimeOnly lastUpdateBucketTime = UpdateTimes[(lastUpdateIndex + UpdateTimes.Length) % UpdateTimes.Length];
+            DateTime lastUpdateBucket = lastUpdate.Date + lastUpdateBucketTime.ToTimeSpan();
+            if ((DateTime.Now - lastUpdateBucket).TotalHours >= 24.0f)
+               return true;
          }
+
+         return false;
       }
 
       public override void HandleClick()
