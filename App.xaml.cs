@@ -33,7 +33,8 @@ namespace Tildetool
       {
          Wake,
          Accept,
-         Cancel
+         Cancel,
+         Notify
       }
 
       static Dictionary<BeepSound, MediaPlayer> MediaPlayer;
@@ -79,10 +80,11 @@ namespace Tildetool
          AppNotifyIcon = (TaskbarIcon)FindResource("AppNotifyIcon");
 
          MediaPlayer = new Dictionary<BeepSound, MediaPlayer>()
-            { { BeepSound.Wake, new MediaPlayer() }, { BeepSound.Accept, new MediaPlayer() }, { BeepSound.Cancel, new MediaPlayer() } };
-         MediaPlayer[BeepSound.Wake].Open(  new Uri("Resource\\beepG.mp3", UriKind.Relative));
-         MediaPlayer[BeepSound.Accept].Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
-         MediaPlayer[BeepSound.Cancel].Open(new Uri("Resource\\beepA.mp3", UriKind.Relative));
+            { { BeepSound.Wake, new MediaPlayer() }, { BeepSound.Accept, new MediaPlayer() }, { BeepSound.Cancel, new MediaPlayer() }, { BeepSound.Notify, new MediaPlayer() } };
+         MediaPlayer[BeepSound.Wake].Open(  new Uri("Resource\\dingG.mp3", UriKind.Relative));
+         MediaPlayer[BeepSound.Accept].Open(new Uri("Resource\\dingC.mp3", UriKind.Relative));
+         MediaPlayer[BeepSound.Cancel].Open(new Uri("Resource\\dingA.mp3", UriKind.Relative));
+         MediaPlayer[BeepSound.Notify].Open(new Uri("Resource\\beepC.mp3", UriKind.Relative));
 
          HotcommandManager.Instance.Load();
          HotcommandManager.Instance.LoadUsage();

@@ -77,7 +77,10 @@ namespace Tildetool.Status
          _HasTimer = hasTimer;
          AnimateShow();
 
-         App.PlayBeep(App.BeepSound.Wake);
+         if (_HasTimer)
+            App.PlayBeep(App.BeepSound.Notify);
+         else
+            App.PlayBeep(App.BeepSound.Wake);
       }
 
       void OnLoaded(object sender, RoutedEventArgs args)

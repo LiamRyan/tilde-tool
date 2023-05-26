@@ -20,6 +20,9 @@
     <None Remove="Resource\beepA.mp3" />
     <None Remove="Resource\beepC.mp3" />
     <None Remove="Resource\beepG.mp3" />
+    <None Remove="Resource\dingA.mp3" />
+    <None Remove="Resource\dingC.mp3" />
+    <None Remove="Resource\dingG.mp3" />
     <None Remove="Resource\beepG_long.mp3" />
   </ItemGroup>
 
@@ -52,6 +55,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Resource\beepG.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resource\dingA.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resource\dingC.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resource\dingG.mp3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Resource\beepG_long.mp3">
