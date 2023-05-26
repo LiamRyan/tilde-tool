@@ -23,7 +23,6 @@ namespace Tildetool.Status
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
          InitializeComponent();
-         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * Height);
 
          // Bind event
          SourceManager.Instance.SourceChanged += Instance_SourceChanged;
@@ -81,6 +80,15 @@ namespace Tildetool.Status
             App.PlayBeep(App.BeepSound.Notify);
          else
             App.PlayBeep(App.BeepSound.Wake);
+      }
+
+      double TargetHeight = -1.0f;
+      protected override Size ArrangeOverride(Size arrangeBounds)
+      {
+         Size result = base.ArrangeOverride(arrangeBounds);
+         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * result.Height);
+         AnimateResize();
+         return result;
       }
 
       void OnLoaded(object sender, RoutedEventArgs args)
@@ -282,6 +290,7 @@ namespace Tildetool.Status
       List<int> DisplayIndex = new List<int>();
       List<Source> DisplaySource = new List<Source>();
       Dictionary<int, DateTime> DisplayShow = new Dictionary<int, DateTime>();
+      HashSet<int> DisplayNew = new HashSet<int>();
       HashSet<int> DisplayShown = new HashSet<int>();
       protected void AddFeedElement(int sourceIndex, int guiIndex)
       {
@@ -289,6 +298,7 @@ namespace Tildetool.Status
          DataTemplate? template = Resources["FeedBox"] as DataTemplate;
          ContentControl content = new ContentControl { ContentTemplate = template };
          FeedPanel.Children.Insert(guiIndex, content);
+         Panel.SetZIndex(content, -guiIndex);
          content.ApplyTemplate();
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
@@ -309,7 +319,7 @@ namespace Tildetool.Status
          // Do an initial refresh.
          UpdatePanel(sourceIndex, false);
       }
-      protected void RemoveFeedElement(int sourceIndex)
+      protected void RemoveFeedElement(int sourceIndex, double pause)
       {
          int guiIndex = DisplayIndex.IndexOf(sourceIndex);
          if (guiIndex == -1)
@@ -319,7 +329,7 @@ namespace Tildetool.Status
          DisplayShown.Remove(sourceIndex);
 
          // animate disappearance -- this will clear everything else when done.
-         _AnimateHide(guiIndex);
+         _AnimateHide(guiIndex, pause);
       }
       protected void PopulateFeedBar(bool initial)
       {
@@ -331,6 +341,8 @@ namespace Tildetool.Status
          sourceList.Sort((a, b) => SourceManager.Instance.Sources[a].Order.CompareTo(SourceManager.Instance.Sources[b].Order));
 
          //
+         int showCount = 0;
+         int hideCount = 0;
          int nextGuiIndex = 0;
          foreach (int sourceIndex in sourceList)
          {
@@ -368,7 +380,10 @@ namespace Tildetool.Status
             {
                // If it wanted to be shown, clear it out.
                if (DisplayShown.Contains(sourceIndex))
-                  RemoveFeedElement(sourceIndex);
+               {
+                  RemoveFeedElement(sourceIndex, 0.05 * Math.Sqrt((double)hideCount));
+                  hideCount++;
+               }
                continue;
             }
 
@@ -397,7 +412,10 @@ namespace Tildetool.Status
             if (!isFadeIn)
             {
                if (!initial)
-                  _AnimateShow(nextGuiIndex - 1);
+               {
+                  _AnimateShow(nextGuiIndex - 1, 0.03 * Math.Sqrt((double)showCount));
+                  showCount++;
+               }
                DisplayShown.Add(sourceIndex);
             }
          }
@@ -418,7 +436,10 @@ namespace Tildetool.Status
 
             // Make sure to show it at least 5 seconds after an update.
             if (fromUpdate)
+            {
                DisplayShow[sourceIndex] = DateTime.Now + TimeSpan.FromSeconds(5);
+               DisplayNew.Add(sourceIndex);
+            }
 
             // If there was none, either add it (for an update), or ignore.
             if (guiIndex == -1)
@@ -438,6 +459,7 @@ namespace Tildetool.Status
             Grid divider = grid.FindElementByName<Grid>("Divider");
             TextBlock article = grid.FindElementByName<TextBlock>("Article");
             TextBlock status = grid.FindElementByName<TextBlock>("Status");
+            TextBlock isnew = grid.FindElementByName<TextBlock>("New");
 
             // Update.
             title.Text = src.Subtitle;
@@ -448,6 +470,8 @@ namespace Tildetool.Status
             divider.Background = new SolidColorBrush(src.ColorDim);
             status.Foreground = new SolidColorBrush(src.ColorDim);
             article.Foreground = new SolidColorBrush(src.Color);
+            isnew.Foreground = new SolidColorBrush(src.Color);
+            isnew.Visibility = DisplayNew.Contains(sourceIndex) ? Visibility.Visible : Visibility.Collapsed;
          }
          else
          {
@@ -537,7 +561,7 @@ namespace Tildetool.Status
          }
       }
 
-      protected void _AnimateShow(int guiIndex)
+      protected void _AnimateShow(int guiIndex, double showPause)
       {
          //
          ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
@@ -549,7 +573,9 @@ namespace Tildetool.Status
          Storyboard storyboard = new Storyboard();
          {
             var flashAnimation = new DoubleAnimation();
+            flashAnimation.BeginTime = TimeSpan.FromSeconds(showPause);
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
+            grid.Opacity = 0.0f;
             flashAnimation.From = 0.0f;
             flashAnimation.To = 1.0f;
             storyboard.Children.Add(flashAnimation);
@@ -558,7 +584,9 @@ namespace Tildetool.Status
          }
          {
             var flashAnimation = new DoubleAnimation();
+            flashAnimation.BeginTime = TimeSpan.FromSeconds(showPause);
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
+            grid.Width = 0.0f;
             flashAnimation.From = 0.0f;
             flashAnimation.To = 120.0f;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
@@ -568,6 +596,7 @@ namespace Tildetool.Status
          }
          {
             var animation = new ThicknessAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(showPause);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
             animation.To = new Thickness(1, 1, 1, 1);
             storyboard.Children.Add(animation);
@@ -578,7 +607,7 @@ namespace Tildetool.Status
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
          storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
-      protected void _AnimateHide(int guiIndex)
+      protected void _AnimateHide(int guiIndex, double pause)
       {
          //
          ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
@@ -590,6 +619,7 @@ namespace Tildetool.Status
          Storyboard storyboard = new Storyboard();
          {
             var flashAnimation = new DoubleAnimation();
+            flashAnimation.BeginTime = TimeSpan.FromSeconds(pause);
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             flashAnimation.To = 0.0f;
             storyboard.Children.Add(flashAnimation);
@@ -598,6 +628,7 @@ namespace Tildetool.Status
          }
          {
             var flashAnimation = new DoubleAnimation();
+            flashAnimation.BeginTime = TimeSpan.FromSeconds(pause);
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             flashAnimation.To = 0.0f;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
@@ -607,6 +638,7 @@ namespace Tildetool.Status
          }
          {
             var animation = new ThicknessAnimation();
+            animation.BeginTime = TimeSpan.FromSeconds(pause);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
             animation.To = new Thickness(0,0,0,0);
             storyboard.Children.Add(animation);
@@ -631,7 +663,7 @@ namespace Tildetool.Status
       }
       protected void _AnimateReorder(int oldGuiIndex, int newGuiIndex)
       {
-         //
+         // TODO: implement this
          ContentControl content = FeedPanel.Children[newGuiIndex] as ContentControl;
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
@@ -640,6 +672,7 @@ namespace Tildetool.Status
 
       public bool IsShowing { get; protected set; }
       Storyboard _StoryboardHide;
+      Storyboard _StoryboardResize;
       public void AnimateShow()
       {
          IsShowing = true;
@@ -655,8 +688,8 @@ namespace Tildetool.Status
          {
             var animation = new ThicknessAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.From = new Thickness(-10, 10, -10, 40);
-            animation.To = new Thickness(-10, 0, -10, 30);
+            animation.From = new Thickness(-10, 20, -10, 20);
+            animation.To = new Thickness(-10, 10, -10, 10);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
@@ -690,17 +723,6 @@ namespace Tildetool.Status
             Storyboard.SetTarget(animation, Glow2);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.StrokeThicknessProperty));
          }
-         {
-            var animation = new DoubleAnimationUsingKeyFrames();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            Content.Height = 46.0f;
-            animation.KeyFrames.Add(new EasingDoubleKeyFrame(46.0f, TimeSpan.FromSeconds(0)));
-            //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
-            animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
-            _StoryboardHide.Children.Add(animation);
-            Storyboard.SetTarget(animation, Content);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
-         }
          /*{
             var animation = new DoubleAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.2f);
@@ -732,6 +754,8 @@ namespace Tildetool.Status
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; };
          _StoryboardHide.Begin(this);
+
+         AnimateResize(open: true);
 
          if (_HasTimer)
          {
@@ -780,7 +804,7 @@ namespace Tildetool.Status
          {
             var animation = new ThicknessAnimation();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.To = new Thickness(-10, 10, -10, 40);
+            animation.To = new Thickness(-10, 20, -10, 20);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardHide.Children.Add(animation);
             Storyboard.SetTarget(animation, Backfill);
@@ -822,15 +846,6 @@ namespace Tildetool.Status
          }
          {
             var animation = new DoubleAnimation();
-            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            animation.To = 46.0f;
-            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
-            _StoryboardHide.Children.Add(animation);
-            Storyboard.SetTarget(animation, Content);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
-         }
-         {
-            var animation = new DoubleAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.25f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
@@ -840,6 +855,65 @@ namespace Tildetool.Status
          }
          _StoryboardHide.Completed += (sender, e) => { if (_StoryboardHide != null) _StoryboardHide.Remove(this); _StoryboardHide = null; Close(); };
          _StoryboardHide.Begin(this);
+
+         AnimateResize(close: true);
+      }
+
+      public void AnimateResize(bool open = false, bool close = false)
+      {
+         if (!IsShowing && !close)
+            return;
+
+         double targetHeight = close ? 46.0f : Inner.DesiredSize.Height;
+         if (targetHeight == TargetHeight)
+            return;
+
+         if (TargetHeight <= 0)
+            open = true;
+         TargetHeight = targetHeight;
+
+         if (_StoryboardResize != null)
+         {
+            _StoryboardResize.Stop(this);
+            _StoryboardResize.Remove(this);
+         }
+
+         _StoryboardResize = new Storyboard();
+         if (open)
+         {
+            var animation = new DoubleAnimationUsingKeyFrames();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
+            Content.Height = 46.0f;
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(46.0f, TimeSpan.FromSeconds(0)));
+            //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(TargetHeight, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
+            _StoryboardResize.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         else if (close)
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = 46.0f;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardResize.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+         else
+         {
+            var animation = new DoubleAnimation();
+            animation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+            animation.To = TargetHeight;
+            animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardResize.Children.Add(animation);
+            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
+         }
+
+         _StoryboardResize.Completed += (sender, e) => { if (_StoryboardResize != null) _StoryboardResize.Remove(this); _StoryboardResize = null; };
+         _StoryboardResize.Begin(this);
       }
    }
 }

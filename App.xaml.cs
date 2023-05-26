@@ -16,17 +16,30 @@ using System.Diagnostics;
 using System.Threading;
 using System.Windows.Media;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 
 namespace Tildetool
 {
    /// <summary>
-        /// Interaction logic for App.xaml
-        /// </summary>
+   /// Interaction logic for App.xaml
+   /// </summary>
    public partial class App : System.Windows.Application
    {
+      static FileStream LogOut;
+
       public static void WriteLog(string? log)
       {
-         App.Current.Dispatcher.Invoke(() => Debug.Write(log + "\n"));
+         App.Current.Dispatcher.Invoke(() =>
+         {
+            Debug.Write(log + "\n");
+
+            using (LogOut = File.Open("Out.txt", FileMode.Append, FileAccess.Write))
+            {
+               byte[] utf8 = Encoding.UTF8.GetBytes(log + "\n");
+               LogOut.Write(utf8);
+            }
+         });
       }
 
       public enum BeepSound

@@ -4,9 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool.Status"
-        xmlns:Shape="clr-namespace:Tildetool.Shape" x:Name="window" x:Class="Tildetool.Status.StatusBar"
+        xmlns:Shape="clr-namespace:Tildetool.Shape" xmlns:tildetool="clr-namespace:Tildetool.WPF" xmlns:Behaviors="http://schemas.microsoft.com/xaml/behaviors" x:Name="window" x:Class="Tildetool.Status.StatusBar"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Topmost="True" ShowActivated="False" WindowState="Normal"
-        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded" Height="202">
+        KeyDown="Window_KeyDown" HorizontalAlignment="Right" VerticalAlignment="Top" SizeToContent="Manual" ShowInTaskbar="False" WindowStartupLocation="Manual" Left="0" Top="0" Background="{x:Null}" Loaded="OnLoaded">
     <Window.Resources>
         <DataTemplate x:Key="StatusBox">
             <Grid x:Name="Box" Margin="1,1,1,1" MaxWidth="242" Height="24" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -36,6 +36,7 @@
         <DataTemplate x:Key="FeedBox">
             <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock x:Name="Title" Text="local vm" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                <TextBlock x:Name="New" Text="*" HorizontalAlignment="Left" TextAlignment="Left" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="24" VerticalAlignment="Top" Margin="8,-3,0,0"/>
                 <Ellipse x:Name="Progress" Stroke="#FF449637" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,4,8,0"/>
                 <Shape:Arc x:Name="ProgressArc" StrokeThickness="2.5" Width="13.5" Height="13.5" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,3.75,7.75,0" StartAngle="90" EndAngle="270" RenderTransformOrigin="0.5,0.5">
                     <Shape:Arc.Stroke>
@@ -51,49 +52,57 @@
             </Grid>
         </DataTemplate>
     </Window.Resources>
-    <Grid HorizontalAlignment="Stretch">
-        <Grid x:Name="Content" HorizontalAlignment="Stretch">
-            <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 40" StrokeThickness="2" Stretch="Fill">
-                <Path.Data>
-                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
-                </Path.Data>
-            </Path>
-            <Path x:Name="Glow1" Margin="-10 10 -10 40" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
-                <Path.Effect>
-                    <BlurEffect Radius="8" KernelType="Gaussian"/>
-                </Path.Effect>
-                <Path.Stroke>
-                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
-                        <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="1"/>
-                    </LinearGradientBrush>
-                </Path.Stroke>
-                <Path.Data>
-                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
-                </Path.Data>
-            </Path>
-            <Path x:Name="Glow2" Margin="-10 10 -10 40" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
-                <Path.Stroke>
-                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
-                        <GradientStop Color="#FFDEEFBA"/>
-                        <GradientStop Color="#FFAAF99D" Offset="1"/>
-                    </LinearGradientBrush>
-                </Path.Stroke>
-                <Path.Data>
-                    <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
-                </Path.Data>
-            </Path>
-            <Grid x:Name="Inner" Margin="20,32,20,20" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <StackPanel x:Name="FeedPanel" Height="120" Margin="0,26,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
-                    <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource FeedBox}}"/>
-                    <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
-                        <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-                <StackPanel x:Name="StatusPanel" Height="52" Margin="0,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
-                    <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"/>
-                </StackPanel>
-            </Grid>
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+        <Grid x:Name="Content" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <tildetool:NoSizeDecorator>
+                <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
+                    <Path.Data>
+                        <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                    </Path.Data>
+                </Path>
+            </tildetool:NoSizeDecorator>
+            <tildetool:NoSizeDecorator>
+                <Path x:Name="Glow1" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
+                    <Path.Effect>
+                        <BlurEffect Radius="8" KernelType="Gaussian"/>
+                    </Path.Effect>
+                    <Path.Stroke>
+                        <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                            <GradientStop Color="#FFDEEFBA"/>
+                            <GradientStop Color="#FFAAF99D" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Path.Stroke>
+                    <Path.Data>
+                        <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                    </Path.Data>
+                </Path>
+            </tildetool:NoSizeDecorator>
+            <tildetool:NoSizeDecorator>
+                <Path x:Name="Glow2" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
+                    <Path.Stroke>
+                        <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                            <GradientStop Color="#FFDEEFBA"/>
+                            <GradientStop Color="#FFAAF99D" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Path.Stroke>
+                    <Path.Data>
+                        <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
+                    </Path.Data>
+                </Path>
+            </tildetool:NoSizeDecorator>
+            <tildetool:IgnoreParentDecorator>
+                <Grid x:Name="Inner" Margin="20,36,20,26" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <tildetool:WrapPanelPadded x:Name="FeedPanel" Margin="0,26,0,-24" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal" ItemHeight="122" RowMargin="-40">
+                        <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource FeedBox}}"/>
+                        <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="-100000">
+                            <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
+                        </Grid>
+                    </tildetool:WrapPanelPadded>
+                    <StackPanel x:Name="StatusPanel" Height="52" Margin="0,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+                        <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource StatusBox}}"/>
+                    </StackPanel>
+                </Grid>
+            </tildetool:IgnoreParentDecorator>
         </Grid>
     </Grid>
 </Window>
