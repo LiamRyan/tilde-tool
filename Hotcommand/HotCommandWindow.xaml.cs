@@ -36,13 +36,11 @@ namespace Tildetool
 
       #endregion
 
-      MediaPlayer _MediaPlayer = new MediaPlayer();
-
       public HotCommandWindow()
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
          InitializeComponent();
-         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * Height);
+         Top = App.GetBarTop(Height);
 
          CommandBox.Opacity = 0;
          CommandEntry.Text = "";

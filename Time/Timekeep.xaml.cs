@@ -35,7 +35,7 @@ namespace Tildetool.Time
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
          InitializeComponent();
-         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - 62.0f;
+         Top = App.GetBarTop(124.0);
 
          InitialProject = TimeManager.Instance.CurrentProject;
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);

@@ -86,7 +86,7 @@ namespace Tildetool.Status
       protected override Size ArrangeOverride(Size arrangeBounds)
       {
          Size result = base.ArrangeOverride(arrangeBounds);
-         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5 * result.Height);
+         Top = App.GetBarTop(0.0) + 62.0 - (0.5 * result.Height);
          AnimateResize();
          return result;
       }

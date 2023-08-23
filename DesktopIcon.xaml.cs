@@ -24,7 +24,7 @@ namespace Tildetool
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
          InitializeComponent();
-         Top = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Top + (0.2 * System.Windows.Forms.Screen.PrimaryScreen.WorkingArea.Height) - (0.5f * Height);
+         Top = App.GetBarTop(Height);
 
          _ShowDesktop(VirtualDesktop.Current, false);
 

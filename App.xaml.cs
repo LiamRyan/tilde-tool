@@ -28,6 +28,8 @@ namespace Tildetool
    {
       static FileStream LogOut;
 
+      public static double GetBarTop(double barHeight) => Screen.PrimaryScreen.WorkingArea.Top + (0.1 * Screen.PrimaryScreen.WorkingArea.Height);
+
       public static void WriteLog(string? log)
       {
          App.Current.Dispatcher.Invoke(() =>
