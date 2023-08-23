@@ -8,6 +8,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using WinRT;
@@ -327,18 +328,25 @@ namespace VirtualDesktopApi
 		public static void Initialize()
 		{
          var shell = (IServiceProvider10)Activator.CreateInstance(Type.GetTypeFromCLSID(Guids.CLSID_ImmersiveShell));
-         VirtualDesktopManagerInternal = (IVirtualDesktopManagerInternal)shell.QueryService(Guids.CLSID_VirtualDesktopManagerInternal, typeof(IVirtualDesktopManagerInternal).GUID);
-         _VirtualDesktopManager = (IVirtualDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(Guids.CLSID_VirtualDesktopManager));
-         ApplicationViewCollection = (IApplicationViewCollection)shell.QueryService(typeof(IApplicationViewCollection).GUID, typeof(IApplicationViewCollection).GUID);
-         VirtualDesktopPinnedApps = (IVirtualDesktopPinnedApps)shell.QueryService(Guids.CLSID_VirtualDesktopPinnedApps, typeof(IVirtualDesktopPinnedApps).GUID);
-         VirtualDesktopNotificationService = (IVirtualDesktopNotificationService)shell.QueryService(Guids.CLSID_VirtualDesktopNotificationService, typeof(IVirtualDesktopNotificationService).GUID);
+			try
+			{
+				VirtualDesktopManagerInternal = (IVirtualDesktopManagerInternal)shell.QueryService(Guids.CLSID_VirtualDesktopManagerInternal, typeof(IVirtualDesktopManagerInternal).GUID);
+				_VirtualDesktopManager = (IVirtualDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(Guids.CLSID_VirtualDesktopManager));
+				ApplicationViewCollection = (IApplicationViewCollection)shell.QueryService(typeof(IApplicationViewCollection).GUID, typeof(IApplicationViewCollection).GUID);
+				VirtualDesktopPinnedApps = (IVirtualDesktopPinnedApps)shell.QueryService(Guids.CLSID_VirtualDesktopPinnedApps, typeof(IVirtualDesktopPinnedApps).GUID);
+				VirtualDesktopNotificationService = (IVirtualDesktopNotificationService)shell.QueryService(Guids.CLSID_VirtualDesktopNotificationService, typeof(IVirtualDesktopNotificationService).GUID);
 
-         VirtualDesktopNotification = new VirtualDesktopNotification();
-         VirtualDesktopNotificationCookie = VirtualDesktopNotificationService.Register(VirtualDesktopNotification);
+				VirtualDesktopNotification = new VirtualDesktopNotification();
+				VirtualDesktopNotificationCookie = VirtualDesktopNotificationService.Register(VirtualDesktopNotification);
 
-         VirtualDesktop.Created += (a) => VirtualDesktop.RebuildDictionary();
-         VirtualDesktop.Destroyed += (a, b) => VirtualDesktop.RebuildDictionary();
-         VirtualDesktop.RebuildDictionary();
+				VirtualDesktop.Created += (a) => VirtualDesktop.RebuildDictionary();
+				VirtualDesktop.Destroyed += (a, b) => VirtualDesktop.RebuildDictionary();
+				VirtualDesktop.RebuildDictionary();
+			}
+			catch (System.InvalidCastException e)
+			{
+				Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
+			}
       }
 
       internal static IVirtualDesktopManagerInternal VirtualDesktopManagerInternal;
