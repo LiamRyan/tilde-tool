@@ -34,8 +34,8 @@
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="FeedBox">
-            <Grid x:Name="Box" Margin="1,1,1,1" Width="120" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock x:Name="Title" Text="local vm" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="0,4,0,0"/>
+            <Grid x:Name="Box" Margin="1,1,1,1" Width="140" Height="100" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <TextBlock x:Name="Title" Text="really really long name" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Margin="7,4,7,0" TextTrimming="CharacterEllipsis"/>
                 <TextBlock x:Name="New" Text="*" HorizontalAlignment="Left" TextAlignment="Left" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="24" VerticalAlignment="Top" Margin="8,-3,0,0"/>
                 <Ellipse x:Name="Progress" Stroke="#FF449637" StrokeThickness="2" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,4,8,0"/>
                 <Shape:Arc x:Name="ProgressArc" StrokeThickness="2.5" Width="13.5" Height="13.5" HorizontalAlignment="Right" VerticalAlignment="Top"  Margin="0,3.75,7.75,0" StartAngle="90" EndAngle="270" RenderTransformOrigin="0.5,0.5">
@@ -47,7 +47,7 @@
                     </Shape:Arc.Stroke>
                 </Shape:Arc>
                 <Grid x:Name="Divider" Background="#FF449637" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="1" Margin="8,22,8,0"/>
-                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Width="103" Margin="0,29,0,17" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
+                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Width="123" Margin="0,29,0,17" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
                 <TextBlock x:Name="Status" Text="15/9/22" HorizontalAlignment="Stretch" TextAlignment="Left" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Bottom" Margin="8,0,8,4"/>
             </Grid>
         </DataTemplate>
@@ -92,9 +92,9 @@
             </tildetool:NoSizeDecorator>
             <tildetool:IgnoreParentDecorator>
                 <Grid x:Name="Inner" Margin="20,36,20,26" HorizontalAlignment="Left" VerticalAlignment="Top">
-                    <tildetool:WrapPanelPadded x:Name="FeedPanel" Margin="0,26,0,-24" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal" ItemHeight="122" RowMargin="-40">
+                    <tildetool:WrapPanelPadded x:Name="FeedPanel" Margin="0,26,0,-24" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal" ItemHeight="142" RowMargin="-40">
                         <ContentControl ContentTemplate="{Binding Mode=OneWay, Source={StaticResource FeedBox}}"/>
-                        <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="80" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="-100000">
+                        <Grid x:Name="ExpandBox" Margin="1,1,1,1" Width="40" Height="100" Background="#FF042508" HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="-100000">
                             <TextBlock x:Name="ExpandText" Text="+" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code" FontSize="24" VerticalAlignment="Center"/>
                         </Grid>
                     </tildetool:WrapPanelPadded>

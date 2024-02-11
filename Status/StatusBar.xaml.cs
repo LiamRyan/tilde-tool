@@ -125,11 +125,19 @@ namespace Tildetool.Status
          });
       }
 
+      Panel HoverElement;
       private void Grid_MouseEnter(object sender, MouseEventArgs e, int sourceIndex)
       {
+         HoverElement = sender as Panel;
+
+         int guiIndex = DisplayIndex.IndexOf(sourceIndex);
+         if (guiIndex != -1)
+            Panel.SetZIndex(FeedPanel.Children[guiIndex], 1);
+
          Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
          Color color = src == null ? Extension.FromArgb(0xFF042508) : src.ColorBack;
          color = new Color { R = (byte)(color.R << 1), G = (byte)(color.G << 1), B = (byte)(color.B << 1), A = 255 };
+         TextBlock article = (sender as Panel).FindElementByName<TextBlock>("Article");
 
          Storyboard storyboard = new Storyboard();
          {
@@ -142,13 +150,46 @@ namespace Tildetool.Status
          }
          if (sourceIndex != -1)
          {
-            var flashAnimation = new DoubleAnimation();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
-            flashAnimation.To = src.IsFeed ? 120.0f : 42.0f;
-            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
-            storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Panel);
-            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
+            {
+               var flashAnimation = new DoubleAnimation();
+               flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
+               flashAnimation.To = src.IsFeed ? 140.0f : 42.0f;
+               flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+               storyboard.Children.Add(flashAnimation);
+               Storyboard.SetTarget(flashAnimation, sender as Panel);
+               Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
+            }
+            if (src.IsFeed)
+            {
+               {
+                  var flashAnimation = new DoubleAnimation();
+                  flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.4f));
+                  flashAnimation.To = 160.0f;
+                  flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(flashAnimation);
+                  Storyboard.SetTarget(flashAnimation, sender as Panel);
+                  Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
+               }
+               {
+                  var animation = new ThicknessAnimation();
+                  animation.Duration = new Duration(TimeSpan.FromSeconds(0.39f));
+                  double inset = (_ShowAll ? 120 : 140) - 160;
+                  animation.To = new Thickness(1 + (0.5f * inset), 1, 1 + (0.5f * inset), 1);
+                  animation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(animation);
+                  Storyboard.SetTarget(animation, sender as Panel);
+                  Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+               }
+               {
+                  var flashAnimation = new DoubleAnimation();
+                  flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.01f));
+                  flashAnimation.To = 160.0f - 13.0f;
+                  flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(flashAnimation);
+                  Storyboard.SetTarget(flashAnimation, article);
+                  Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
+               }
+            }
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
@@ -156,8 +197,17 @@ namespace Tildetool.Status
       }
       private void Grid_MouseLeave(object sender, MouseEventArgs e, int sourceIndex)
       {
+         if (HoverElement == sender)
+         {
+            int guiIndex = DisplayIndex.IndexOf(sourceIndex);
+            if (guiIndex != -1)
+               Panel.SetZIndex(FeedPanel.Children[guiIndex], 0);
+            HoverElement = null;
+         }
+
          Source? src = sourceIndex != -1 ? SourceManager.Instance.Sources[sourceIndex] : null;
          Color color = src == null ? Extension.FromArgb(0xFF042508) : src.ColorBack;
+         TextBlock article = (sender as Panel).FindElementByName<TextBlock>("Article");
 
          Storyboard storyboard = new Storyboard();
          {
@@ -170,13 +220,45 @@ namespace Tildetool.Status
          }
          if (sourceIndex != -1)
          {
-            var flashAnimation = new DoubleAnimation();
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
-            flashAnimation.To = src.IsFeed ? 80.0f : 24.0f;
-            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
-            storyboard.Children.Add(flashAnimation);
-            Storyboard.SetTarget(flashAnimation, sender as Panel);
-            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
+            {
+               var flashAnimation = new DoubleAnimation();
+               flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+               flashAnimation.To = src.IsFeed ? 100.0f : 24.0f;
+               flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+               storyboard.Children.Add(flashAnimation);
+               Storyboard.SetTarget(flashAnimation, sender as Panel);
+               Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.HeightProperty));
+            }
+            if (src.IsFeed)
+            {
+               {
+                  var flashAnimation = new DoubleAnimation();
+                  flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.5f));
+                  flashAnimation.To = _ShowAll ? 120 : 140;
+                  flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(flashAnimation);
+                  Storyboard.SetTarget(flashAnimation, sender as Panel);
+                  Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
+               }
+               {
+                  var animation = new ThicknessAnimation();
+                  animation.Duration = new Duration(TimeSpan.FromSeconds(0.51f));
+                  animation.To = new Thickness(1, 1, 1, 1);
+                  animation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(animation);
+                  Storyboard.SetTarget(animation, sender as Panel);
+                  Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
+               }
+               {
+                  var flashAnimation = new DoubleAnimation();
+                  flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.01f));
+                  flashAnimation.To = (_ShowAll ? 120 : 140) - 13.0f;
+                  flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+                  storyboard.Children.Add(flashAnimation);
+                  Storyboard.SetTarget(flashAnimation, article);
+                  Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
+               }
+            }
          }
          _Storyboards.Add(storyboard);
          storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
@@ -421,6 +503,8 @@ namespace Tildetool.Status
                }
                DisplayShown.Add(sourceIndex);
             }
+            else if (!initial)
+               _AnimateResize(nextGuiIndex - 1);
          }
       }
 
@@ -465,6 +549,7 @@ namespace Tildetool.Status
             TextBlock isnew = grid.FindElementByName<TextBlock>("New");
 
             // Update.
+            // TODO: animate.
             title.Text = src.Subtitle;
             status.Text = src.Status;
             article.Text = src.Article;
@@ -571,16 +656,13 @@ namespace Tildetool.Status
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+         TextBlock article = grid.FindElementByName<TextBlock>("Article");
 
          //
          Storyboard storyboard = new Storyboard();
          {
-            var flashAnimation = new DoubleAnimation();
-            flashAnimation.BeginTime = TimeSpan.FromSeconds(showPause);
-            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             grid.Opacity = 0.0f;
-            flashAnimation.From = 0.0f;
-            flashAnimation.To = 1.0f;
+            var flashAnimation = new DoubleAnimation(0.0f, 1.0f, new Duration(TimeSpan.FromSeconds(0.45f))) { BeginTime = TimeSpan.FromSeconds(showPause) };
             storyboard.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.OpacityProperty));
@@ -591,11 +673,19 @@ namespace Tildetool.Status
             flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
             grid.Width = 0.0f;
             flashAnimation.From = 0.0f;
-            flashAnimation.To = 120.0f;
+            flashAnimation.To = _ShowAll ? 120 : 140;
             flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
             storyboard.Children.Add(flashAnimation);
             Storyboard.SetTarget(flashAnimation, grid);
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.0f));
+            flashAnimation.To = (_ShowAll ? 120 : 140) - 13.0f;
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, article);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
          }
          {
             var animation = new ThicknessAnimation();
@@ -671,6 +761,42 @@ namespace Tildetool.Status
          ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
          presenter.ApplyTemplate();
          FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+      }
+      protected void _AnimateResize(int guiIndex)
+      {
+         //
+         ContentControl content = FeedPanel.Children[guiIndex] as ContentControl;
+         ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+         presenter.ApplyTemplate();
+         FrameworkElement grid = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+         TextBlock article = grid.FindElementByName<TextBlock>("Article");
+
+         if (grid == HoverElement)
+            return;
+
+         //
+         Storyboard storyboard = new Storyboard();
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.45f));
+            flashAnimation.To = _ShowAll ? 120 : 140;
+            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 6.0, EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, grid);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Grid.WidthProperty));
+         }
+         {
+            var flashAnimation = new DoubleAnimation();
+            flashAnimation.Duration = new Duration(TimeSpan.FromSeconds(0.1f));
+            flashAnimation.To = (_ShowAll ? 120 : 140) - 13.0f;
+            flashAnimation.EasingFunction = new ExponentialEase { Exponent = 8.0, EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(flashAnimation);
+            Storyboard.SetTarget(flashAnimation, article);
+            Storyboard.SetTargetProperty(flashAnimation, new PropertyPath(Panel.WidthProperty));
+         }
+         _Storyboards.Add(storyboard);
+         storyboard.Completed += (sender, e) => { _Storyboards.Remove(storyboard); storyboard.Remove(this); };
+         storyboard.Begin(this, HandoffBehavior.SnapshotAndReplace);
       }
 
       public bool IsShowing { get; protected set; }
