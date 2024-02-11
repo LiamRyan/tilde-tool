@@ -120,11 +120,16 @@ namespace Tildetool.Hotcommand
          else
             Dispose();
       }
+
       void Reposition()
       {
+         // We start the timer while the thread is running, so wait until the thread reaches
+         //  the point of actually having created the.
          if (!_DidSpawn)
             return;
 
+         // We stop the timer so that we won't accumulate a bunch of calls with debugging
+         //  breakpoints; also just in case this method takes a long time.
          _Timer.Stop();
 
          // Our first step is to identify the window that will get spawned.  If
@@ -232,6 +237,17 @@ namespace Tildetool.Hotcommand
                else if (_Spawn.Minimize)
                   ShowWindow(windowHandle, SW_SHOWMINIMIZED);
 
+               // Prevent flashing
+               {
+                  FLASHWINFO fInfo = new FLASHWINFO();
+                  fInfo.cbSize = Convert.ToUInt32(Marshal.SizeOf(fInfo));
+                  fInfo.hwnd = windowHandle;
+                  fInfo.dwFlags = FLASHW_STOP;
+                  fInfo.uCount = UInt32.MaxValue;
+                  fInfo.dwTimeout = 0;
+                  FlashWindowEx(ref fInfo);
+               }
+
                // Switch virtual desktop.
                if (!string.IsNullOrEmpty(_Spawn.VirtualDesktop))
                {
@@ -253,22 +269,24 @@ namespace Tildetool.Hotcommand
             isDone = true;
          }
 
-         //
-         if (isDone)
+         // If we're not done yet, restart the timer.
+         if (!isDone)
          {
-            if (_Process != null)
-               _Process.Dispose();
-            _Process = null;
-
-            if (_Timer != null)
-            {
-               _Timer.Stop();
-               _Timer.Dispose();
-            }
-            _Timer = null;
-         }
-         else
             _Timer.Start();
+            return;
+         }
+
+         // All done!  Clear everything out.
+         if (_Process != null)
+            _Process.Dispose();
+         _Process = null;
+
+         if (_Timer != null)
+         {
+            _Timer.Stop();
+            _Timer.Dispose();
+         }
+         _Timer = null;
       }
    }
 }

@@ -79,6 +79,20 @@ namespace Tildetool
       [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
       public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpWindowText, int nMaxCount);
 
+      [DllImport("user32.dll")]
+      [return: MarshalAs(UnmanagedType.Bool)]
+      public static extern bool FlashWindowEx(ref FLASHWINFO pwfi);
+
+      [StructLayout(LayoutKind.Sequential)]
+      public struct FLASHWINFO
+      {
+         public uint cbSize;
+         public IntPtr hwnd;
+         public uint dwFlags;
+         public uint uCount;
+         public int dwTimeout;
+      }
+
       public const int SW_HIDE = 0;
       public const int SW_SHOWNORMAL = 1;
       public const int SW_SHOWMINIMIZED = 2;
@@ -99,5 +113,24 @@ namespace Tildetool
 
       public const int WM_KEYDOWN = 0x0100;
       public const int WM_KEYUP = 0x0101;
+
+      /// <summary>Stop flashing. The system restores the window to its original state.</summary>
+      public const uint FLASHW_STOP = 0;
+
+      /// <summary>Flash the window caption.</summary>
+      public const uint FLASHW_CAPTION = 1;
+
+      /// <summary>Flash the taskbar button.</summary>
+      public const uint FLASHW_TRAY = 2;
+
+      /// <summary>Flash both the window caption and taskbar button.This is equivalent to setting the FLASHW_CAPTION | FLASHW_TRAY flags.
+      /// </summary>
+      public const uint FLASHW_ALL = 3;
+
+      /// <summary>Flash continuously, until the FLASHW_STOP flag is set.</summary>
+      public const uint FLASHW_TIMER = 4;
+
+      /// <summary>Flash continuously until the window comes to the foreground.</summary>
+      public const uint FLASHW_TIMERNOFG = 12;
    }
 }

@@ -80,6 +80,8 @@ namespace Tildetool.Status
             App.PlayBeep(App.BeepSound.Notify);
          else
             App.PlayBeep(App.BeepSound.Wake);
+
+         Focus();
       }
 
       double TargetHeight = -1.0f;
@@ -94,6 +96,7 @@ namespace Tildetool.Status
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
+         Focus();
       }
 
       private void ExpandBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)

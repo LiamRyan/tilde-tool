@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -602,6 +603,16 @@ namespace Tildetool.Time
 
             foreach (List<TimeBlock> periods in projectPeriods)
                _organizePeriod(periods);
+         }
+         {
+            foreach (List<TimeBlock> periods in projectPeriods)
+               for (int i = periods.Count - 1; i >= 0; i--)
+               {
+                  if (periods[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > maxHour)
+                     periods.RemoveAt(i);
+                  else if (periods[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < minHour)
+                     periods.RemoveAt(i);
+               }
          }
 
          // Figure out the time ranges

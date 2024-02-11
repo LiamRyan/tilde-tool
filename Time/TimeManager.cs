@@ -261,14 +261,23 @@ namespace Tildetool.Time
          command.ExecuteNonQuery();
          command.Dispose();
 
+         command = _Sqlite.CreateCommand();
+         command.CommandText = "SELECT ident FROM project;";
+         HashSet<string> idents = new HashSet<string>();
+         using (var reader = command.ExecuteReader())
+            while (reader.Read())
+               idents.Add(reader.GetString(0));
+         command.Dispose();
+
          foreach (Project data in Data)
-         {
-            command = _Sqlite.CreateCommand();
-            command.CommandText = "INSERT OR IGNORE INTO project (ident) VALUES ($ident);";
-            command.Parameters.AddWithValue("$ident", data.Ident);
-            command.ExecuteNonQuery();
-            command.Dispose();
-         }
+            if (!idents.Contains(data.Ident))
+            {
+               command = _Sqlite.CreateCommand();
+               command.CommandText = "INSERT OR IGNORE INTO project (ident) VALUES ($ident);";
+               command.Parameters.AddWithValue("$ident", data.Ident);
+               command.ExecuteNonQuery();
+               command.Dispose();
+            }
 
          // Read an ident to id mapping.
          command = _Sqlite.CreateCommand();

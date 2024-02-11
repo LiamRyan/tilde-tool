@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,6 +19,8 @@ namespace Tildetool.Status
 {
    internal class SourceBlog : Source
    {
+      #region Cached Data
+
       protected record CacheStruct : IEquatable<CacheStruct>
       {
          public DateTime Date { get; set; }
@@ -25,6 +28,9 @@ namespace Tildetool.Status
          public string? Etag { get; set; }
          public DateTimeOffset? LastModified { get; set; }
       }
+
+      #endregion
+      #region Json Data
 
       protected string Site;
       protected SourceBlogUrl[] Url;
@@ -54,6 +60,14 @@ namespace Tildetool.Status
          UpdateTimeMin = updateIntervalMin;
          UpdateTimes = updateTimes;
       }
+
+      #endregion
+      #region Temporary Data
+
+      bool IsOffline = false;
+
+      #endregion
+      #region Implementation
 
       protected override void _Query()
       {
@@ -101,6 +115,7 @@ namespace Tildetool.Status
          if (cache == null)
             cache = new CacheStruct { Date = DateTime.Now };
          string oldTitle = cache.Title;
+         IsOffline = false;
 
          bool isValid = true;
 
@@ -133,8 +148,45 @@ namespace Tildetool.Status
                {
                   taskGet.Wait();
                }
+               catch (SocketException socketEx)
+               {
+                  App.WriteLog(socketEx.Message);
+
+                  IsOffline = true;
+                  Status = "no connection";
+                  State = StateType.Error;
+                  return;
+               }
+               catch (HttpRequestException httpRequestEx)
+               {
+                  App.WriteLog(httpRequestEx.Message);
+
+                  IsOffline = true;
+                  Status = "no connection";
+                  State = StateType.Error;
+                  return;
+               }
                catch (Exception ex)
                {
+                  if (ex.InnerException is HttpRequestException httpEx)
+                  {
+                     if (httpEx.StatusCode == null)
+                     {
+                        IsOffline = true;
+                        Status = "no connection";
+                        State = StateType.Error;
+                        return;
+                     }
+                     ex = httpEx;
+                  }
+                  if (ex.InnerException is SocketException socketEx)
+                  {
+                     IsOffline = true;
+                     Status = "no connection";
+                     State = StateType.Error;
+                     return;
+                  }
+
                   App.WriteLog(ex.Message);
 
                   Status = "offline";
@@ -265,6 +317,8 @@ namespace Tildetool.Status
          CacheStruct? cache = Cache as CacheStruct;
          if (cache == null)
             return;
+         if (IsOffline)
+            return;
 
          DateTime infoDate = cache.Date;
 
@@ -306,6 +360,9 @@ namespace Tildetool.Status
       public override string Domain { get { return Site; } }
       public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval)
       {
+         if (IsOffline)
+            return interval.TotalSeconds >= 60.0f;
+
          if (UpdateTimes == null || UpdateTimes.Length == 0)
          {
             // check if we're in a different bucket
@@ -373,5 +430,7 @@ namespace Tildetool.Status
          else if (!string.IsNullOrEmpty(OpenToUrl) && (OpenToUrl.StartsWith("http://") || OpenToUrl.StartsWith("https://")))
             Process.Start(new ProcessStartInfo(OpenToUrl) { UseShellExecute = true });
       }
+
+      #endregion
    }
 }
