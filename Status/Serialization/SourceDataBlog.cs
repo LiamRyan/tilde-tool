@@ -13,6 +13,7 @@ namespace Tildetool.Status.Serialization
       public string Reference { get; set; }
       public int UpdateTimeMin { get; set; } = 120;
       public TimeOnly[] UpdateTimes { get; set; }
+      public bool Enabled { get; set; } = true;
 
       public Source? Spawn(SourceBundle parent)
       {

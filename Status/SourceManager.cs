@@ -205,7 +205,8 @@ namespace Tildetool.Status
          foreach (var source in Source.DataVMs)
             Sources.Add(source.Spawn(Source));
          foreach (var source in Source.DataBlogs)
-            Sources.Add(source.Spawn(Source));
+            if (source.Enabled)
+               Sources.Add(source.Spawn(Source));
 
          // Save if we didn't have any previously.
          if (!result)

@@ -25,6 +25,7 @@ namespace Tildetool.Status
       {
          public DateTime Date { get; set; }
          public string Title { get; set; }
+         public string OpenTo { get; set; }
          public string? Etag { get; set; }
          public DateTimeOffset? LastModified { get; set; }
       }
@@ -41,6 +42,7 @@ namespace Tildetool.Status
       protected string DateFormat;
       protected TimeZoneInfo? DateTimeZone;
       protected SourceBlogLookup TitleLookup;
+      protected SourceBlogLookup OpenToLookup;
       protected string Reference;
       protected float UpdateTimeMin;
       protected TimeOnly[] UpdateTimes;
@@ -57,6 +59,7 @@ namespace Tildetool.Status
          DateFormat = site.DateFormat;
          DateTimeZone = !string.IsNullOrEmpty(site.DateTimeZone) ? TimeZoneInfo.FindSystemTimeZoneById(site.DateTimeZone) : null;
          TitleLookup = site.TitleLookup;
+         OpenToLookup = site.OpenToLookup;
          UpdateTimeMin = updateIntervalMin;
          UpdateTimes = updateTimes;
       }
@@ -292,15 +295,45 @@ namespace Tildetool.Status
             }
          }
 
+         // Figure out the link.
+         bool hasOpenTo = OpenToLookup != null && OpenToLookup.Path.Length > 0;
+         if (hasOpenTo)
+         {
+            try
+            {
+               // Pull it out and store it.
+               string openToStr = lookupData(OpenToLookup);
+               if (!string.IsNullOrEmpty(openToStr))
+               {
+                  if (!string.IsNullOrEmpty(OpenToUrl))
+                     cache.OpenTo = OpenToUrl.Replace("@OPENTO@", openToStr);
+                  else
+                     cache.OpenTo = openToStr;
+               }
+               else
+                  isValid = false;
+            }
+            catch (Exception ex)
+            {
+               App.WriteLog(ex.Message);
+               isValid = false;
+            }
+         }
+
          if (isValid)
          {
             // If we don't have a date lookup and the title changed, set the date to now.
             if (!hasDate)
                if (Cache == null || string.IsNullOrEmpty(oldTitle) || string.Compare(oldTitle, cache.Title) != 0)
                   cache.Date = DateTime.Now;
+
             // If we don't have a title lookup, use a default
             if (!hasTitle)
                cache.Title = "Updated " + cache.Date.ToString();
+
+            // If we don't have a link lookup, use default.
+            if (!hasOpenTo)
+               cache.OpenTo = OpenToUrl;
 
             // Store it for future use.
             Cache = cache;
@@ -327,24 +360,24 @@ namespace Tildetool.Status
          TimeSpan delta = now - infoDate;
          if (delta.TotalDays >= 70)
          {
-            Status = infoDate.Year.ToString() + "/" + infoDate.Month.ToString() + "/" + infoDate.Day.ToString();
+            Status = infoDate.Year.ToString() + "/" + infoDate.Month.ToString() + "/" + infoDate.Day.ToString() + (DateLookup != null && DateLookup.Path.Length > 0 ? "" : "?");
             State = StateType.Inactive;
          }
          else if (delta.Days >= 14)
          {
             int weeks = delta.Days / 7;
-            Status = weeks.ToString() + " week" + (weeks > 1 ? "s" : "") + " ago";
+            Status = weeks.ToString() + " week" + (weeks > 1 ? "s" : "") + " ago" + (DateLookup != null && DateLookup.Path.Length > 0 ? "" : "?");
             State = StateType.Inactive;
          }
          else if (delta.Days >= 1)
          {
-            Status = delta.Days.ToString() + " day" + (delta.Days > 1 ? "s" : "") + " ago";
+            Status = delta.Days.ToString() + " day" + (delta.Days > 1 ? "s" : "") + " ago" + (DateLookup != null && DateLookup.Path.Length > 0 ? "" : "?");
             State = StateType.Alert;
          }
          else
          {
             if (delta.Hours >= 1)
-               Status = delta.Hours.ToString() + " hour" + (delta.Hours > 1 ? "s" : "") + " ago";
+               Status = delta.Hours.ToString() + " hour" + (delta.Hours > 1 ? "s" : "") + " ago" + (DateLookup != null && DateLookup.Path.Length > 0 ? "" : "?");
             else
                Status = "new";
             State = StateType.Success;
@@ -400,6 +433,11 @@ namespace Tildetool.Status
 
       public override void HandleClick()
       {
+         string? openTo = "";
+         CacheStruct? cache = Cache as CacheStruct;
+         if (cache != null)
+            openTo = cache.OpenTo ?? "";
+
          if (!string.IsNullOrEmpty(OpenCommand))
          {
             Thread trd = new Thread(new ThreadStart(() =>
@@ -408,11 +446,11 @@ namespace Tildetool.Status
                {
                   Process process = new Process();
                   ProcessStartInfo startInfo = new ProcessStartInfo();
-                  startInfo.FileName = OpenCommand;
+                  startInfo.FileName = OpenCommand.Replace("@OPENTO@", openTo);
                   if (OpenArgumentList != null)
                   {
                      foreach (string argument in OpenArgumentList)
-                        startInfo.ArgumentList.Add(argument);
+                        startInfo.ArgumentList.Add(argument.Replace("@OPENTO@", openTo));
                   }
                   process.StartInfo = startInfo;
                   process.Start();
@@ -427,8 +465,8 @@ namespace Tildetool.Status
             trd.IsBackground = true;
             trd.Start();
          }
-         else if (!string.IsNullOrEmpty(OpenToUrl) && (OpenToUrl.StartsWith("http://") || OpenToUrl.StartsWith("https://")))
-            Process.Start(new ProcessStartInfo(OpenToUrl) { UseShellExecute = true });
+         else if (!string.IsNullOrEmpty(openTo) && (openTo.StartsWith("http://") || openTo.StartsWith("https://")))
+            Process.Start(new ProcessStartInfo(openTo) { UseShellExecute = true });
       }
 
       #endregion
