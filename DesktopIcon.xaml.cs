@@ -58,7 +58,7 @@ namespace Tildetool
       protected void _ShowDesktop(VirtualDesktop current, bool animate)
       {
          // Make sure we have the right number of name lines
-         VirtualDesktop[] desktops = VirtualDesktop.GetDesktops().ToArray();
+         VirtualDesktop[] desktops = new VirtualDesktop[0];// VirtualDesktop.GetDesktops().ToArray();
          while (Border.Children.Count > desktops.Length)
             Border.Children.RemoveAt(Border.Children.Count - 1);
 

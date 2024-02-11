@@ -14,6 +14,7 @@ using System.Text;
 using WinRT;
 
 // Based on http://stackoverflow.com/a/32417530, Windows 10 SDK, github project Grabacr07/VirtualDesktop and own research
+// See also https://github.com/slnz00/VirtualDesktopDumper for API if the internal interface changes.
 // Modified for use in tildetool
 
 namespace VirtualDesktopApi
@@ -165,7 +166,7 @@ namespace VirtualDesktopApi
 
    [ComImport]
    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-   [Guid("A3175F2D-239C-4BD2-8AA0-EEBA8B0B138E")]
+   [Guid("53F5CA0B-158F-4124-900C-057158060B27")]
    public interface IVirtualDesktopManagerInternal
    {
       int GetCount();
@@ -187,7 +188,7 @@ namespace VirtualDesktopApi
       void UpdateWallpaperPathForAllDesktops(HString path);
       void CopyDesktopState(IApplicationView pView0, IApplicationView pView1);
       void CreateRemoteDesktop(HString path, out IVirtualDesktop desktop);
-      void SwitchRemoteDesktop(IVirtualDesktop desktop);
+      void SwitchRemoteDesktop(IVirtualDesktop desktop, int switchType);
       void SwitchDesktopWithAnimation(IVirtualDesktop desktop);
       void GetLastActiveDesktop(out IVirtualDesktop desktop);
       void WaitForAnimationToComplete();
@@ -236,8 +237,7 @@ namespace VirtualDesktopApi
    #endregion
 
    [ComImport]
-   //[Guid("cd403e52-deed-4c13-b437-b98380f2b1e8")]
-   [Guid("B287FA1C-7771-471A-A2DF-9B6B21F0D675")]
+   [Guid("B9E5E94D-233E-49AB-AF5C-2B4541C3AADE")]
    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
    public interface IVirtualDesktopNotification
    {
@@ -373,28 +373,28 @@ namespace VirtualDesktopApi
          {
             Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
          }
-         try
-         {
-            if (shell != null)
-               VirtualDesktopNotificationService = (IVirtualDesktopNotificationService)shell.QueryService(Guids.CLSID_VirtualDesktopNotificationService, typeof(IVirtualDesktopNotificationService).GUID);
-         }
-         catch (System.InvalidCastException e)
-         {
-            Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
-         }
+         //try
+         //{
+         //   if (shell != null)
+         //      VirtualDesktopNotificationService = (IVirtualDesktopNotificationService)shell.QueryService(Guids.CLSID_VirtualDesktopNotificationService, typeof(IVirtualDesktopNotificationService).GUID);
+         //}
+         //catch (System.InvalidCastException e)
+         //{
+         //   Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
+         //}
 
-         try
-         {
-            if (VirtualDesktopNotificationService != null)
-            {
-               VirtualDesktopNotification = new VirtualDesktopNotification();
-               VirtualDesktopNotificationCookie = VirtualDesktopNotificationService.Register(VirtualDesktopNotification);
-            }
-         }
-         catch (System.InvalidCastException e)
-         {
-            Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
-         }
+         //try
+         //{
+         //   if (VirtualDesktopNotificationService != null)
+         //   {
+         //      VirtualDesktopNotification = new VirtualDesktopNotification();
+         //      VirtualDesktopNotificationCookie = VirtualDesktopNotificationService.Register(VirtualDesktopNotification);
+         //   }
+         //}
+         //catch (System.InvalidCastException e)
+         //{
+         //   Debug.Write("Unable to initialize VirtualDesktopManager: " + e.ToString());
+         //}
 
          VirtualDesktop.Created += (a) => VirtualDesktop.RebuildDictionary();
          VirtualDesktop.Destroyed += (a, b) => VirtualDesktop.RebuildDictionary();

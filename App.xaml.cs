@@ -122,14 +122,6 @@ namespace Tildetool
          Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.D, HotkeyDesktop);
 
          VirtualDesktopManager.Initialize();
-         VirtualDesktop.CurrentChanged += (s, e) =>
-         {
-            Dispatcher.Invoke(() =>
-            {
-               if (_DesktopIcon == null)
-                  HotkeyDesktop(0);
-            });
-         };
 
          SourceManager.Instance.SourceChanged += (s, args) =>
             {
@@ -314,22 +306,6 @@ namespace Tildetool
          }
          else
             _WordLookup.Cancel();
-      }
-
-      DesktopIcon? _DesktopIcon = null;
-      protected void HotkeyDesktop(Keys keys)
-      {
-         if (_DesktopIcon == null)
-         {
-            _DesktopIcon = new DesktopIcon();
-            _DesktopIcon.OnFinish += (sender) => { if (_DesktopIcon == sender) _DesktopIcon = null; };
-            _DesktopIcon.Closing += (sender, e) => { if (_DesktopIcon == sender) _DesktopIcon = null; };
-
-            _DesktopIcon.Show();
-            _DesktopIcon.Topmost = true;
-         }
-         else
-            _DesktopIcon.Cancel();
       }
    }
 }
