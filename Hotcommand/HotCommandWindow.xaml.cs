@@ -101,7 +101,7 @@ namespace Tildetool
          OnFinish?.Invoke(this);
       }
 
-      bool _AnyInput = false;
+      bool _IsHotkey = true;
 
       [MethodImpl(MethodImplOptions.NoInlining)]
       public int KeyboardHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
@@ -123,13 +123,10 @@ namespace Tildetool
                   {
                      int vkCode = Marshal.ReadInt32(lParam);
                      Key key = KeyInterop.KeyFromVirtualKey(vkCode);
-                     if (key == Key.LWin || key == Key.LWin)
+                     if (key == Key.LeftCtrl || key == Key.RightCtrl)
                      {
-                        if (_AnyInput)
-                        {
-                           Cancel();
-                           return 0;
-                        }
+                        _IsHotkey = false;
+                        RefreshDisplay();
                      }
                   }
                }
@@ -179,6 +176,7 @@ namespace Tildetool
          _SuggestedContext = null;
          _AltCmds.Clear();
          bool suggestedFull = false;
+         if (!_IsHotkey)
          {
             HashSet<Tildetool.Hotcommand.HmContext> usedC = new HashSet<Tildetool.Hotcommand.HmContext>();
             usedC.Add(HotcommandManager.Instance.CurrentContext);
@@ -317,42 +315,75 @@ namespace Tildetool
             CommandExpand.Visibility = Visibility.Collapsed;
 
          //
+         void populate<T>(IEnumerable<T> data, System.Action<Grid,T,int> result)
          {
             DataTemplate? template = Resources["CommandOption"] as DataTemplate;
-            while (OptionGrid.Children.Count > _AltCmds.Count)
-               OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
-            while (OptionGrid.Children.Count < _AltCmds.Count)
+            int i = 0;
+            foreach (T entry in data)
             {
-               ContentControl content = new ContentControl { ContentTemplate = template };
-               OptionGrid.Children.Add(content);
-               content.ApplyTemplate();
+               ContentControl content;
+               if (OptionGrid.Children.Count <= i)
+               {
+                  content = new ContentControl { ContentTemplate = template };
+                  OptionGrid.Children.Add(content);
+                  content.ApplyTemplate();
+               }
+               content = OptionGrid.Children[i] as ContentControl;
                ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
                presenter.ApplyTemplate();
-            }
-            for (int i = 0; i < _AltCmds.Count; i++)
-            {
-               ContentControl content = OptionGrid.Children[i] as ContentControl;
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
+
                Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
+               result(grid, entry, i);
+               i++;
+            }
+            while (OptionGrid.Children.Count > i)
+               OptionGrid.Children.RemoveAt(OptionGrid.Children.Count - 1);
+         }
+
+         if (_IsHotkey)
+         {
+            string[] commands = new string[] { "P", "S", "W", "Q" };
+            string[] texts = new string[] { "Timekeep", "Statusbar", "Word Lookup", "Quit" };
+            populate(texts, (grid, txt, i) =>
+            {
+               TextBlock number = grid.FindElementByName<TextBlock>("Number");
+               TextBlock text = grid.FindElementByName<TextBlock>("Text");
+               TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
+               Grid area = grid.FindElementByName<Grid>("Area");
+
+               number.Text = "";
+               text.Text = commands[i];
+               expand.Text = txt;
+
+               grid.Background = new SolidColorBrush { Color = Extension.FromArgb(0xFF021204) };
+               area.Background = new SolidColorBrush { Color = Extension.FromArgb(0xFF042508) };
+               number.Foreground = new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               text.Foreground = new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               expand.Foreground = new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+            });
+         }
+         else
+         {
+            populate(_AltCmds, (grid, cmd, i) =>
+            {
                TextBlock number = grid.FindElementByName<TextBlock>("Number");
                TextBlock text = grid.FindElementByName<TextBlock>("Text");
                TextBlock expand = grid.FindElementByName<TextBlock>("Expand");
                Grid area = grid.FindElementByName<Grid>("Area");
 
                number.Text = ((i + 1) % 10).ToString();
-               text.Text = (_AltCmds[i].IsContextual ? "\u2192 " : "") + _AltCmds[i].Tag;
-               if (_AltCmds[i].IsQuickTag)
-                  expand.Text = _AltCmds[i].FullText;
+               text.Text = (cmd.IsContextual ? "\u2192 " : "") + cmd.Tag;
+               if (cmd.IsQuickTag)
+                  expand.Text = cmd.FullText;
                else
                   expand.Text = "";
 
-               grid.Background = new SolidColorBrush { Color = _AltCmds[i].Context != null ? _AltCmds[i].Context.Colors[(int)ColorIndex.Background].Lerp(Extension.FromRgb(0x000000), 0.5f) : Extension.FromArgb(0xFF021204) };
-               area.Background = _AltCmds[i].IsContextual ? (Resources["ColorBackground"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF042508) };
-               number.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
-               text.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
-               expand.Foreground = _AltCmds[i].IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
-            }
+               grid.Background = new SolidColorBrush { Color = cmd.Context != null ? cmd.Context.Colors[(int)ColorIndex.Background].Lerp(Extension.FromRgb(0x000000), 0.5f) : Extension.FromArgb(0xFF021204) };
+               area.Background = cmd.IsContextual ? (Resources["ColorBackground"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF042508) };
+               number.Foreground = cmd.IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               text.Foreground = cmd.IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+               expand.Foreground = cmd.IsContextual ? (Resources["ColorTextBack"] as SolidColorBrush) : new SolidColorBrush { Color = Extension.FromArgb(0xFF449637) };
+            });
          }
       }
 
@@ -362,8 +393,8 @@ namespace Tildetool
          if (_Finished)
             return handled;
 
-         // Handle shift-commands
-         if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+         // Handle alt-commands.
+         if (_IsHotkey)
          {
             switch (key)
             {
@@ -371,8 +402,33 @@ namespace Tildetool
                   Cancel();
                   App.Current.Shutdown();
                   return true;
+
+               case Key.S:
+                  _AnyCommand = true;
+                  Cancel();
+                  (App.Current as App).HotkeyStatus();
+                  return true;
+
+               case Key.P:
+                  _AnyCommand = true;
+                  Cancel();
+                  (App.Current as App).HotkeyTimekeep();
+                  return true;
+
+               case Key.W:
+                  _AnyCommand = true;
+                  Cancel();
+                  (App.Current as App).HotkeyLookup();
+                  return true;
             }
 
+            if (key >= Key.A && key <= Key.Z)
+               return true;
+         }
+
+         // Handle shift-commands
+         if (!_IsHotkey && (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)))
+         {
             int number = -1;
             if (key >= Key.D0 && key <= Key.D9)
                number = key - Key.D0;
@@ -408,7 +464,6 @@ namespace Tildetool
             else
                _Text += text;
             handled = true;
-            _AnyInput = true;
          }
 
          // Handle key entry.
@@ -428,7 +483,6 @@ namespace Tildetool
                _Text = _Text.Substring(0, _Text.Length - 1);
             _PendFinished = false;
             handled = true;
-            _AnyInput = true;
          }
          else if (key == Key.Return)
          {
@@ -454,14 +508,12 @@ namespace Tildetool
                Cancel();
 
             handled = true;
-            _AnyInput = true;
             return handled;
          }
          else if (key == Key.Escape || (key == Key.OemTilde && (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin))))
          {
             Cancel();
             handled = true;
-            _AnyInput = true;
             return handled;
          }
          else

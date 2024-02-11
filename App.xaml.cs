@@ -113,13 +113,8 @@ namespace Tildetool
          TimeManager.Instance.ConnectSqlite();
          TimeManager.Instance.StartTick();
 
-         //Hotkey.Register(KeyMod.Win, Keys.Escape, HotkeyEscape);
          Hotkey.Register(KeyMod.Win, Keys.Insert, HotkeyInsert);
-         Hotkey.Register(KeyMod.Alt, Keys.Oemtilde, HotkeyTilde);
-         Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.S, HotkeyStatus);
-         Hotkey.Register(KeyMod.Shift | KeyMod.Ctrl, Keys.P, HotkeyTimekeep);
-         Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.W, HotkeyLookup);
-         Hotkey.Register(KeyMod.Ctrl | KeyMod.Alt, Keys.D, HotkeyDesktop);
+         Hotkey.Register(KeyMod.Ctrl, Keys.Oemtilde, HotkeyTilde);
 
          VirtualDesktopManager.Initialize();
 
@@ -182,7 +177,7 @@ namespace Tildetool
       StatusProgress? _StatusProgress = null;
 
       static StatusBar? _StatusBar = null;
-      protected void HotkeyStatus(Keys keys)
+      public void HotkeyStatus(Keys keys = Keys.None)
       {
          if (_StatusBar == null)
          {
@@ -277,7 +272,7 @@ namespace Tildetool
          if (temporary)
             _Timekeep.ScheduleCancel();
       }
-      protected void HotkeyTimekeep(Keys keys)
+      public void HotkeyTimekeep(Keys keys = Keys.None)
       {
          if (_Timekeep == null)
          {
@@ -292,7 +287,7 @@ namespace Tildetool
       }
 
       WordLookup? _WordLookup = null;
-      protected void HotkeyLookup(Keys keys)
+      public void HotkeyLookup(Keys keys = Keys.None)
       {
          if (_WordLookup == null)
          {
