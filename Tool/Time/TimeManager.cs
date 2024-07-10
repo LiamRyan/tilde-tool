@@ -158,7 +158,7 @@ namespace Tildetool.Time
          {
             // Initial run, populate some basic data.
             cacheData = new TimeDataBundle();
-            cacheData.Project = new Project[1] { new Project { Ident = "Sample", Name = "Sample Project", Hotkey = "S" } };
+            cacheData.Project = new Project[1] { new Project { Ident = "Sample", Name = "Sample Project", Hotkey = "S", DesktopPrevent = new string[] { "Open" } } };
             SaveCache();
          }
 

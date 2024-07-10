@@ -80,7 +80,7 @@ namespace Tildetool
          SetWindowLong(hWindow, GWL_EX_STYLE, GetWindowLong(hWindow, GWL_EX_STYLE) | WS_EX_TRANSPARENT);
       }
 
-      private void Main(object sender, StartupEventArgs e)
+      private void OnStartup(object sender, StartupEventArgs e)
       {
          OnStartup(e);
       }
@@ -197,20 +197,6 @@ namespace Tildetool
          {
             _StatusBar.ClearTimer();
             _StatusBar.AnimateShow();
-         }
-      }
-
-      AppPaneWindow? _AppPaneWindow = null;
-      protected void HotkeyEscape(Keys keys)
-      {
-         if (_AppPaneWindow == null)
-         {
-            _AppPaneWindow = new AppPaneWindow();
-            _AppPaneWindow.Closing += (sender, e) => { _AppPaneWindow = null; };
-
-            _AppPaneWindow.Show();
-            _AppPaneWindow.Topmost = true;
-            _AppPaneWindow.Activate();
          }
       }
 
