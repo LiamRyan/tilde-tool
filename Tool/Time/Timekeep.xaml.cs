@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -38,11 +40,15 @@ namespace Tildetool.Time
          InitializeComponent();
          Top = App.GetBarTop(124.0);
 
+         int[] values = TimeManager.Instance.QueryLastTimeIndicators();
+         IndicatorLastValue = Enumerable.Range(0, TimeManager.Instance.Indicators.Length).ToDictionary(i => TimeManager.Instance.Indicators[i], i => values[i]);
+
          InitialProject = TimeManager.Instance.CurrentProject;
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
          RebuildList();
          Refresh();
          RefreshDaily();
+         RefreshIndicators();
 
          _AnimateIn();
 
@@ -53,6 +59,7 @@ namespace Tildetool.Time
          if (TimeManager.Instance.CurrentProject != null)
             _AnimateTimer((int)(DateTime.UtcNow - TimeManager.Instance.CurrentStartTime).TotalSeconds % 60);
       }
+
       protected override void OnClosing(CancelEventArgs e)
       {
          base.OnClosing(e);
@@ -103,8 +110,48 @@ namespace Tildetool.Time
          switch (e.Key)
          {
             case Key.Escape:
-               e.Handled = true;
-               Cancel();
+               if (FocusCategory != null)
+               {
+                  FocusCategory = null;
+                  RefreshIndicators();
+                  e.Handled = true;
+               }
+               else
+               {
+                  e.Handled = true;
+                  Cancel();
+               }
+               return;
+
+            case Key.Return:
+               if (FocusCategory != null)
+               {
+                  TimeManager.Instance.AddTimeIndicator(new TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = DateTime.UtcNow });
+                  IndicatorLastValue[FocusCategory] = FocusCategoryValue;
+                  FocusCategory = null;
+                  RefreshIndicators();
+                  RefreshDaily();
+                  e.Handled = true;
+               }
+               else
+               {
+                  try
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\TimekeepCache.json";
+                     startInfo.UseShellExecute = true;
+                     process.StartInfo = startInfo;
+                     process.Start();
+                  }
+                  catch (Exception ex)
+                  {
+                     MessageBox.Show(ex.ToString());
+                     App.WriteLog(ex.Message);
+                  }
+                  e.Handled = true;
+                  Cancel();
+               }
                return;
 
             case Key.Left:
@@ -120,14 +167,30 @@ namespace Tildetool.Time
                return;
 
             case Key.Up:
-               DailyDay = DailyDay.AddDays(-7);
-               RefreshDaily();
+               if (FocusCategory != null)
+               {
+                  FocusCategoryValue = Math.Min(FocusCategoryValue + 1, FocusCategory.Values.Length - 1 - FocusCategory.Offset);
+                  RefreshIndicators();
+               }
+               else
+               {
+                  DailyDay = DailyDay.AddDays(-7);
+                  RefreshDaily();
+               }
                e.Handled = true;
                return;
 
             case Key.Down:
-               DailyDay = DailyDay.AddDays(7);
-               RefreshDaily();
+               if (FocusCategory != null)
+               {
+                  FocusCategoryValue = Math.Max(FocusCategoryValue - 1, -FocusCategory.Offset);
+                  RefreshIndicators();
+               }
+               else
+               {
+                  DailyDay = DailyDay.AddDays(7);
+                  RefreshDaily();
+               }
                e.Handled = true;
                return;
 
@@ -139,32 +202,129 @@ namespace Tildetool.Time
          }
 
          // Handle key entry.
-         if (e.Key >= Key.A && e.Key <= Key.Z)
-            SetActiveTime(e.Key.ToString());
-         else if (e.Key >= Key.D0 && e.Key <= Key.D9)
-            SetActiveTime(_Number[e.Key - Key.D0].ToString());
-         else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
-            SetActiveTime(_Number[e.Key - Key.NumPad0].ToString());
-         else if (e.Key == Key.Return)
+         void _handleKey(string key)
          {
-            try
-            {
-               Process process = new Process();
-               ProcessStartInfo startInfo = new ProcessStartInfo();
-               startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\TimekeepCache.json";
-               startInfo.UseShellExecute = true;
-               process.StartInfo = startInfo;
-               process.Start();
-            }
-            catch(Exception ex)
-            {
-               MessageBox.Show(ex.ToString());
-               App.WriteLog(ex.Message);
-            }
-            Cancel();
-            e.Handled = true;
-            return;
+            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+               SetActiveIndicator(key);
+            else
+               SetActiveTime(key);
          }
+
+         if (e.Key >= Key.A && e.Key <= Key.Z)
+            _handleKey(e.Key.ToString());
+         else if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            _handleKey(_Number[e.Key - Key.D0].ToString());
+         else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
+            _handleKey(_Number[e.Key - Key.NumPad0].ToString());
+      }
+
+      Dictionary<Indicator, int> IndicatorLastValue;
+      Indicator? FocusCategory = null;
+      int FocusCategoryValue = 0;
+      void SetActiveIndicator(string key)
+      {
+         Indicator? indicator = null;
+         if (!TimeManager.Instance.IndicatorByHotkey.TryGetValue(key, out indicator))
+            return;
+
+         FocusCategory = indicator;
+         FocusCategoryValue = IndicatorLastValue.GetValueOrDefault(FocusCategory, 0);
+         if (FocusCategoryValue == int.MinValue)
+            FocusCategoryValue = 0;
+         RefreshIndicators();
+      }
+
+      void Populate<TData>(Panel parent, DataTemplate template, IEnumerable<TData> datalist, System.Action<ContentControl,FrameworkElement,int,TData> populate)
+      {
+         int index = 0;
+         foreach (TData data in datalist)
+         {
+            ContentControl content;
+            ContentPresenter presenter;
+            if (index >= parent.Children.Count)
+            {
+               content = new ContentControl { ContentTemplate = template };
+               parent.Children.Add(content);
+               content.ApplyTemplate();
+               presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            }
+            else
+            {
+               content = parent.Children[index] as ContentControl;
+               content.ApplyTemplate();
+               presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            }
+            presenter.ApplyTemplate();
+
+            if (populate != null)
+            {
+               FrameworkElement root = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+               populate(content, root, index, data);
+            }
+
+            index++;
+         }
+         while (parent.Children.Count > index)
+            parent.Children.RemoveAt(parent.Children.Count - 1);
+      }
+
+      abstract class DataTemplater
+      {
+         public DataTemplater(FrameworkElement root)
+         {
+            foreach (FieldInfo field in GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+               object value = root.FindName(field.Name);
+               field.SetValue(this, value);
+            }
+         }
+      }
+      class IndicatorPane : DataTemplater
+      {
+         public TextBlock IndicatorTitle;
+         public StackPanel IndicatorData;
+         public TextBlock IndicatorIcon;
+         public TextBlock IndicatorText;
+
+         public IndicatorPane(FrameworkElement root) : base(root) { }
+      }
+
+      void RefreshIndicators()
+      {
+         // Add or remove to get the right quantity.
+         DataTemplate? template = Resources["IndicatorPane"] as DataTemplate;
+         Populate(IndicatorPanes, template, TimeManager.Instance.Indicators, (content, root, i, data) =>
+         {
+            IndicatorPane pane = new IndicatorPane(root);
+            pane.IndicatorTitle.Text = data.Name;
+            if (data.Name[0].ToString() == data.Hotkey)
+              pane.IndicatorTitle.Text = $"[{data.Hotkey}]{data.Name[1..]}";
+            else
+               pane.IndicatorTitle.Text = $"[{data.Hotkey}] {data.Name}";
+
+            int index = int.MinValue;
+            if (FocusCategory == data)
+               index = FocusCategoryValue;
+            else if (IndicatorLastValue.TryGetValue(data, out int defaultValue))
+               index = defaultValue;
+
+            pane.IndicatorData.Visibility = (index != int.MinValue) ? Visibility.Visible : Visibility.Collapsed;
+            if (index != int.MinValue)
+            {
+               index += data.Offset;
+               pane.IndicatorText.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
+               if (index >= 0 && index < data.Values.Length)
+               {
+                  pane.IndicatorIcon.Text = data.Values[index].Icon;
+                  pane.IndicatorText.Text = data.Values[index].Name;
+               }
+               else
+               {
+                  pane.IndicatorIcon.Text = index.ToString();
+                  pane.IndicatorText.Text = "? ? ?";
+               }
+            }
+         });
       }
 
       private Storyboard? _StoryboardRefresh2;
@@ -454,8 +614,16 @@ namespace Tildetool.Time
          {
             Project? project;
             TimeManager.Instance.IdentToProject.TryGetValue(period.Ident, out project);
-            return new TimeBlock { Priority = 0, Name = project?.Name ?? period.Ident, StartTime = period.StartTime, EndTime = period.EndTime, Color = Extension.FromArgb(0xFF143518),
-                                   Project = project, DbId = period.DbId };
+            return new TimeBlock
+            {
+               Priority = 0,
+               Name = project?.Name ?? period.Ident,
+               StartTime = period.StartTime,
+               EndTime = period.EndTime,
+               Color = Extension.FromArgb(0xFF143518),
+               Project = project,
+               DbId = period.DbId
+            };
          }
          public static TimeBlock FromWeeklySchedule(WeeklySchedule schedule, DateTime today)
          {
@@ -507,6 +675,8 @@ namespace Tildetool.Time
             DailyDate.Text = "Schedule";
 
          DataTemplate? templateRow = Resources["DailyRow"] as DataTemplate;
+         DataTemplate? templateIndicator = Resources["Indicator"] as DataTemplate;
+         DataTemplate? templateIndicators = Resources["Indicators"] as DataTemplate;
          DataTemplate? templateHeaderCell = Resources["DailyHeaderCell"] as DataTemplate;
          DataTemplate? templateCell = Resources["DailyCell"] as DataTemplate;
          DataTemplate? templateDivider = Resources["DailyDivider"] as DataTemplate;
@@ -623,7 +793,7 @@ namespace Tildetool.Time
 
          // Fill in time headers
          _populate(HeaderRow, templateHeaderCell, showHours.Length);
-         for (int i = 0; i < showHours.Length; i ++)
+         for (int i = 0; i < showHours.Length; i++)
          {
             ContentControl content = HeaderRow.Children[i] as ContentControl;
             content.ApplyTemplate();
@@ -634,7 +804,7 @@ namespace Tildetool.Time
             Grid.SetColumn(content, Math.Min(i, showHours.Length - 2));
             text.Text = $"{showHours[i]:D2}00";
             text.HorizontalAlignment = (i + 1 == showHours.Length) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
-            text.Margin = (i + 1 == showHours.Length) ? new Thickness(0,0,-50,0) : new Thickness(-50, 0, 0, 0);
+            text.Margin = (i + 1 == showHours.Length) ? new Thickness(0, 0, -50, 0) : new Thickness(-50, 0, 0, 0);
          }
 
          // Hour dividers
@@ -703,6 +873,72 @@ namespace Tildetool.Time
                scheduleTextCtrl.Foreground = new SolidColorBrush(block[i].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
                scheduleTextCtrl.Text = block[i].Name;
             }
+         }
+
+         // Indicators
+         Indicators.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
+         if (CurDailyMode == DailyMode.Today)
+         {
+            DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
+            DateTime todayE = todayS.AddDays(1);
+            List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
+
+            const double Thickness = 0.06;
+            List<List<TimeIndicator>> rows = new List<List<TimeIndicator>>();
+            {
+               List<double> rowEnd = new List<double>();
+               for (int i = 0; i < indicators.Count; i++)
+               {
+                  double hourB = (indicators[i].Time - todayS).TotalHours - Thickness;
+                  double hourE = hourB + (2.0 * Thickness);
+                  if (hourE <= minHour)
+                     continue;
+                  if (hourB < minHour)
+                     hourB = minHour;
+
+                  int row = 0;
+                  for (; row < rowEnd.Count; row++)
+                     if (hourB >= rowEnd[row])
+                        break;
+                  if (row >= rowEnd.Count)
+                  {
+                     rowEnd.Add(0.0);
+                     rows.Add(new List<TimeIndicator>());
+                  }
+                  rows[row].Add(indicators[i]);
+               }
+            }
+
+            Populate(Indicators, templateIndicators, rows, (content, root, _, row) =>
+            {
+               Grid grid = root as Grid;
+               grid.ColumnDefinitions.Clear();
+               List<int> columns = new List<int>();
+               double lastHour = minHour;
+               for (int i = 0; i < row.Count; i++)
+               {
+                  double hourB = (row[i].Time - todayS).TotalHours - Thickness;
+                  double hourE = hourB + (2.0 * Thickness);
+                  if (hourB < minHour)
+                     hourB = minHour;
+
+                  if (hourB > lastHour)
+                     grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourB - lastHour, GridUnitType.Star) });
+                  columns.Add(grid.ColumnDefinitions.Count);
+                  grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourE - hourB, GridUnitType.Star) });
+
+                  lastHour = hourE;
+               }
+               grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(maxHour - lastHour, GridUnitType.Star) });
+
+               Populate(grid, templateIndicator, row, (subcontent, subroot, o, entry) =>
+               {
+                  TextBlock scheduleTextCtrl = subroot.FindElementByName<TextBlock>("IndicatorText");
+
+                  Grid.SetColumn(subcontent, columns[o]);
+                  scheduleTextCtrl.Text = TimeManager.Instance.GetIndicatorIcon(entry.Category, entry.Value);
+               });
+            });
          }
 
          // Fill in rows
@@ -816,7 +1052,7 @@ namespace Tildetool.Time
 
             DateTime lastDate = thisDateBegin;
             cellParent.ColumnDefinitions.Clear();
-            for (int o=0; o < periodsFilter.Count; o++)
+            for (int o = 0; o < periodsFilter.Count; o++)
             {
                // Pick the right control.
                ContentControl content = cellParent.Children[o] as ContentControl;

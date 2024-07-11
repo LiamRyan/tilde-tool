@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Markup;
-using Tildetool.Hotcommand.Serialization;
 using Tildetool.Time.Serialization;
 
 namespace Tildetool.Time
@@ -25,12 +24,19 @@ namespace Tildetool.Time
    public class TimeEvent : ISchedule
    {
       public string Description;
-      public DateTime StartTime;
-      public DateTime EndTime;
+      public DateTime StartTime;  //local
+      public DateTime EndTime;  //local
 
       public string Name => Description;
       public float HourBegin => (float)StartTime.ToLocalTime().TimeOfDay.TotalHours;
       public float HourEnd => (float)EndTime.ToLocalTime().TimeOfDay.TotalHours;
+   }
+   public class TimeIndicator
+   {
+      public string Category;
+      public int Value;
+      public DateTime Time;  //utc
+      public float Hour => (float)Time.ToLocalTime().TimeOfDay.TotalHours;
    }
 
    public class TimeManager
@@ -42,6 +48,32 @@ namespace Tildetool.Time
 
       #endregion Singleton
       #region Variables
+
+      public Indicator[] Indicators;
+      public Dictionary<string, Indicator> IndicatorByCategory;
+      public Dictionary<string, Indicator> IndicatorByHotkey;
+
+      public string GetIndicatorIcon(string category, int value)
+      {
+         if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
+         {
+            int index = value + indicator.Offset;
+            if (index >= 0 && index < indicator.Values.Length)
+               return indicator.Values[index].Icon;
+         }
+         return value.ToString();
+      }
+
+      public string GetIndicatorName(string category, int value)
+      {
+         if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
+         {
+            int index = value + indicator.Offset;
+            if (index >= 0 && index < indicator.Values.Length)
+               return indicator.Values[index].Name;
+         }
+         return value.ToString();
+      }
 
       // Raw data
       public static Project IdleProject = new Project { Hotkey = "0", Name = "Idle", Ident = "Idle" };
@@ -159,6 +191,7 @@ namespace Tildetool.Time
             // Initial run, populate some basic data.
             cacheData = new TimeDataBundle();
             cacheData.Project = new Project[1] { new Project { Ident = "Sample", Name = "Sample Project", Hotkey = "S", DesktopPrevent = new string[] { "Open" } } };
+            cacheData.Indicator = new Indicator[1] { new Indicator { Hotkey = "P", Name = "Progress", Values = new IndicatorValue[] { new IndicatorValue() { Icon = "|", Name = "Average" } } } };
             SaveCache();
          }
 
@@ -167,6 +200,10 @@ namespace Tildetool.Time
             Data = cacheData.Project.Append(IdleProject).ToArray();
          HotkeyToProject = Data.ToDictionary(p => p.Hotkey);
          IdentToProject = Data.ToDictionary(p => p.Ident);
+
+         Indicators = (cacheData.Indicator ?? new Indicator[0]).ToArray();
+         IndicatorByCategory = Indicators.ToDictionary(k => k.Name);
+         IndicatorByHotkey = Indicators.ToDictionary(k => k.Hotkey);
 
          if (cacheData.WeeklyDay != null)
          {
@@ -296,6 +333,12 @@ namespace Tildetool.Time
          // Create the event table.
          command = _Sqlite.CreateCommand();
          command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
+         command.ExecuteNonQuery();
+         command.Dispose();
+
+         // Create the indicator table.
+         command = _Sqlite.CreateCommand();
+         command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" INTEGER, \"time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
          command.ExecuteNonQuery();
          command.Dispose();
 
@@ -441,6 +484,84 @@ namespace Tildetool.Time
                result.Add(new TimeEvent { Description = desc, StartTime = startTime, EndTime = endTime });
             }
          command.Dispose();
+
+         return result;
+      }
+
+      public int AddTimeIndicator(TimeIndicator indicator)
+      {
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "INSERT INTO time_indicator (category, value, time) VALUES ($category, $value, $time); SELECT last_insert_rowid();";
+         command.Parameters.AddWithValue("$category", indicator.Category);
+         command.Parameters.AddWithValue("$value", indicator.Value);
+         command.Parameters.AddWithValue("$time", indicator.Time);
+         int rowId = Convert.ToInt32(command.ExecuteScalar());
+         command.Dispose();
+
+         return rowId;
+      }
+
+      public List<TimeIndicator> QueryTimeIndicator(DateTime minTimeLocal, DateTime maxTimeLocal)
+      {
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "SELECT category,value,time FROM time_indicator WHERE time >= $minTime AND time <= $maxTime;";
+         command.Parameters.AddWithValue("$minTime", minTimeLocal);
+         command.Parameters.AddWithValue("$maxTime", maxTimeLocal);
+
+         List<TimeIndicator> result = new List<TimeIndicator>();
+         using (var reader = command.ExecuteReader())
+            while (reader.Read())
+            {
+               string category = reader.GetString(0);
+               int value = reader.GetInt32(1);
+               DateTime time = reader.GetDateTime(2);
+               result.Add(new TimeIndicator { Category = category, Value = value, Time = time });
+            }
+         command.Dispose();
+
+         return result;
+      }
+
+      public int[] QueryLastTimeIndicators()
+      {
+         Dictionary<int, int> idToIndex = new Dictionary<int, int>();
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            Dictionary<string, int> indicatorIndex = new Dictionary<string, int>();
+            for (int i = 0; i < Indicators.Length; i++)
+               indicatorIndex[Indicators[i].Name] = i;
+
+            command.CommandText = "SELECT category,MAX(id) FROM time_indicator GROUP BY category;";
+            using (var reader = command.ExecuteReader())
+               while (reader.Read())
+               {
+                  string category = reader.GetString(0);
+                  int id = reader.GetInt32(1);
+                  if (indicatorIndex.TryGetValue(category, out int index))
+                     idToIndex[id] = index;
+               }
+         }
+
+         int[] result = new int[Indicators.Length];
+         for (int i = 0; i < result.Length; i++)
+            result[i] = int.MinValue;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            int[] ids = idToIndex.Keys.ToArray();
+            string idnames = string.Join(",", Enumerable.Range(0, ids.Length).Select(i => $"$id{i}"));
+            command.CommandText = $"SELECT id,value FROM time_indicator WHERE id IN ({idnames});";
+            for (int i = 0; i < ids.Length; i++)
+               command.Parameters.AddWithValue($"$id{i}", ids[i]);
+
+            using (var reader = command.ExecuteReader())
+               while (reader.Read())
+               {
+                  int id = reader.GetInt32(0);
+                  int value = reader.GetInt32(1);
+                  int index = idToIndex[id];
+                  result[index] = value;
+               }
+         }
 
          return result;
       }

@@ -9,6 +9,7 @@ namespace Tildetool.Time.Serialization
     public class TimeDataBundle
     {
       public Project[] Project { get; set; }
+      public Indicator[] Indicator { get; set; }
       public WeeklyDay WeeklyDay { get; set; }
    }
 }
