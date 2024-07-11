@@ -53,26 +53,26 @@ namespace Tildetool.Time
       public Dictionary<string, Indicator> IndicatorByCategory;
       public Dictionary<string, Indicator> IndicatorByHotkey;
 
-      public string GetIndicatorIcon(string category, int value)
+      public IndicatorValue GetIndicatorValue(string category, int value)
       {
          if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
          {
             int index = value + indicator.Offset;
             if (index >= 0 && index < indicator.Values.Length)
-               return indicator.Values[index].Icon;
+               return indicator.Values[index];
          }
-         return value.ToString();
+         return null;
+      }
+      public string GetIndicatorIcon(string category, int value)
+      {
+         IndicatorValue valueCls = GetIndicatorValue(category, value);
+         return valueCls?.Icon ?? value.ToString();
       }
 
       public string GetIndicatorName(string category, int value)
       {
-         if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
-         {
-            int index = value + indicator.Offset;
-            if (index >= 0 && index < indicator.Values.Length)
-               return indicator.Values[index].Name;
-         }
-         return value.ToString();
+         IndicatorValue valueCls = GetIndicatorValue(category, value);
+         return valueCls?.Name ?? value.ToString();
       }
 
       // Raw data

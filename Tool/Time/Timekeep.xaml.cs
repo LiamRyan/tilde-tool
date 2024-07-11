@@ -46,14 +46,13 @@ namespace Tildetool.Time
          InitialProject = TimeManager.Instance.CurrentProject;
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
          RebuildList();
+         RefreshTime();
          Refresh();
-         RefreshDaily();
-         RefreshIndicators();
 
          _AnimateIn();
 
          _Timer = new Timer { Interval = 1000 };
-         _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => Refresh()); };
+         _Timer.Elapsed += (o, e) => { Dispatcher.Invoke(() => RefreshTime()); };
          _Timer.Start();
 
          if (TimeManager.Instance.CurrentProject != null)
@@ -129,17 +128,21 @@ namespace Tildetool.Time
                   TimeManager.Instance.AddTimeIndicator(new TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = DateTime.UtcNow });
                   IndicatorLastValue[FocusCategory] = FocusCategoryValue;
                   FocusCategory = null;
-                  RefreshIndicators();
-                  RefreshDaily();
+                  Refresh();
                   e.Handled = true;
                }
                else
                {
+                  string target;
+                  if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                     target = "TimekeepCache.json";
+                  else
+                     target = "TimekeepHistory.db";
                   try
                   {
                      Process process = new Process();
                      ProcessStartInfo startInfo = new ProcessStartInfo();
-                     startInfo.FileName = System.IO.Directory.GetCurrentDirectory() + "\\TimekeepCache.json";
+                     startInfo.FileName = $"{System.IO.Directory.GetCurrentDirectory()}\\{target}";
                      startInfo.UseShellExecute = true;
                      process.StartInfo = startInfo;
                      process.Start();
@@ -156,13 +159,13 @@ namespace Tildetool.Time
 
             case Key.Left:
                DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? -1 : -7);
-               RefreshDaily();
+               Refresh();
                e.Handled = true;
                return;
 
             case Key.Right:
                DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? 1 : 7);
-               RefreshDaily();
+               Refresh();
                e.Handled = true;
                return;
 
@@ -175,7 +178,7 @@ namespace Tildetool.Time
                else
                {
                   DailyDay = DailyDay.AddDays(-7);
-                  RefreshDaily();
+                  Refresh();
                }
                e.Handled = true;
                return;
@@ -189,14 +192,14 @@ namespace Tildetool.Time
                else
                {
                   DailyDay = DailyDay.AddDays(7);
-                  RefreshDaily();
+                  Refresh();
                }
                e.Handled = true;
                return;
 
             case Key.Tab:
                CurDailyMode = (DailyMode)((int)(CurDailyMode + 1) % (int)DailyMode.COUNT);
-               RefreshDaily();
+               Refresh();
                e.Handled = true;
                return;
          }
@@ -224,6 +227,8 @@ namespace Tildetool.Time
       void SetActiveIndicator(string key)
       {
          Indicator? indicator = null;
+         if (CurDailyMode != DailyMode.Today || DailyDay != new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0))
+            return;
          if (!TimeManager.Instance.IndicatorByHotkey.TryGetValue(key, out indicator))
             return;
 
@@ -234,7 +239,7 @@ namespace Tildetool.Time
          RefreshIndicators();
       }
 
-      void Populate<TData>(Panel parent, DataTemplate template, IEnumerable<TData> datalist, System.Action<ContentControl,FrameworkElement,int,TData> populate)
+      void Populate<TData>(Panel parent, DataTemplate template, IEnumerable<TData> datalist, System.Action<ContentControl, FrameworkElement, int, TData> populate)
       {
          int index = 0;
          foreach (TData data in datalist)
@@ -279,52 +284,104 @@ namespace Tildetool.Time
             }
          }
       }
+      class IndicatorHint : DataTemplater
+      {
+         public TextBlock Icon;
+         public TextBlock Text;
+         public IndicatorHint(FrameworkElement root) : base(root) { }
+      }
       class IndicatorPane : DataTemplater
       {
-         public TextBlock IndicatorTitle;
-         public StackPanel IndicatorData;
-         public TextBlock IndicatorIcon;
-         public TextBlock IndicatorText;
-
+         public Frame Backfill;
+         public TextBlock Title;
+         public TextBlock Icon;
+         public TextBlock Text;
          public IndicatorPane(FrameworkElement root) : base(root) { }
       }
 
       void RefreshIndicators()
       {
-         // Add or remove to get the right quantity.
-         DataTemplate? template = Resources["IndicatorPane"] as DataTemplate;
-         Populate(IndicatorPanes, template, TimeManager.Instance.Indicators, (content, root, i, data) =>
+         bool visible = CurDailyMode == DailyMode.Today;
+         IndicatorHints.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+         if (visible)
          {
-            IndicatorPane pane = new IndicatorPane(root);
-            pane.IndicatorTitle.Text = data.Name;
-            if (data.Name[0].ToString() == data.Hotkey)
-              pane.IndicatorTitle.Text = $"[{data.Hotkey}]{data.Name[1..]}";
-            else
-               pane.IndicatorTitle.Text = $"[{data.Hotkey}] {data.Name}";
-
-            int index = int.MinValue;
-            if (FocusCategory == data)
-               index = FocusCategoryValue;
-            else if (IndicatorLastValue.TryGetValue(data, out int defaultValue))
-               index = defaultValue;
-
-            pane.IndicatorData.Visibility = (index != int.MinValue) ? Visibility.Visible : Visibility.Collapsed;
-            if (index != int.MinValue)
+            Dictionary<string, Dictionary<int, IndicatorValue>> indicatorValues = new Dictionary<string, Dictionary<int, IndicatorValue>>();
+            foreach (var ind in Indicator)
             {
-               index += data.Offset;
-               pane.IndicatorText.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
-               if (index >= 0 && index < data.Values.Length)
+               IndicatorValue value = TimeManager.Instance.GetIndicatorValue(ind.Category, ind.Value);
+               if (!indicatorValues.TryGetValue(ind.Category, out Dictionary<int, IndicatorValue> hset))
+                  hset = indicatorValues[ind.Category] = new Dictionary<int, IndicatorValue>();
+               hset[ind.Value] = value;
+            }
+            List<IndicatorValue> values = new List<IndicatorValue>();
+            foreach (var indicator in TimeManager.Instance.Indicators)
+               if (indicatorValues.TryGetValue(indicator.Name, out Dictionary<int, IndicatorValue> hset))
+                  for (int value = 0; value < indicator.Values.Length; value++)
+                     if (hset.TryGetValue(value - indicator.Offset, out IndicatorValue ivalue))
+                        values.Add(ivalue);
+
+            if (values.Count > 0)
+            {
+               // Add or remove to get the right quantity.
+               DataTemplate? templateHint = Resources["IndicatorHint"] as DataTemplate;
+               Populate(IndicatorHints, templateHint, values, (content, root, i, data) =>
                {
-                  pane.IndicatorIcon.Text = data.Values[index].Icon;
-                  pane.IndicatorText.Text = data.Values[index].Name;
+                  IndicatorHint pane = new IndicatorHint(root);
+                  root.Height = 16;
+                  pane.Icon.Text = data.Icon;
+                  pane.Text.Text = data.Name;
+               });
+            }
+            else
+               IndicatorHints.Visibility = Visibility.Collapsed;
+         }
+
+         // Add or remove to get the right quantity.
+         bool isToday = DailyDay == new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
+         IndicatorPanes.Visibility = (visible && isToday) ? Visibility.Visible : Visibility.Collapsed;
+         if (visible && isToday)
+         {
+            DataTemplate? templatePane = Resources["IndicatorPane"] as DataTemplate;
+            Populate(IndicatorPanes, templatePane, TimeManager.Instance.Indicators, (content, root, i, data) =>
+            {
+               IndicatorPane pane = new IndicatorPane(root);
+               root.Height = 30;
+               pane.Title.Text = data.Name;
+               if (data.Name[0].ToString() == data.Hotkey)
+                  pane.Title.Text = $"[{data.Hotkey}]{data.Name[1..]}";
+               else
+                  pane.Title.Text = $"[{data.Hotkey}] {data.Name}";
+
+               int index = int.MinValue;
+               if (FocusCategory == data)
+                  index = FocusCategoryValue;
+               else if (IndicatorLastValue.TryGetValue(data, out int defaultValue))
+                  index = defaultValue;
+
+               pane.Backfill.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
+               if (index != int.MinValue)
+               {
+                  index += data.Offset;
+                  pane.Icon.Visibility = Visibility.Visible;
+                  pane.Text.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
+                  if (index >= 0 && index < data.Values.Length)
+                  {
+                     pane.Icon.Text = data.Values[index].Icon;
+                     pane.Text.Text = data.Values[index].Name;
+                  }
+                  else
+                  {
+                     pane.Icon.Text = index.ToString();
+                     pane.Text.Text = "? ? ?";
+                  }
                }
                else
                {
-                  pane.IndicatorIcon.Text = index.ToString();
-                  pane.IndicatorText.Text = "? ? ?";
+                  pane.Icon.Visibility = Visibility.Collapsed;
+                  pane.Text.Visibility = Visibility.Collapsed;
                }
-            }
-         });
+            });
+         }
       }
 
       private Storyboard? _StoryboardRefresh2;
@@ -357,7 +414,7 @@ namespace Tildetool.Time
             TimeManager.Instance.SetProject(project);
 
          // Update the display.
-         Refresh();
+         RefreshTime();
          if (project != null)
             _AnimateCommand(GuiToProject.IndexOf(project));
 
@@ -504,9 +561,10 @@ namespace Tildetool.Time
             stringBuilder.Append(totalTimeHour.ToString() + ":" + String.Format("{0:00}", totalTimeMin % 60));
          return stringBuilder.ToString();
       }
-      void Refresh()
+
+      void RefreshTime()
       {
-         // Refresh current
+         // Refresh current time
          if (TimeManager.Instance.CurrentProject != null)
          {
             int mins = (int)(DateTime.UtcNow - TimeManager.Instance.CurrentStartTime).TotalMinutes;
@@ -650,6 +708,14 @@ namespace Tildetool.Time
             return new TimeBlock { Name = Name, StartTime = StartTime, EndTime = next.EndTime, Color = Color, Priority = Priority, Project = Project, DbId = next.DbId };
          }
       }
+
+      void Refresh()
+      {
+         RefreshDaily();
+         RefreshIndicators();
+      }
+
+      List<TimeIndicator> Indicator;
       DailyMode CurDailyMode;
       DateTime DailyDay;
       Project DailyFocus;
@@ -876,20 +942,20 @@ namespace Tildetool.Time
          }
 
          // Indicators
-         Indicators.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
+         IndicatorPanel.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
          if (CurDailyMode == DailyMode.Today)
          {
             DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
             DateTime todayE = todayS.AddDays(1);
-            List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
+            Indicator = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
 
             const double Thickness = 0.06;
             List<List<TimeIndicator>> rows = new List<List<TimeIndicator>>();
             {
                List<double> rowEnd = new List<double>();
-               for (int i = 0; i < indicators.Count; i++)
+               for (int i = 0; i < Indicator.Count; i++)
                {
-                  double hourB = (indicators[i].Time - todayS).TotalHours - Thickness;
+                  double hourB = (Indicator[i].Time - todayS).TotalHours - Thickness;
                   double hourE = hourB + (2.0 * Thickness);
                   if (hourE <= minHour)
                      continue;
@@ -905,10 +971,13 @@ namespace Tildetool.Time
                      rowEnd.Add(0.0);
                      rows.Add(new List<TimeIndicator>());
                   }
-                  rows[row].Add(indicators[i]);
+                  rowEnd[row] = hourE;
+                  rows[row].Add(Indicator[i]);
                }
             }
 
+            if (rows.Count == 0)
+               IndicatorPanel.Visibility = Visibility.Collapsed;
             Populate(Indicators, templateIndicators, rows, (content, root, _, row) =>
             {
                Grid grid = root as Grid;

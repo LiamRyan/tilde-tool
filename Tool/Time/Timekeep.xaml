@@ -9,6 +9,7 @@
         KeyDown="Window_KeyDown" Topmost="True" WindowState="Normal" SizeToContent="Manual" VerticalAlignment="Center" Left="0" Top="0" Height="500" Loaded="OnLoaded"
         d:DesignWidth="1200">
     <Window.Resources>
+        <!-- Colors -->
         <SolidColorBrush x:Key="ColorBackfill" Color="#FF021204"/>
         <SolidColorBrush x:Key="ColorBackground" Color="#FF042508"/>
         <SolidColorBrush x:Key="ColorTextFore" Color="#FFC3F1AF"/>
@@ -16,6 +17,9 @@
         <Color x:Key="ColorGlow1">#FFDEEFBA</Color>
         <Color x:Key="ColorGlow2">#FFAAF99D</Color>
 
+        <!-- Styles -->
+
+        <!-- Templates -->
         <DataTemplate x:Key="CommandOption">
             <Grid HorizontalAlignment="Left">
                 <TextBlock x:Name="Hotkey" Text="1" HorizontalAlignment="Left" TextAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8" VerticalAlignment="Top" Margin="10,1,10,0"/>
@@ -37,7 +41,7 @@
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="Indicator">
-            <Grid Background="#20A8611F" Height="16" Margin="1,2,0,2" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+            <Grid Background="#20A8611F" Height="10" Margin="1,1,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <TextBlock x:Name="IndicatorText" Text="&lt;" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FFA8611F" FontSize="8"/>
             </Grid>
         </DataTemplate>
@@ -46,14 +50,21 @@
                 <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
             </Grid>
         </DataTemplate>
-        <DataTemplate x:Key="IndicatorPane">
-            <StackPanel Orientation="Horizontal" Height="30" Margin="0,0,5,0">
-                <TextBlock x:Name="IndicatorTitle" Text="[P]rogress" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="16" VerticalAlignment="Center" Margin="0,0,0,0"/>
-                <StackPanel x:Name="IndicatorData" Orientation="Horizontal" Background="#40449637" Margin="5,0,0,0">
-                    <TextBlock x:Name="IndicatorIcon" Text="+" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="8,0,8,0"/>
-                    <TextBlock x:Name="IndicatorText" Text="Above Average" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="8,0,8,0"/>
-                </StackPanel>
+        <DataTemplate x:Key="IndicatorHint">
+            <StackPanel Orientation="Horizontal" Height="16" Margin="0,0,2,0" Background="#50042508">
+                <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                <TextBlock x:Name="Text" Text="Slow" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" VerticalAlignment="Center" Margin="5,0,5,0"/>
             </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="IndicatorPane">
+            <Grid Height="30" Margin="0,0,10,0">
+                <Frame x:Name="Backfill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#40449637"></Frame>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Title" Text="[P]rogress" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" VerticalAlignment="Center" Margin="8,0,8,0"/>
+                    <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="5,0,8,0"/>
+                    <TextBlock x:Name="Text" Text="Above Average" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="-3,0,8,0"/>
+                </StackPanel>
+            </Grid>
         </DataTemplate>
         <DataTemplate x:Key="DailyCell">
             <Grid Height="20" Background="#FF143518" HorizontalAlignment="Stretch" VerticalAlignment="Center">
@@ -121,12 +132,18 @@
                         <Grid Background="#FFABE2A3" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Column="0"/>
                     </Grid>
                 </Grid>
-                <StackPanel Orientation="Vertical" x:Name="Indicators" Background="#50042508" Margin="180,10,80,0">
-                    <ContentControl ContentTemplate="{StaticResource Indicators}"></ContentControl>
+                <Grid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0">
+                    <StackPanel Orientation="Vertical" x:Name="Indicators" Margin="0,1,0,2">
+                        <ContentControl ContentTemplate="{StaticResource Indicators}"></ContentControl>
+                    </StackPanel>
+                </Grid>
+                <StackPanel x:Name="IndicatorHints" Orientation="Horizontal" Margin="180,1,80,0">
+                    <ContentControl ContentTemplate="{StaticResource IndicatorHint}"></ContentControl>
                 </StackPanel>
-                <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="20,10,20,20">
+                <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="20,10,20,0">
                     <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
                 </StackPanel>
+                <Grid Height="20"></Grid>
             </StackPanel>
             <Grid x:Name="GlowDaily2" Margin="0 0 0 0" HorizontalAlignment="Left" Width="2">
                 <Grid.Background>
