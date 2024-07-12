@@ -52,8 +52,8 @@
         </DataTemplate>
         <DataTemplate x:Key="IndicatorHint">
             <StackPanel Orientation="Horizontal" Height="16" Margin="0,0,2,0" Background="#50042508">
-                <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                <TextBlock x:Name="Text" Text="Slow" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" VerticalAlignment="Center" Margin="5,0,5,0"/>
+                <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="#FFF3FEFF" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                <TextBlock x:Name="Text" Text="Slow" FontFamily="Cascadia Code Light" Foreground="#FF82EBFF" FontSize="12" VerticalAlignment="Center" Margin="5,0,5,0"/>
             </StackPanel>
         </DataTemplate>
         <DataTemplate x:Key="IndicatorPane">

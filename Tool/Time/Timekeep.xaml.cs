@@ -328,6 +328,9 @@ namespace Tildetool.Time
                {
                   IndicatorHint pane = new IndicatorHint(root);
                   root.Height = 16;
+                  (root as StackPanel).Background = new SolidColorBrush(data.GetColorBack(0x30));
+                  pane.Icon.Foreground = new SolidColorBrush(data.GetColorFore());
+                  pane.Text.Foreground = new SolidColorBrush(data.GetColorBack());
                   pane.Icon.Text = data.Icon;
                   pane.Text.Text = data.Name;
                });
@@ -366,6 +369,10 @@ namespace Tildetool.Time
                   pane.Text.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
                   if (index >= 0 && index < data.Values.Length)
                   {
+                     pane.Backfill.Background = new SolidColorBrush(data.Values[index].GetColorBack(0x40));
+                     pane.Title.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
+                     pane.Icon.Foreground = new SolidColorBrush(data.Values[index].GetColorFore());
+                     pane.Text.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
                      pane.Icon.Text = data.Values[index].Icon;
                      pane.Text.Text = data.Values[index].Name;
                   }
@@ -1003,6 +1010,10 @@ namespace Tildetool.Time
                Populate(grid, templateIndicator, row, (subcontent, subroot, o, entry) =>
                {
                   TextBlock scheduleTextCtrl = subroot.FindElementByName<TextBlock>("IndicatorText");
+
+                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
+                  (subroot as Grid).Background = new SolidColorBrush(value.GetColorBack(0x58));
+                  scheduleTextCtrl.Foreground = new SolidColorBrush(value.GetColorFore());
 
                   Grid.SetColumn(subcontent, columns[o]);
                   scheduleTextCtrl.Text = TimeManager.Instance.GetIndicatorIcon(entry.Category, entry.Value);
