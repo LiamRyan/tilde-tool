@@ -345,7 +345,23 @@ namespace Tildetool.Time
          RefreshTodayTime();
       }
 
-      int AddHistoryLine(TimePeriod period)
+      public int AddProject(string ident)
+      {
+         if (ProjectIdentToId.TryGetValue(ident, out int projectId))
+            return projectId;
+
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "INSERT INTO project (ident) VALUES ($ident); SELECT last_insert_rowid();";
+         command.Parameters.AddWithValue("$ident", ident);
+         var result = command.ExecuteScalar();
+         command.Dispose();
+
+         int value = Convert.ToInt32(result);
+         ProjectIdentToId[ident] = value;
+         return value;
+      }
+
+      public int AddHistoryLine(TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
          command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time) VALUES ($project_id, $start_time, $end_time); SELECT last_insert_rowid();";
@@ -417,7 +433,8 @@ namespace Tildetool.Time
             {
                string ident = reader.GetString(0);
                int seconds = (int)(reader.GetFloat(1) * 24 * 60 * 60);
-               IdentToProject[ident].TimeTodaySec = seconds;
+               if (IdentToProject.TryGetValue(ident, out Project project))
+                  project.TimeTodaySec = seconds;
             }
          command.Dispose();
       }
@@ -503,7 +520,7 @@ namespace Tildetool.Time
       public List<TimeIndicator> QueryTimeIndicator(DateTime minTimeLocal, DateTime maxTimeLocal)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT category,value,time FROM time_indicator WHERE time >= $minTime AND time <= $maxTime;";
+         command.CommandText = "SELECT category,value,time FROM time_indicator WHERE time >= $minTime AND time <= $maxTime ORDER BY time;";
          command.Parameters.AddWithValue("$minTime", minTimeLocal);
          command.Parameters.AddWithValue("$maxTime", maxTimeLocal);
 
@@ -521,7 +538,7 @@ namespace Tildetool.Time
          return result;
       }
 
-      public int[] QueryLastTimeIndicators()
+      public void QueryLastTimeIndicators(out int[] values, out DateTime[] datesUtc)
       {
          Dictionary<int, int> idToIndex = new Dictionary<int, int>();
          using (SqliteCommand command = _Sqlite.CreateCommand())
@@ -530,7 +547,7 @@ namespace Tildetool.Time
             for (int i = 0; i < Indicators.Length; i++)
                indicatorIndex[Indicators[i].Name] = i;
 
-            command.CommandText = "SELECT category,MAX(id) FROM time_indicator GROUP BY category;";
+            command.CommandText = "SELECT category,MAX(id) FROM time_indicator WHERE time >= (SELECT MAX(subsel.time) FROM time_indicator as subsel WHERE subsel.category = time_indicator.category) GROUP BY category;";
             using (var reader = command.ExecuteReader())
                while (reader.Read())
                {
@@ -541,14 +558,18 @@ namespace Tildetool.Time
                }
          }
 
-         int[] result = new int[Indicators.Length];
-         for (int i = 0; i < result.Length; i++)
-            result[i] = int.MinValue;
+         values = new int[Indicators.Length];
+         datesUtc = new DateTime[Indicators.Length];
+         for (int i = 0; i < values.Length; i++)
+         {
+            values[i] = int.MinValue;
+            datesUtc[i] = DateTime.MinValue;
+         }
          using (SqliteCommand command = _Sqlite.CreateCommand())
          {
             int[] ids = idToIndex.Keys.ToArray();
             string idnames = string.Join(",", Enumerable.Range(0, ids.Length).Select(i => $"$id{i}"));
-            command.CommandText = $"SELECT id,value FROM time_indicator WHERE id IN ({idnames});";
+            command.CommandText = $"SELECT id,value,time FROM time_indicator WHERE id IN ({idnames});";
             for (int i = 0; i < ids.Length; i++)
                command.Parameters.AddWithValue($"$id{i}", ids[i]);
 
@@ -557,12 +578,59 @@ namespace Tildetool.Time
                {
                   int id = reader.GetInt32(0);
                   int value = reader.GetInt32(1);
+                  DateTime date = reader.GetDateTime(2);
                   int index = idToIndex[id];
-                  result[index] = value;
+                  values[index] = value;
+                  datesUtc[index] = date;
                }
          }
+      }
 
-         return result;
+      public void QueryAdjacentTimeIndicators(string category, DateTime minTimeLocal, DateTime maxTimeLocal, out int prevValue, out int nextValue)
+      {
+         int minId = -1;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = "SELECT MAX(id) FROM time_indicator WHERE category = $category AND time <= $minTime AND time >= (SELECT MAX(subsel.time) FROM time_indicator as subsel WHERE subsel.time <= $minTime AND subsel.category = $category);";
+            command.Parameters.AddWithValue("category", category);
+            command.Parameters.AddWithValue("minTime", minTimeLocal);
+            using (var reader = command.ExecuteReader())
+               while (reader.Read())
+                  if (!reader.IsDBNull(0))
+                     minId = reader.GetInt32(0);
+         }
+
+         int maxId = -1;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = "SELECT MIN(id) FROM time_indicator WHERE category = $category AND time >= $maxTime AND time <= (SELECT MIN(subsel.time) FROM time_indicator as subsel WHERE subsel.time >= $maxTime AND subsel.category = $category);";
+            command.Parameters.AddWithValue("category", category);
+            command.Parameters.AddWithValue("maxTime", maxTimeLocal);
+            using (var reader = command.ExecuteReader())
+               while (reader.Read())
+                  if (!reader.IsDBNull(0))
+                     maxId = reader.GetInt32(0);
+         }
+
+         prevValue = int.MinValue;
+         nextValue = int.MinValue;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = $"SELECT id,value FROM time_indicator WHERE id IN ($minId, $maxId);";
+            command.Parameters.AddWithValue($"$minId", minId);
+            command.Parameters.AddWithValue($"$maxId", maxId);
+
+            using (var reader = command.ExecuteReader())
+               while (reader.Read())
+               {
+                  int id = reader.GetInt32(0);
+                  int value = reader.GetInt32(1);
+                  if (id == minId)
+                     prevValue = value;
+                  else
+                     nextValue = value;
+               }
+         }
       }
 
       #endregion

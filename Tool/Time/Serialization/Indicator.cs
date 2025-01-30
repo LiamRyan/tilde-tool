@@ -15,6 +15,7 @@ namespace Tildetool.Time.Serialization
       public string Name { get; set; }
       public string ColorBack { get; set; }
       public string ColorFore { get; set; }
+      public bool IsZero { get; set; }
 
       public Color GetColorBack(byte alpha = 0xFF) => Color.FromArgb(alpha, byte.Parse(ColorBack[0..2], NumberStyles.HexNumber), byte.Parse(ColorBack[2..4], NumberStyles.HexNumber), byte.Parse(ColorBack[4..6], NumberStyles.HexNumber));
       public Color GetColorFore(byte alpha = 0xFF) => Color.FromArgb(alpha, byte.Parse(ColorFore[0..2], NumberStyles.HexNumber), byte.Parse(ColorFore[2..4], NumberStyles.HexNumber), byte.Parse(ColorFore[4..6], NumberStyles.HexNumber));
@@ -25,6 +26,26 @@ namespace Tildetool.Time.Serialization
       public string Hotkey { get; set; }
       public IndicatorValue[] Values { get; set; }
 
-      public int Offset => Values.Length / 2;
+      public int MinValue => -Offset;
+      public int MaxValue => Values.Length - Offset - 1;
+
+      int _Offset = int.MinValue;
+      public int Offset
+      {
+         get
+         {
+            if (_Offset != int.MinValue)
+               return _Offset;
+
+            for (int i = 0; i < Values.Length; i++)
+               if (Values[i].IsZero)
+               {
+                  _Offset = i;
+                  return _Offset;
+               }
+            _Offset = Values.Length / 2;
+            return _Offset;
+         }
+      }
    }
 }

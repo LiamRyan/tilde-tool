@@ -17,6 +17,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Tildetool.Shape;
 using Tildetool.Time.Serialization;
+using Tildetool.WPF;
 
 namespace Tildetool.Time
 {
@@ -40,8 +41,13 @@ namespace Tildetool.Time
          InitializeComponent();
          Top = App.GetBarTop(124.0);
 
-         int[] values = TimeManager.Instance.QueryLastTimeIndicators();
+         TimeManager.Instance.QueryLastTimeIndicators(out int[] values, out DateTime[] dates);
          IndicatorLastValue = Enumerable.Range(0, TimeManager.Instance.Indicators.Length).ToDictionary(i => TimeManager.Instance.Indicators[i], i => values[i]);
+         IndicatorLastDateUtc = Enumerable.Range(0, TimeManager.Instance.Indicators.Length).ToDictionary(i => TimeManager.Instance.Indicators[i], i => dates[i]);
+
+         IndicatorHover.Visibility = Visibility.Collapsed;
+         DailyRowHover.Visibility = Visibility.Collapsed;
+         TextEditorPane.Visibility = Visibility.Collapsed;
 
          InitialProject = TimeManager.Instance.CurrentProject;
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
@@ -77,7 +83,6 @@ namespace Tildetool.Time
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
-         App.Clickthrough(this);
       }
 
       Timer? _CancelTimer;
@@ -99,10 +104,32 @@ namespace Tildetool.Time
          OnFinish?.Invoke(this);
       }
 
+      void PlaceIndicator(DateTime timeUtc)
+      {
+         if (FocusCategory == null)
+            return;
+         TimeManager.Instance.AddTimeIndicator(new TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = timeUtc });
+         if (!IndicatorLastDateUtc.TryGetValue(FocusCategory, out DateTime lastTime) || timeUtc > lastTime)
+         {
+            IndicatorLastValue[FocusCategory] = FocusCategoryValue;
+            IndicatorLastDateUtc[FocusCategory] = timeUtc;
+         }
+         FocusCategory = null;
+         IndicatorHover.Visibility = Visibility.Collapsed;
+         Refresh();
+      }
+
       const string _Number = "0123456789";
       private void Window_KeyDown(object sender, KeyEventArgs e)
       {
          if (_Finished)
+            return;
+         if (EatEvent)
+         {
+            EatEvent = false;
+            return;
+         }
+         if (IsTextEditor)
             return;
 
          // Handle escape
@@ -112,6 +139,7 @@ namespace Tildetool.Time
                if (FocusCategory != null)
                {
                   FocusCategory = null;
+                  IndicatorHover.Visibility = Visibility.Collapsed;
                   RefreshIndicators();
                   e.Handled = true;
                }
@@ -125,10 +153,7 @@ namespace Tildetool.Time
             case Key.Return:
                if (FocusCategory != null)
                {
-                  TimeManager.Instance.AddTimeIndicator(new TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = DateTime.UtcNow });
-                  IndicatorLastValue[FocusCategory] = FocusCategoryValue;
-                  FocusCategory = null;
-                  Refresh();
+                  PlaceIndicator(DateTime.UtcNow);
                   e.Handled = true;
                }
                else
@@ -209,6 +234,12 @@ namespace Tildetool.Time
          {
             if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
                SetActiveIndicator(key);
+            //else if (key == "0" && (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)))
+            //   ShowTextEditor((text) =>
+            //   {
+            //      int projectId = TimeManager.Instance.AddProject(text);
+            //      SetActiveProject(TimeManager.Instance.IdentToProject[text]);
+            //   });
             else
                SetActiveTime(key);
          }
@@ -222,12 +253,13 @@ namespace Tildetool.Time
       }
 
       Dictionary<Indicator, int> IndicatorLastValue;
+      Dictionary<Indicator, DateTime> IndicatorLastDateUtc;
       Indicator? FocusCategory = null;
       int FocusCategoryValue = 0;
       void SetActiveIndicator(string key)
       {
          Indicator? indicator = null;
-         if (CurDailyMode != DailyMode.Today || DailyDay != new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0))
+         if (CurDailyMode != DailyMode.Today)
             return;
          if (!TimeManager.Instance.IndicatorByHotkey.TryGetValue(key, out indicator))
             return;
@@ -284,11 +316,11 @@ namespace Tildetool.Time
             }
          }
       }
-      class IndicatorHint : DataTemplater
+      class IndicatorCtrl : DataTemplater
       {
-         public TextBlock Icon;
          public TextBlock Text;
-         public IndicatorHint(FrameworkElement root) : base(root) { }
+         public TextBlock Icon;
+         public IndicatorCtrl(FrameworkElement root) : base(root) { }
       }
       class IndicatorPane : DataTemplater
       {
@@ -296,59 +328,38 @@ namespace Tildetool.Time
          public TextBlock Title;
          public TextBlock Icon;
          public TextBlock Text;
+         public TextBlock Date;
          public IndicatorPane(FrameworkElement root) : base(root) { }
+      }
+      class IndicatorGraph : DataTemplater
+      {
+         public Grid Rows;
+         public Path IndicatorGraphLine;
+         public IndicatorGraph(FrameworkElement root) : base(root) { }
+      }
+      class IndicatorRow : DataTemplater
+      {
+         public Grid RowLine;
+         public TextBlock Title;
+         public IndicatorRow(FrameworkElement root) : base(root) { }
+      }
+      class IndicatorWorkRow : DataTemplater
+      {
+         public Grid RowLine;
+         public IndicatorWorkRow(FrameworkElement root) : base(root) { }
       }
 
       void RefreshIndicators()
       {
-         bool visible = CurDailyMode == DailyMode.Today;
-         IndicatorHints.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-         if (visible)
-         {
-            Dictionary<string, Dictionary<int, IndicatorValue>> indicatorValues = new Dictionary<string, Dictionary<int, IndicatorValue>>();
-            foreach (var ind in Indicator)
-            {
-               IndicatorValue value = TimeManager.Instance.GetIndicatorValue(ind.Category, ind.Value);
-               if (!indicatorValues.TryGetValue(ind.Category, out Dictionary<int, IndicatorValue> hset))
-                  hset = indicatorValues[ind.Category] = new Dictionary<int, IndicatorValue>();
-               hset[ind.Value] = value;
-            }
-            List<IndicatorValue> values = new List<IndicatorValue>();
-            foreach (var indicator in TimeManager.Instance.Indicators)
-               if (indicatorValues.TryGetValue(indicator.Name, out Dictionary<int, IndicatorValue> hset))
-                  for (int value = 0; value < indicator.Values.Length; value++)
-                     if (hset.TryGetValue(value - indicator.Offset, out IndicatorValue ivalue))
-                        values.Add(ivalue);
-
-            if (values.Count > 0)
-            {
-               // Add or remove to get the right quantity.
-               DataTemplate? templateHint = Resources["IndicatorHint"] as DataTemplate;
-               Populate(IndicatorHints, templateHint, values, (content, root, i, data) =>
-               {
-                  IndicatorHint pane = new IndicatorHint(root);
-                  root.Height = 16;
-                  (root as StackPanel).Background = new SolidColorBrush(data.GetColorBack(0x30));
-                  pane.Icon.Foreground = new SolidColorBrush(data.GetColorFore());
-                  pane.Text.Foreground = new SolidColorBrush(data.GetColorBack());
-                  pane.Icon.Text = data.Icon;
-                  pane.Text.Text = data.Name;
-               });
-            }
-            else
-               IndicatorHints.Visibility = Visibility.Collapsed;
-         }
-
-         // Add or remove to get the right quantity.
-         bool isToday = DailyDay == new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
-         IndicatorPanes.Visibility = (visible && isToday) ? Visibility.Visible : Visibility.Collapsed;
-         if (visible && isToday)
+         bool todayMode = CurDailyMode == DailyMode.Today;
+         IndicatorPanes.Visibility = todayMode ? Visibility.Visible : Visibility.Collapsed;
+         if (todayMode)
          {
             DataTemplate? templatePane = Resources["IndicatorPane"] as DataTemplate;
             Populate(IndicatorPanes, templatePane, TimeManager.Instance.Indicators, (content, root, i, data) =>
             {
                IndicatorPane pane = new IndicatorPane(root);
-               root.Height = 30;
+               root.Height = 42;
                pane.Title.Text = data.Name;
                if (data.Name[0].ToString() == data.Hotkey)
                   pane.Title.Text = $"[{data.Hotkey}]{data.Name[1..]}";
@@ -360,21 +371,50 @@ namespace Tildetool.Time
                   index = FocusCategoryValue;
                else if (IndicatorLastValue.TryGetValue(data, out int defaultValue))
                   index = defaultValue;
+               index += data.Offset;
 
                pane.Backfill.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
-               if (index != int.MinValue)
+               if (index >= 0 && index < data.Values.Length)
                {
-                  index += data.Offset;
+                  pane.Backfill.Background = new SolidColorBrush(data.Values[index].GetColorBack(0x40));
+                  pane.Title.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
+               }
+
+               if (todayMode && index != int.MinValue)
+               {
+                  bool hasIndex = index >= 0 && index < data.Values.Length;
                   pane.Icon.Visibility = Visibility.Visible;
                   pane.Text.Visibility = (FocusCategory == data) ? Visibility.Visible : Visibility.Collapsed;
-                  if (index >= 0 && index < data.Values.Length)
+                  pane.Date.Visibility = hasIndex ? Visibility.Visible : Visibility.Collapsed;
+                  if (hasIndex)
                   {
-                     pane.Backfill.Background = new SolidColorBrush(data.Values[index].GetColorBack(0x40));
-                     pane.Title.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
                      pane.Icon.Foreground = new SolidColorBrush(data.Values[index].GetColorFore());
                      pane.Text.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
                      pane.Icon.Text = data.Values[index].Icon;
                      pane.Text.Text = data.Values[index].Name;
+
+                     if (IndicatorLastDateUtc.TryGetValue(data, out DateTime date) && hasIndex)
+                     {
+                        TimeSpan deltaF = DateTime.Now - date.ToLocalTime();
+                        TimeSpan delta = DateTime.Now.Date - date.ToLocalTime().Date;
+                        if (delta.TotalDays > 0.99)
+                        {
+                           pane.Date.Foreground = new SolidColorBrush(data.Values[index].GetColorBack());
+                           pane.Date.Text = $"{((int)Math.Round(delta.TotalDays)):D} days ago";
+                        }
+                        else if (deltaF.TotalHours > 0.99)
+                        {
+                           pane.Date.Foreground = new SolidColorBrush(data.Values[index].GetColorBack().Lerp(Color.FromRgb(0, 0, 0), 0.5f));
+                           pane.Date.Text = $"{((int)Math.Round(deltaF.TotalHours)):D} hours ago";
+                        }
+                        else
+                           pane.Date.Visibility = Visibility.Collapsed;
+                     }
+                     else
+                     {
+                        pane.Date.Foreground = new SolidColorBrush(data.Values[index].GetColorBack().Lerp(Color.FromRgb(0, 0, 0), 0.5f));
+                        pane.Date.Text = "? ? ?";
+                     }
                   }
                   else
                   {
@@ -386,7 +426,192 @@ namespace Tildetool.Time
                {
                   pane.Icon.Visibility = Visibility.Collapsed;
                   pane.Text.Visibility = Visibility.Collapsed;
+                  pane.Date.Visibility = Visibility.Collapsed;
                }
+            });
+         }
+
+         //
+         IndicatorGraphGrid.Visibility = (CurDailyMode == DailyMode.Indicators) ? Visibility.Visible : Visibility.Collapsed;
+         if (CurDailyMode == DailyMode.Indicators)
+         {
+            const int periodCount = 10;
+            DateTime dayBeginLocal = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
+            DateTime weekBeginLocal = dayBeginLocal.AddDays(-(int)DailyDay.DayOfWeek).ToUniversalTime();
+            DateTime periodEndLocal = weekBeginLocal.AddDays(7);
+            DateTime periodBeginLocal = periodEndLocal.AddDays(-7 * periodCount);
+            DateTime periodBegin = periodBeginLocal.ToUniversalTime();
+            DateTime periodEnd = periodEndLocal.ToUniversalTime();
+
+            Project[] workProject = TimeManager.Instance.Data.Where(p => p.ShowOnIndicator).ToArray();
+            List<TimePeriod> workPeriods;
+            if (workProject.Length > 0)
+               workPeriods = TimeManager.Instance.QueryTimePeriod(workProject[0], periodBegin, periodEnd);
+            else
+               workPeriods = new();
+
+            SolidColorBrush[] WeekBrush = new SolidColorBrush[10];
+            void _setGraph(TextBlock uiText, TextBlock uiTime, int weekNumber)
+            {
+               DateTime weekBegin = periodBegin.AddDays(7 * weekNumber);
+               uiText.Text = weekBegin.ToString("yy/MM/dd");
+
+               double sumHours = workPeriods.Where(p => p.EndTime >= weekBegin && p.StartTime < weekBegin.AddDays(7))
+                  .Select(p => (p.EndTime - p.StartTime).TotalHours).DefaultIfEmpty(0.0).Sum();
+               string hourString = $"{Math.Round(sumHours)}h";
+               uiTime.Text = hourString;
+
+               if (sumHours < 26.0)
+                  WeekBrush[weekNumber] = new SolidColorBrush(Extension.FromArgb(0x90D60000));
+               else if (sumHours < 36.0)
+                  WeekBrush[weekNumber] = new SolidColorBrush(Extension.FromArgb(0xA0E4C320));
+               else if (sumHours < 44.0)
+                  WeekBrush[weekNumber] = new SolidColorBrush(Extension.FromArgb(0xFF44DE28));
+               else if (sumHours < 50.0)
+                  WeekBrush[weekNumber] = new SolidColorBrush(Extension.FromArgb(0xFF2358FF));
+               else
+                  WeekBrush[weekNumber] = new SolidColorBrush(Extension.FromArgb(0xFF7a06bd));
+               uiText.Foreground = WeekBrush[weekNumber];
+               uiTime.Foreground = WeekBrush[weekNumber];
+            }
+            _setGraph(GraphText1, GraphTime1, 0);
+            _setGraph(GraphText2, GraphTime2, 1);
+            _setGraph(GraphText3, GraphTime3, 2);
+            _setGraph(GraphText4, GraphTime4, 3);
+            _setGraph(GraphText5, GraphTime5, 4);
+            _setGraph(GraphText6, GraphTime6, 5);
+            _setGraph(GraphText7, GraphTime7, 6);
+            _setGraph(GraphText8, GraphTime8, 7);
+            _setGraph(GraphText9, GraphTime9, 8);
+            _setGraph(GraphText10, GraphTime10, 9);
+
+            IndicatorWork.Visibility = workProject.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (workProject.Length > 0)
+            {
+               DataTemplate? templateWorkRow = Resources["IndicatorWorkRow"] as DataTemplate;
+               Populate(IndicatorWork, templateWorkRow, workPeriods, (content, root, i, data) =>
+               {
+                  IndicatorWorkRow row = new(root);
+
+                  double pctBegin = (data.StartTime.ToLocalTime() - periodBeginLocal).TotalHours / ((double)periodCount * 7.0 * 24.0);
+                  double pctEnd = (data.EndTime.ToLocalTime() - periodBeginLocal).TotalHours / ((double)periodCount * 7.0 * 24.0);
+                  FreeGrid.SetLeft(content, new PercentValue(PercentValue.ModeType.Percent, pctBegin));
+                  FreeGrid.SetWidth(content, new PercentValue(PercentValue.ModeType.Percent, pctEnd - pctBegin));
+
+                  int weekNumber = (int)Math.Floor((data.StartTime.ToLocalTime() - periodBeginLocal).TotalDays / 7.0);
+                  weekNumber = Math.Clamp(weekNumber, 0, WeekBrush.Length);
+                  row.RowLine.Background = WeekBrush[weekNumber];
+               });
+            }
+
+            DataTemplate? templateGraph = Resources["IndicatorGraph"] as DataTemplate;
+            DataTemplate? templateRow = Resources["IndicatorRow"] as DataTemplate;
+            Populate(IndicatorGraphs, templateGraph, TimeManager.Instance.Indicators, (content, root, i, data) =>
+            {
+               const double dayLength = 24.0 / ((double)periodCount * 7.0 * 24.0);
+
+               IndicatorGraph pane = new IndicatorGraph(root);
+
+               List<double> points = new List<double>();
+               List<int> values = new List<int>();
+               List<Color> colors = new List<Color>();
+               var indicators = TimeManager.Instance.QueryTimeIndicator(periodBegin, periodEnd);
+               foreach (TimeIndicator entry in indicators)
+               {
+                  if (data.Name.CompareTo(entry.Category) != 0)
+                     continue;
+                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
+                  DateTime thisTime = entry.Time.ToLocalTime();
+                  DateTime thisDayBegin = new DateTime(thisTime.Year, thisTime.Month, thisTime.Day, 0, 0, 0);
+                  double pct = (thisTime - periodBeginLocal).TotalHours / ((double)periodCount * 7.0 * 24.0);
+                  points.Add(pct);
+                  values.Add(entry.Value);
+                  colors.Add(value.GetColorBack());
+               }
+
+               TimeManager.Instance.QueryAdjacentTimeIndicators(data.Name, periodBegin, periodEnd, out int prevValue, out int nextValue);
+               if (points.Count == 0 || points[0] > 0.001)
+               {
+                  points.Insert(0, 0.0);
+                  if (prevValue != int.MinValue)
+                  {
+                     IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, prevValue);
+                     values.Insert(0, prevValue);
+                     bool same = points.Count >= 2 && values[0] == values[1];
+                     colors.Insert(0, value.GetColorBack(0xFF));
+                  }
+                  else if (values.Count > 0)
+                  {
+                     values.Insert(0, values[0]);
+                     colors.Insert(0, new Color() { R = colors[0].R, G = colors[0].G, B = colors[0].B, A = 0 });
+                  }
+                  else
+                  {
+                     IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, 0);
+                     values.Add(0);
+                     colors.Add(value.GetColorBack(0x00));
+                  }
+               }
+               if (points[^1] < 0.999)
+               {
+                  if (nextValue != int.MinValue)
+                  {
+                     IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, nextValue);
+                     points.Add(1.0);
+                     values.Add(nextValue);
+                     bool same = values.Count >= 2 && (int)values[^1] == (int)values[^2];
+                     colors.Add(value.GetColorBack(0xFF));
+                  }
+                  else
+                  {
+                     points.Add(Math.Min(1.0, points[^1] + (0.2 * dayLength)));
+                     values.Add(values[^1]);
+                     colors.Add(new Color() { R = colors[^1].R, G = colors[^1].G, B = colors[^1].B, A = 0 });
+                     points.Add(1.0);
+                     values.Add(values[^1]);
+                     colors.Add(colors[^1]);
+                  }
+               }
+
+               for (int o = 1; o < values.Count; o++)
+                  if (points[o] - points[o - 1] >= dayLength)
+                  {
+                     points.Insert(o, points[o] - (0.2 * dayLength));
+                     colors.Insert(o, colors[o - 1]);
+                     values.Insert(o, values[o - 1]);
+                  }
+
+               PathGeometry geometry = new PathGeometry();
+               PathFigure figure = new PathFigure() { IsClosed = false };
+               figure.StartPoint = new Point(points[0], -20.0 * (values[0] + data.Offset));
+               for (int o = 1; o < points.Count; o++)
+                  figure.Segments.Add(new LineSegment(new Point(points[o], -20.0 * (values[o] + data.Offset)), true));
+               geometry.Figures.Add(figure);
+               pane.IndicatorGraphLine.Data = geometry;
+
+               LinearGradientBrush brush = new LinearGradientBrush();
+               brush.StartPoint = new Point(0.0, 0.5);
+               brush.EndPoint = new Point(1.0, 0.5);
+               for (int o = 0; o < points.Count; o++)
+                  brush.GradientStops.Add(new GradientStop(colors[o], points[o]));
+               pane.IndicatorGraphLine.Stroke = brush;
+
+               List<int> valuesSet = values.Distinct().ToList();
+               valuesSet.Sort();
+               int minValue = valuesSet.Min();
+               int maxValue = valuesSet.Max();
+               Populate(pane.Rows, templateRow, valuesSet, (subcontent, subroot, o, index) =>
+               {
+                  IndicatorRow row = new IndicatorRow(subroot);
+                  IndicatorValue subdata = data.Values[index - data.MinValue];
+                  double pct = (maxValue > minValue) ? 1.0 - ((double)(index - minValue) / (double)(maxValue - minValue))
+                     : 0.5;
+                  FreeGrid.SetTop(row.RowLine, new PercentValue(PercentValue.ModeType.Percent, pct - 0.15));
+                  FreeGrid.SetTop(row.Title, new PercentValue(PercentValue.ModeType.Percent, pct - 0.15));
+                  row.RowLine.Background = new SolidColorBrush(subdata.GetColorBack(0x20));
+                  row.Title.Foreground = new SolidColorBrush(subdata.GetColorBack(0x60));
+                  row.Title.Text = subdata.Name;
+               });
             });
          }
       }
@@ -398,7 +623,11 @@ namespace Tildetool.Time
          Project? project = null;
          if (!TimeManager.Instance.HotkeyToProject.TryGetValue(key, out project))
             return;
+         SetActiveProject(project);
+      }
 
+      void SetActiveProject(Project project)
+      {
          if (CurDailyMode != DailyMode.Today)
          {
             if (DailyFocus == project)
@@ -662,14 +891,22 @@ namespace Tildetool.Time
          Today = 0,
          WeekProgress,
          WeekSchedule,
+         Indicators,
          COUNT
       }
       class TimeBlock
       {
+         public enum Style
+         {
+            TimePeriod,
+            WeeklySchedule,
+            TimeEvent
+         }
          public string Name;
          public DateTime StartTime;
          public DateTime EndTime;
          public Color Color;
+         public Style CurStyle;
          public int Priority;
 
          public Project? Project = null;
@@ -682,21 +919,22 @@ namespace Tildetool.Time
             return new TimeBlock
             {
                Priority = 0,
+               CurStyle = Style.TimePeriod,
                Name = project?.Name ?? period.Ident,
                StartTime = period.StartTime,
                EndTime = period.EndTime,
-               Color = Extension.FromArgb(0xFF143518),
+               Color = project != null ? Extension.FromArgb(0xFF143518) : Extension.FromArgb(0xFF0D211D),
                Project = project,
                DbId = period.DbId
             };
          }
          public static TimeBlock FromWeeklySchedule(WeeklySchedule schedule, DateTime today)
          {
-            return new TimeBlock { Priority = 1, Name = schedule.Name, StartTime = today.AddHours(schedule.HourBegin), EndTime = today.AddHours(schedule.HourEnd), Color = Extension.FromArgb(0xD0A8611F) };
+            return new TimeBlock { Priority = 1, CurStyle = Style.WeeklySchedule, Name = schedule.Name, StartTime = today.AddHours(schedule.HourBegin), EndTime = today.AddHours(schedule.HourEnd), Color = Extension.FromArgb(0xD0A8611F) };
          }
          public static TimeBlock FromTimeEvent(TimeEvent evt)
          {
-            return new TimeBlock { Priority = 2, Name = evt.Name, StartTime = evt.StartTime, EndTime = evt.EndTime, Color = Extension.FromArgb(0xD0E0411F) };
+            return new TimeBlock { Priority = 2, CurStyle = Style.TimeEvent, Name = evt.Name, StartTime = evt.StartTime, EndTime = evt.EndTime, Color = Extension.FromArgb(0xD0E0411F) };
          }
 
          public bool CanMerge(TimeBlock next)
@@ -726,6 +964,10 @@ namespace Tildetool.Time
       DailyMode CurDailyMode;
       DateTime DailyDay;
       Project DailyFocus;
+
+      int MinHour = 6;
+      int MaxHour = 21;
+
       void RefreshDaily()
       {
          if (_StoryboardRefresh2 != null)
@@ -734,6 +976,10 @@ namespace Tildetool.Time
             _StoryboardRefresh2.Remove(this);
             _StoryboardRefresh2 = null;
          }
+
+         DailyContent.Visibility = (CurDailyMode != DailyMode.Indicators) ? Visibility.Visible : Visibility.Collapsed;
+         if (CurDailyMode == DailyMode.Indicators)
+            return;
 
          if (DailyDay > DateTime.Now.AddDays(7))
             DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
@@ -749,7 +995,6 @@ namespace Tildetool.Time
 
          DataTemplate? templateRow = Resources["DailyRow"] as DataTemplate;
          DataTemplate? templateIndicator = Resources["Indicator"] as DataTemplate;
-         DataTemplate? templateIndicators = Resources["Indicators"] as DataTemplate;
          DataTemplate? templateHeaderCell = Resources["DailyHeaderCell"] as DataTemplate;
          DataTemplate? templateCell = Resources["DailyCell"] as DataTemplate;
          DataTemplate? templateDivider = Resources["DailyDivider"] as DataTemplate;
@@ -770,8 +1015,8 @@ namespace Tildetool.Time
             }
          }
 
-         int minHour = 8;
-         int maxHour = 21;
+         MinHour = 6;
+         MaxHour = 21;
 
          void _organizePeriod(List<TimeBlock> periods)
          {
@@ -783,10 +1028,10 @@ namespace Tildetool.Time
             foreach (TimeBlock period in periods)
             {
                // Increase or decrease our total time range.
-               if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours < minHour)
-                  minHour = period.StartTime.ToLocalTime().Hour;
-               if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours > maxHour)
-                  maxHour = period.EndTime.ToLocalTime().Hour + 1;
+               if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
+                  MinHour = period.StartTime.ToLocalTime().Hour;
+               if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
+                  MaxHour = period.EndTime.ToLocalTime().Hour + 1;
 
                // check if there's an overlap and shrink the lower priority one
                if (prevPeriod != null && prevPeriod.EndTime > period.StartTime)
@@ -824,14 +1069,25 @@ namespace Tildetool.Time
                weeklySchedule.Add(block);
             }
 
-         List<List<TimeBlock>> projectPeriods = new List<List<TimeBlock>>();
+         List<List<TimeBlock>> projectPeriods = new();
          {
             if (CurDailyMode == DailyMode.Today)
             {
+               for (int i = 0; i < TimeManager.Instance.Data.Length + 1; i++)
+                  projectPeriods.Add(new List<TimeBlock>());
+               Dictionary<string, int> identToIndex = Enumerable.Range(0, TimeManager.Instance.Data.Length).ToDictionary(i => TimeManager.Instance.Data[i].Ident, i => i);
+
                DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
                DateTime todayE = todayS.AddDays(1);
-               for (int i = 0; i < TimeManager.Instance.Data.Length; i++)
-                  projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(TimeManager.Instance.Data[i], todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
+               List<TimeBlock> periods = TimeManager.Instance.QueryTimePeriod(todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
+
+               foreach (TimeBlock block in periods)
+               {
+                  int index = 0;
+                  if (block.Project == null || !identToIndex.TryGetValue(block.Project.Ident, out index))
+                     index = projectPeriods.Count - 1;
+                  projectPeriods[index].Add(block);
+               }
             }
             else
                for (int i = 0; i < 7; i++)
@@ -851,15 +1107,15 @@ namespace Tildetool.Time
             foreach (List<TimeBlock> periods in projectPeriods)
                for (int i = periods.Count - 1; i >= 0; i--)
                {
-                  if (periods[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > maxHour)
+                  if (periods[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
                      periods.RemoveAt(i);
-                  else if (periods[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < minHour)
+                  else if (periods[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
                      periods.RemoveAt(i);
                }
          }
 
          // Figure out the time ranges
-         int[] showHours = new int[] { minHour, 12, 15, 18, maxHour };
+         int[] showHours = Enumerable.Range(MinHour + 1, MaxHour - (MinHour + 1)).Where(h => (h % 3) == 0).Prepend(MinHour).Append(MaxHour).ToArray();
          HeaderRow.ColumnDefinitions.Clear();
          for (int i = 0; i < showHours.Length - 1; i++)
             HeaderRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(showHours[i + 1] - showHours[i], GridUnitType.Star) });
@@ -881,7 +1137,7 @@ namespace Tildetool.Time
          }
 
          // Hour dividers
-         int hourCount = maxHour - minHour;
+         int hourCount = MaxHour - MinHour;
          DailyDividers.ColumnDefinitions.Clear();
          for (int i = 0; i < hourCount * 2; i++)
             DailyDividers.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -905,7 +1161,7 @@ namespace Tildetool.Time
          NowDividerGrid.Visibility = showNowLine ? Visibility.Visible : Visibility.Collapsed;
          if (showNowLine)
          {
-            double hourProgress = Math.Min(1.0, (DateTime.Now - dayBegin.AddHours(minHour)).TotalHours / (double)(maxHour - minHour));
+            double hourProgress = Math.Min(1.0, (DateTime.Now - dayBegin.AddHours(MinHour)).TotalHours / (double)(MaxHour - MinHour));
             NowDividerGrid.ColumnDefinitions.Clear();
             NowDividerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
             NowDividerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
@@ -919,7 +1175,7 @@ namespace Tildetool.Time
             List<TimeBlock> block = weeklySchedule[(int)DailyDay.DayOfWeek];
 
             ScheduleGrid.ColumnDefinitions.Clear();
-            double lastHour = minHour;
+            double lastHour = MinHour;
             for (int i = 0; i < block.Count; i++)
             {
                double hourBegin = (block[i].StartTime - dayBeginUtc).TotalHours;
@@ -928,7 +1184,7 @@ namespace Tildetool.Time
                ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
                lastHour = hourEnd;
             }
-            ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(maxHour - lastHour, GridUnitType.Star) });
+            ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(MaxHour - lastHour, GridUnitType.Star) });
 
             _populate(ScheduleGrid, templateSchedule, block.Count);
             for (int i = 0; i < block.Count; i++)
@@ -952,72 +1208,29 @@ namespace Tildetool.Time
          IndicatorPanel.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
          if (CurDailyMode == DailyMode.Today)
          {
-            DateTime todayS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0).ToUniversalTime();
+            DateTime todayLocalS = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
+            DateTime todayLocalE = todayLocalS.AddDays(1);
+            DateTime todayS = todayLocalS.ToUniversalTime();
             DateTime todayE = todayS.AddDays(1);
             Indicator = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
+            HashSet<IndicatorValue> already = new HashSet<IndicatorValue>();
 
-            const double Thickness = 0.06;
-            List<List<TimeIndicator>> rows = new List<List<TimeIndicator>>();
+            Populate(Indicators, templateIndicator, Indicator, (content, root, _, entry) =>
             {
-               List<double> rowEnd = new List<double>();
-               for (int i = 0; i < Indicator.Count; i++)
-               {
-                  double hourB = (Indicator[i].Time - todayS).TotalHours - Thickness;
-                  double hourE = hourB + (2.0 * Thickness);
-                  if (hourE <= minHour)
-                     continue;
-                  if (hourB < minHour)
-                     hourB = minHour;
+               double pct = ((entry.Time.ToLocalTime() - todayLocalS).TotalHours - MinHour) / (MaxHour - MinHour);
+               StackPanelShift.SetAlong(content, pct);
 
-                  int row = 0;
-                  for (; row < rowEnd.Count; row++)
-                     if (hourB >= rowEnd[row])
-                        break;
-                  if (row >= rowEnd.Count)
-                  {
-                     rowEnd.Add(0.0);
-                     rows.Add(new List<TimeIndicator>());
-                  }
-                  rowEnd[row] = hourE;
-                  rows[row].Add(Indicator[i]);
-               }
-            }
+               IndicatorCtrl ctrl = new IndicatorCtrl(root);
+               IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
+               (root as Panel).Background = new SolidColorBrush(value.GetColorBack(0x58));
+               ctrl.Icon.Foreground = new SolidColorBrush(value.GetColorFore());
+               ctrl.Text.Foreground = new SolidColorBrush(value.GetColorBack());
+               ctrl.Icon.Text = value.Icon;
 
-            if (rows.Count == 0)
-               IndicatorPanel.Visibility = Visibility.Collapsed;
-            Populate(Indicators, templateIndicators, rows, (content, root, _, row) =>
-            {
-               Grid grid = root as Grid;
-               grid.ColumnDefinitions.Clear();
-               List<int> columns = new List<int>();
-               double lastHour = minHour;
-               for (int i = 0; i < row.Count; i++)
-               {
-                  double hourB = (row[i].Time - todayS).TotalHours - Thickness;
-                  double hourE = hourB + (2.0 * Thickness);
-                  if (hourB < minHour)
-                     hourB = minHour;
-
-                  if (hourB > lastHour)
-                     grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourB - lastHour, GridUnitType.Star) });
-                  columns.Add(grid.ColumnDefinitions.Count);
-                  grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourE - hourB, GridUnitType.Star) });
-
-                  lastHour = hourE;
-               }
-               grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(maxHour - lastHour, GridUnitType.Star) });
-
-               Populate(grid, templateIndicator, row, (subcontent, subroot, o, entry) =>
-               {
-                  TextBlock scheduleTextCtrl = subroot.FindElementByName<TextBlock>("IndicatorText");
-
-                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
-                  (subroot as Grid).Background = new SolidColorBrush(value.GetColorBack(0x58));
-                  scheduleTextCtrl.Foreground = new SolidColorBrush(value.GetColorFore());
-
-                  Grid.SetColumn(subcontent, columns[o]);
-                  scheduleTextCtrl.Text = TimeManager.Instance.GetIndicatorIcon(entry.Category, entry.Value);
-               });
+               bool isNew = already.Add(value);
+               ctrl.Text.Visibility = isNew ? Visibility.Visible : Visibility.Collapsed;
+               if (isNew)
+                  ctrl.Text.Text = value.Name;
             });
          }
 
@@ -1026,9 +1239,9 @@ namespace Tildetool.Time
          _populate(DailyRows, templateRow, projectPeriods.Count);
          for (int i = 0; i < projectPeriods.Count; i++)
          {
-            DateTime thisDateBeginLocal = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).AddHours(minHour);
-            DateTime thisDateBegin = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).ToUniversalTime().AddHours(minHour);
-            DateTime thisDateEnd = thisDateBegin.AddHours(maxHour - minHour);
+            DateTime thisDateBeginLocal = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).AddHours(MinHour);
+            DateTime thisDateBegin = (CurDailyMode != DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).ToUniversalTime().AddHours(MinHour);
+            DateTime thisDateEnd = thisDateBegin.AddHours(MaxHour - MinHour);
 
             bool today = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) == 0;
             bool postToday = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) > 0;
@@ -1067,14 +1280,15 @@ namespace Tildetool.Time
                rowNowGrid.Visibility = showNowLineRow ? Visibility.Visible : Visibility.Collapsed;
                if (showNowLineRow)
                {
-                  double hourProgress = Math.Min(1.0, (DateTime.Now - thisDateBeginLocal).TotalHours / (double)(maxHour - minHour));
+                  double hourProgress = Math.Min(1.0, (DateTime.Now - thisDateBeginLocal).TotalHours / (double)(MaxHour - MinHour));
                   rowNowGrid.ColumnDefinitions.Clear();
                   rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
                   rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
                }
 
                // Update the text
-               if ((CurDailyMode == DailyMode.Today && TimeManager.Instance.Data[i] == InitialProject) || (CurDailyMode != DailyMode.Today && today))
+               Project? project = i < TimeManager.Instance.Data.Length ? TimeManager.Instance.Data[i] : null;
+               if ((CurDailyMode == DailyMode.Today && project == InitialProject) || (CurDailyMode != DailyMode.Today && today))
                {
                   grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
                   headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
@@ -1093,7 +1307,7 @@ namespace Tildetool.Time
                   headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
                }
 
-               headerName.Text = CurDailyMode != DailyMode.Today ? thisDateBegin.ToString("ddd") : TimeManager.Instance.Data[i].Name;
+               headerName.Text = CurDailyMode != DailyMode.Today ? thisDateBegin.ToString("ddd") : (project?.Name ?? "");
                headerDate.Visibility = CurDailyMode != DailyMode.Today ? Visibility.Visible : Visibility.Collapsed;
                headerDate.Text = thisDateBegin.ToString("yy/MM/dd");
 
@@ -1145,6 +1359,7 @@ namespace Tildetool.Time
                TextBlock endTime = grid.FindElementByName<TextBlock>("EndTime");
                TextBlock cellTimeH = grid.FindElementByName<TextBlock>("CellTimeH");
                TextBlock cellTimeM = grid.FindElementByName<TextBlock>("CellTimeM");
+               TextBlock projectName = grid.FindElementByName<TextBlock>("ProjectName");
                Grid activeGlow = grid.FindElementByName<Grid>("ActiveGlow");
 
                if (CurDailyMode == DailyMode.WeekSchedule || CurDailyMode == DailyMode.WeekProgress)
@@ -1154,6 +1369,7 @@ namespace Tildetool.Time
                   startTime.Visibility = Visibility.Collapsed;
                   endTime.Visibility = Visibility.Collapsed;
                   cellTimeM.Visibility = Visibility.Visible;
+                  projectName.Visibility = Visibility.Collapsed;
                   bool thisProject = CurDailyMode == DailyMode.WeekProgress && periodsFilter[o].Project == DailyFocus;
                   if (CurDailyMode == DailyMode.WeekProgress && DailyFocus != null && !thisProject)
                   {
@@ -1168,13 +1384,18 @@ namespace Tildetool.Time
                   else
                   {
                      grid.Background = new SolidColorBrush(periodsFilter[o].Color);
-                     cellTimeM.Foreground = new SolidColorBrush(periodsFilter[o].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), thisProject ? 1.0f : 0.75f));
+                     SolidColorBrush colorBack = periodsFilter[o].CurStyle == TimeBlock.Style.TimePeriod && periodsFilter[o].Project == null
+                        ? new(Extension.FromArgb(0xFF69A582))
+                        : new(periodsFilter[o].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), thisProject ? 1.0f : 0.75f));
+                     cellTimeM.Foreground = colorBack;
                   }
                   cellTimeM.Text = periodsFilter[o].Name;
                }
                else
                {
                   grid.Background = new SolidColorBrush(periodsFilter[o].Color);
+                  SolidColorBrush colorBack = new(Extension.FromArgb(periodsFilter[o].Project != null ? 0xFF449637 : 0xFF517F65));
+                  SolidColorBrush colorFore = new(Extension.FromArgb(periodsFilter[o].Project != null ? 0xFFC3F1AF : 0xFF69A582));
 
                   bool isActiveCell = TimeManager.Instance.CurrentTimePeriod == periodsFilter[o].DbId;
                   activeGlow.Visibility = isActiveCell ? Visibility.Visible : Visibility.Collapsed;
@@ -1182,12 +1403,20 @@ namespace Tildetool.Time
                   double periodMinutes = (periodsFilter[o].EndTime - periodsFilter[o].StartTime).TotalMinutes;
                   cellTimeH.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
                   cellTimeM.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-                  cellTimeM.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
+                  cellTimeH.Foreground = colorFore;
+                  cellTimeM.Foreground = colorFore;
                   cellTimeH.Text = ((int)periodMinutes / 60).ToString();
                   cellTimeM.Text = $"{((int)periodMinutes % 60):D2}";
 
+                  projectName.Visibility = (i >= TimeManager.Instance.Data.Length) ? Visibility.Visible : Visibility.Collapsed;
+                  projectName.Foreground = colorBack;
+                  if (i >= TimeManager.Instance.Data.Length)
+                     projectName.Text = periodsFilter[o].Name;
+
                   startTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
                   endTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
+                  startTime.Foreground = colorBack;
+                  endTime.Foreground = colorBack;
                   if (periodMinutes >= 45)
                   {
                      startTime.Text = $"{periodsFilter[o].StartTime.ToLocalTime().Hour:D2}{periodsFilter[o].StartTime.ToLocalTime().Minute:D2}";
@@ -1402,6 +1631,170 @@ namespace Tildetool.Time
 
       void _AnimateTimer(float timeIn)
       {
+      }
+
+      private void IndicatorPanel_MouseEnter(object sender, MouseEventArgs e)
+      {
+         if (FocusCategory == null)
+            return;
+         IndicatorHover.Visibility = Visibility.Visible;
+         IndicatorPanel_MouseMove(sender, e);
+      }
+
+      private void IndicatorPanel_MouseLeave(object sender, MouseEventArgs e)
+      {
+         IndicatorHover.Visibility = Visibility.Collapsed;
+      }
+
+      private void IndicatorPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      {
+         if (FocusCategory == null)
+            return;
+
+         Point pos = e.GetPosition(IndicatorPanel);
+         double pctX = pos.X / IndicatorPanel.RenderSize.Width;
+         DateTime dayBegin = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
+         DateTime clickTime = dayBegin.AddHours(MinHour + (pctX * (MaxHour - MinHour))).ToUniversalTime();
+         PlaceIndicator(clickTime);
+      }
+
+      private void IndicatorPanel_MouseMove(object sender, MouseEventArgs e)
+      {
+         Point pos = e.GetPosition(IndicatorPanel);
+         double pctX = pos.X / IndicatorPanel.RenderSize.Width;
+         FreeGrid.SetLeft(IndicatorHover, new PercentValue(PercentValue.ModeType.Percent, pctX));
+      }
+
+      double? DailyRow_Pct1 = null;
+      private void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
+      {
+         if (CurDailyMode != DailyMode.Today)
+            return;
+         DailyRowHover.Visibility = Visibility.Visible;
+         DailyRow_Pct1 = null;
+         TimeAreaHotspot_MouseMove(sender, e);
+      }
+
+      private void TimeAreaHotspot_MouseLeave(object sender, MouseEventArgs e)
+      {
+         DailyRowHover.Visibility = Visibility.Collapsed;
+      }
+
+      private void TimeAreaHotspot_MouseMove(object sender, MouseEventArgs e)
+      {
+         if (CurDailyMode != DailyMode.Today)
+            return;
+
+         Point pos = e.GetPosition(TimeAreaHotspot);
+         double pctX = pos.X / TimeAreaHotspot.RenderSize.Width;
+         if (DailyRow_Pct1 == null)
+         {
+            FreeGrid.SetLeft(DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, pctX));
+            FreeGrid.SetWidth(DailyRowHover, new PercentValue(PercentValue.ModeType.Pixel, 1));
+         }
+         else
+         {
+            double minPct = (pctX < DailyRow_Pct1.Value) ? pctX : DailyRow_Pct1.Value;
+            double maxPct = (pctX >= DailyRow_Pct1.Value) ? pctX : DailyRow_Pct1.Value;
+            FreeGrid.SetLeft(DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, minPct));
+            FreeGrid.SetWidth(DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, maxPct - minPct));
+         }
+      }
+
+      private void TimeAreaHotspot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      {
+         if (CurDailyMode != DailyMode.Today)
+            return;
+
+         Point pos = e.GetPosition(TimeAreaHotspot);
+         DailyRow_Pct1 = pos.X / TimeAreaHotspot.RenderSize.Width;
+         TimeAreaHotspot_MouseMove(sender, e);
+      }
+
+      private void TimeAreaHotspot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+      {
+         if (CurDailyMode != DailyMode.Today)
+            return;
+         if (DailyRow_Pct1 == null)
+            return;
+
+         DateTime periodBegin;
+         DateTime periodEnd;
+         {
+            Point pos = e.GetPosition(TimeAreaHotspot);
+            double pct1 = DailyRow_Pct1.Value;
+            double pct2 = pos.X / TimeAreaHotspot.RenderSize.Width;
+
+            DateTime dayBegin = new DateTime(DailyDay.Year, DailyDay.Month, DailyDay.Day, 0, 0, 0);
+            if (pct2 < pct1)
+            {
+               double pct = pct2;
+               pct2 = pct1;
+               pct1 = pct;
+            }
+            periodBegin = dayBegin.AddHours(MinHour + (pct1 * (MaxHour - MinHour))).ToUniversalTime();
+            periodEnd = dayBegin.AddHours(MinHour + (pct2 * (MaxHour - MinHour))).ToUniversalTime();
+
+            DateTime utcNow = DateTime.UtcNow;
+            if (periodBegin > utcNow)
+               periodBegin = utcNow;
+            if (periodEnd > utcNow)
+               periodEnd = utcNow;
+
+            List<TimePeriod> results = TimeManager.Instance.QueryTimePeriod(periodBegin, periodEnd);
+            if (results.Count > 0)
+            {
+               periodBegin = results.Select(p => p.EndTime).Where(t => t < periodEnd).Append(periodBegin).Max();
+               periodEnd = results.Select(p => p.StartTime).Where(t => t > periodBegin).Append(periodEnd).Min();
+            }
+         }
+
+         DailyRow_Pct1 = null;
+         DailyRowHover.Visibility = Visibility.Collapsed;
+
+         if ((periodEnd - periodBegin).TotalMinutes < 2.0)
+            return;
+
+         ShowTextEditor((text) =>
+         {
+            int projectId = TimeManager.Instance.AddProject(text);
+            TimeManager.Instance.AddHistoryLine(new TimePeriod() { DbId = projectId, Ident = text, StartTime = periodBegin, EndTime = periodEnd });
+
+            Refresh();
+         });
+      }
+
+      System.Action<string>? _TextEditorCallback;
+      bool IsTextEditor => _TextEditorCallback != null;
+      bool EatEvent = false;
+      void ShowTextEditor(System.Action<string> callback)
+      {
+         _TextEditorCallback = callback;
+         TextEditorPane.Visibility = Visibility.Visible;
+         TextEditor.Focus();
+      }
+
+      private void TextEditor_KeyDown(object sender, KeyEventArgs e)
+      {
+         if (e.Key == Key.Enter || e.Key == Key.Return)
+         {
+            string text = TextEditor.Text;
+            var callback = _TextEditorCallback;
+            _TextEditorCallback = null;
+            TextEditorPane.Visibility = Visibility.Collapsed;
+            EatEvent = true;
+
+            if (!string.IsNullOrEmpty(text))
+               callback(text);
+            return;
+         }
+         if (e.Key == Key.Escape)
+         {
+            _TextEditorCallback = null;
+            TextEditorPane.Visibility = Visibility.Collapsed;
+            EatEvent = true;
+            return;
+         }
       }
    }
 }

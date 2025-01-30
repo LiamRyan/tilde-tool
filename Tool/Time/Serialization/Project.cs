@@ -12,6 +12,7 @@ namespace Tildetool.Time.Serialization
       public string Name { get; set; }
       public string Hotkey { get; set; }
       public string Ident { get; set; }
+      public bool ShowOnIndicator { get; set; }
       public string[] DesktopPrevent { get; set; }
 
       [JsonIgnore]

@@ -5,8 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tildetool.Time"
         xmlns:Shape="clr-namespace:Tildetool.Shape"
+        xmlns:tildetool="clr-namespace:Tildetool.WPF"
         mc:Ignorable="d" ResizeMode="NoResize" AllowsTransparency="True" WindowStyle="None" Background="{x:Null}"
-        KeyDown="Window_KeyDown" Topmost="True" WindowState="Normal" SizeToContent="Manual" VerticalAlignment="Center" Left="0" Top="0" Height="500" Loaded="OnLoaded"
+        KeyDown="Window_KeyDown" Topmost="True" WindowState="Normal" SizeToContent="Manual" VerticalAlignment="Center" Left="0" Top="0" Height="1000" Loaded="OnLoaded"
         d:DesignWidth="1200">
     <Window.Resources>
         <!-- Colors -->
@@ -41,33 +42,54 @@
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="Indicator">
-            <Grid Background="#20A8611F" Height="10" Margin="1,1,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                <TextBlock x:Name="IndicatorText" Text="&lt;" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FFA8611F" FontSize="8"/>
-            </Grid>
-        </DataTemplate>
-        <DataTemplate x:Key="Indicators">
-            <Grid x:Name="Indicators">
-                <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
-            </Grid>
-        </DataTemplate>
-        <DataTemplate x:Key="IndicatorHint">
-            <StackPanel Orientation="Horizontal" Height="16" Margin="0,0,2,0" Background="#50042508">
-                <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="#FFF3FEFF" FontSize="12" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                <TextBlock x:Name="Text" Text="Slow" FontFamily="Cascadia Code Light" Foreground="#FF82EBFF" FontSize="12" VerticalAlignment="Center" Margin="5,0,5,0"/>
+            <StackPanel Orientation="Horizontal" Background="#50042508" Height="12" Margin="1,1,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                <TextBlock x:Name="Icon" Text="&lt;" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FFF3FEFF" FontSize="10" Margin="2,0,0,0"/>
+                <TextBlock x:Name="Text" Text="Slow" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF82EBFF" FontSize="10" Margin="3,0,2,0"/>
             </StackPanel>
         </DataTemplate>
         <DataTemplate x:Key="IndicatorPane">
-            <Grid Height="30" Margin="0,0,10,0">
+            <Grid Height="42" Margin="0,0,10,0">
                 <Frame x:Name="Backfill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#40449637"></Frame>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Height="30" VerticalAlignment="Top">
                     <TextBlock x:Name="Title" Text="[P]rogress" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" VerticalAlignment="Center" Margin="8,0,8,0"/>
                     <TextBlock x:Name="Icon" Text="+" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="5,0,8,0"/>
                     <TextBlock x:Name="Text" Text="Above Average" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Center" Margin="-3,0,8,0"/>
                 </StackPanel>
+                <TextBlock x:Name="Date" Text="2 days ago" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10" VerticalAlignment="Bottom" Margin="8,0,8,5"/>
             </Grid>
         </DataTemplate>
+        <DataTemplate x:Key="IndicatorRow">
+            <tildetool:FreeGrid Margin="0,0,0,0">
+                <TextBlock x:Name="Title" Text="Twilight" FontFamily="Cascadia Code Light" TextAlignment="Right" VerticalAlignment="Center" FontSize="10" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="160" tildetool:FreeGrid.Height="18"  Margin="0,0,5,0"/>
+                <Grid x:Name="RowLine" Background="#A0FF0000" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="100%" tildetool:FreeGrid.Height="18" Margin="160,0,0,0"/>
+            </tildetool:FreeGrid>
+        </DataTemplate>
+        <DataTemplate x:Key="IndicatorGraph">
+            <tildetool:FreeGrid Margin="0,10,0,0">
+                <Grid Background="#50042508" Margin="180,0,80,0"></Grid>
+                <Grid x:Name="Rows" Margin="0 10 0 10">
+                    <ContentControl ContentTemplate="{StaticResource IndicatorRow}"></ContentControl>
+                </Grid>
+                <Grid Margin="180,0,80,0">
+                    <Path x:Name="IndicatorGraphLine" Margin="0 10 0 10" StrokeThickness="2" Stretch="Fill">
+                        <Path.Stroke>
+                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="{DynamicResource ColorGlow1}"/>
+                                <GradientStop Color="{DynamicResource ColorGlow2}" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Path.Stroke>
+                        <Path.Data>
+                            <PathGeometry Figures="M 0,-1 L 0.1,-40 0.6,20 1,0" />
+                        </Path.Data>
+                    </Path>
+                </Grid>
+            </tildetool:FreeGrid>
+       </DataTemplate>
+        <DataTemplate x:Key="IndicatorWorkRow">
+            <Grid x:Name="RowLine" Background="#A0ABE2A3" Height="12" Margin="0,3,0,3"/>
+        </DataTemplate>
         <DataTemplate x:Key="DailyCell">
-            <Grid Height="20" Background="#FF143518" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <Grid Height="20" Background="#FF0D211D" HorizontalAlignment="Stretch" VerticalAlignment="Center">
                 <Grid x:Name="ActiveGlow" Width="14" HorizontalAlignment="Right" VerticalAlignment="Stretch">
                     <Grid.Background>
                         <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
@@ -78,12 +100,13 @@
                         </LinearGradientBrush>
                     </Grid.Background>
                 </Grid>
-                <TextBlock x:Name="StartTime" Text="0900" Margin="2,2,2,0" HorizontalAlignment="Left" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
+                <TextBlock x:Name="StartTime" Text="0900" Margin="2,2,2,0" HorizontalAlignment="Left" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF517F65" FontSize="10"/>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
-                    <TextBlock x:Name="CellTimeH" Text="8" Margin="0,0,0,0" TextAlignment="Left" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12"/>
+                    <TextBlock x:Name="CellTimeH" Text="8" Margin="0,0,0,0" TextAlignment="Left" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF69A582" FontSize="12"/>
                     <TextBlock x:Name="CellTimeM" Text="01" Margin="2,0,0,-4" TextAlignment="Left" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="8"/>
                 </StackPanel>
                 <TextBlock x:Name="EndTime" Text="0100" Margin="2,2,2,0" HorizontalAlignment="Right" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
+                <TextBlock x:Name="ProjectName" Text="Morning" Margin="2,0,2,-12" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="DailyRow">
@@ -104,11 +127,15 @@
         </DataTemplate>
     </Window.Resources>
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top">
+        <!-- Timeline Display -->
         <Grid x:Name="Daily" HorizontalAlignment="Stretch" VerticalAlignment="Top" MinWidth="500" Margin="100,100,100,0">
             <Grid x:Name="BackfillDaily" Background="#FFF1F7E5"/>
             <StackPanel Orientation="Vertical" Margin="0,0,0,0">
                 <Grid x:Name="DailyContent" Margin="20,25,20,10" HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                    <TextBlock x:Name="DailyDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="14"/>
+                    <TextBlock x:Name="DailyDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="14" Margin="-1,1,0,0"/>
+                    <tildetool:FreeGrid Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid x:Name="DailyRowHover" Background="#60248528" tildetool:FreeGrid.Left="25%" tildetool:FreeGrid.Width="20%"/>
+                    </tildetool:FreeGrid>
                     <Grid x:Name="HeaderRow" Margin="160,0,60,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <ContentControl ContentTemplate="{StaticResource DailyHeaderCell}"></ContentControl>
                     </Grid>
@@ -128,23 +155,159 @@
                             <TextBlock x:Name="SumTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                         </StackPanel>
                     </StackPanel>
+                    <Grid x:Name="TimeAreaHotspot" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#01ABE2A3" MouseEnter="TimeAreaHotspot_MouseEnter" MouseLeave="TimeAreaHotspot_MouseLeave" MouseMove="TimeAreaHotspot_MouseMove" MouseLeftButtonDown="TimeAreaHotspot_MouseLeftButtonDown" MouseLeftButtonUp="TimeAreaHotspot_MouseLeftButtonUp"/>
                     <Grid x:Name="NowDividerGrid" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Grid Background="#FFABE2A3" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Column="0"/>
                     </Grid>
                 </Grid>
-                <Grid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0">
-                    <StackPanel Orientation="Vertical" x:Name="Indicators" Margin="0,1,0,2">
-                        <ContentControl ContentTemplate="{StaticResource Indicators}"></ContentControl>
+
+                <tildetool:FreeGrid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0" MouseEnter="IndicatorPanel_MouseEnter" MouseLeave="IndicatorPanel_MouseLeave" MouseMove="IndicatorPanel_MouseMove" MouseLeftButtonDown="IndicatorPanel_MouseLeftButtonDown">
+                    <tildetool:StackPanelShift Orientation="Vertical" x:Name="Indicators" Margin="0,1,0,2" ItemThickness="12" MinHeight="12">
+                        <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
+                    </tildetool:StackPanelShift>
+                    <Grid x:Name="IndicatorHover" Background="#FFABE2A3" tildetool:FreeGrid.Left="15%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                </tildetool:FreeGrid>
+                <Grid x:Name="IndicatorGraphGrid">
+                    <Grid Margin="180,30,80,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <tildetool:FreeGrid x:Name="Graph1" Grid.Column="0">
+                            <TextBlock x:Name="GraphText1" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime1" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="#90D60000" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph2" Grid.Column="1">
+                            <TextBlock x:Name="GraphText2" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime2" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="#A0E4C320" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph3" Grid.Column="2">
+                            <TextBlock x:Name="GraphText3" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime3" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="#FF44DE28" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph4" Grid.Column="3">
+                            <TextBlock x:Name="GraphText4" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime4" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="#FF2358FF" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph5" Grid.Column="4">
+                            <TextBlock x:Name="GraphText5" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime5" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="#FFaa06dd" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph6" Grid.Column="5">
+                            <TextBlock x:Name="GraphText6" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime6" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph7" Grid.Column="6">
+                            <TextBlock x:Name="GraphText7" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime7" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph8" Grid.Column="7">
+                            <TextBlock x:Name="GraphText8" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime8" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph9" Grid.Column="8">
+                            <TextBlock x:Name="GraphText9" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime9" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                        <tildetool:FreeGrid x:Name="Graph10" Grid.Column="9">
+                            <TextBlock x:Name="GraphText10" Text="22/10/4" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <TextBlock x:Name="GraphTime10" Text="4h" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="100%" TextAlignment="Right" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12" Margin="5,1,5,0"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="14.2857142857%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="28.5714285714%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="42.8571428571%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="57.1428571429%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="71.4285714286%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A008400A" tildetool:FreeGrid.Left="85.7142857143%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                            <Grid Background="#A0ABE2A3" tildetool:FreeGrid.Left="100%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                        </tildetool:FreeGrid>
+                    </Grid>
+                    <StackPanel Orientation="Vertical" Margin="0,40,0,5">
+                        <tildetool:FreeGrid x:Name="IndicatorWork" Background="#50042508" Margin="180,10,80,0">
+                            <ContentControl ContentTemplate="{StaticResource IndicatorWorkRow}" tildetool:FreeGrid.Left="30%" tildetool:FreeGrid.Width="30%"></ContentControl>
+                        </tildetool:FreeGrid>
+                        <StackPanel x:Name="IndicatorGraphs" Orientation="Vertical" Margin="0,0,0,0">
+                            <ContentControl ContentTemplate="{StaticResource IndicatorGraph}"></ContentControl>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
-                <StackPanel x:Name="IndicatorHints" Orientation="Horizontal" Margin="180,1,80,0">
-                    <ContentControl ContentTemplate="{StaticResource IndicatorHint}"></ContentControl>
-                </StackPanel>
                 <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="20,10,20,0">
                     <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
                 </StackPanel>
                 <Grid Height="20"></Grid>
             </StackPanel>
+
+            <!-- Glow effects -->
             <Grid x:Name="GlowDaily2" Margin="0 0 0 0" HorizontalAlignment="Left" Width="2">
                 <Grid.Background>
                     <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
@@ -167,7 +330,15 @@
                     </LinearGradientBrush>
                 </Grid.Background>
             </Grid>
+            <Grid x:Name="TextEditorPane" Background="#80044004" Margin="6,6,6,6" Visibility="Collapsed">
+                <Grid Background="#FF044004" Width="400" Height="48">
+                    <TextBox x:Name="TextEditor" Margin="10,10,10,10" KeyDown="TextEditor_KeyDown">
+
+                    </TextBox>
+                </Grid>
+            </Grid>
         </Grid>
+        <!-- Task selector -->
         <Grid x:Name="Content" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="124">
             <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
                 <Path.Data>
@@ -196,6 +367,8 @@
                     </StackPanel>
                 </Grid>
             </Grid>
+            
+            <!-- Glow effects -->
             <Path x:Name="Glow1" Margin="-10 10 -10 10" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
                 <Path.Effect>
                     <BlurEffect Radius="8" KernelType="Gaussian"/>
