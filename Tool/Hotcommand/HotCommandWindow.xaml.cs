@@ -342,7 +342,7 @@ namespace Tildetool
 
          if (_IsHotkey)
          {
-            string[] commands = new string[] { "P", "S", "W", "Q" };
+            string[] commands = new string[] { "T", "S", "W", "Q" };
             string[] texts = new string[] { "Timekeep", "Statusbar", "Word Lookup", "Quit" };
             populate(texts, (grid, txt, i) =>
             {
@@ -409,7 +409,7 @@ namespace Tildetool
                   (App.Current as App).HotkeyStatus();
                   return true;
 
-               case Key.P:
+               case Key.T:
                   _AnyCommand = true;
                   Cancel();
                   (App.Current as App).HotkeyTimekeep();
