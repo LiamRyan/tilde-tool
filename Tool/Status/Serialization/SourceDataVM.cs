@@ -12,6 +12,7 @@ namespace Tildetool.Status.Serialization
       public string VboxPath { get; set; }
       public string VmName { get; set; }
       public string VmIp { get; set; }
+      public bool Silent { get; set; } = false;
 
       public Source Spawn(SourceBundle parent)
       {

@@ -111,6 +111,7 @@ namespace Tildetool.Status
       public abstract bool IsFeed { get; }
       public abstract bool Ephemeral { get; }
       public abstract bool Important { get; }
+      public abstract bool Silent { get; }
       public abstract int Order { get; }
       public abstract string Domain { get; }
       public abstract bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval);

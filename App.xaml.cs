@@ -120,8 +120,10 @@ namespace Tildetool
 
          SourceManager.Instance.SourceChanged += (s, args) =>
             {
-               if (!args.CacheChanged && _StatusBar == null)
-                  return;
+               if (_StatusBar == null)
+                  if (!args.CacheChanged || SourceManager.Instance.Sources[args.Index].Silent)
+                     return;
+
                Dispatcher.Invoke(new Action(() =>
                {
                   if (_StatusBar == null)

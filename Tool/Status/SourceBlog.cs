@@ -404,6 +404,7 @@ namespace Tildetool.Status
       public override bool IsFeed { get { return true; } }
       public override bool Ephemeral { get { return false; } }
       public override bool Important { get { return State != StateType.Inactive; } }
+      public override bool Silent => false;
       public override int Order { get { if (Cache == null) return 0; return (int)(DateTime.Now - (Cache as CacheStruct).Date).TotalSeconds; } }
       public override string Domain { get { return Site; } }
       public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval)

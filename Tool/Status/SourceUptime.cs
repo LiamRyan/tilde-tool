@@ -153,6 +153,7 @@ namespace Tildetool.Status
       public override bool IsFeed { get { return false; } }
       public override bool Ephemeral { get { return true; } }
       public override bool Important { get { return State == StateType.Error; } }
+      public override bool Silent => false;
       public override int Order { get { return -1; } }
       public override string Domain { get { return URL; } }
       public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval) { return interval.TotalSeconds >= RefreshRateSec; }

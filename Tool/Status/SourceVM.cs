@@ -17,12 +17,14 @@ namespace Tildetool.Status
       protected string VmBoxPath;
       protected string VmName;
       protected string VmIp;
+      protected bool IsSilent;
       public SourceVM(SourceDataVM source)
          : base("VM", source.Title, typeof(CacheStruct))
       {
          VmBoxPath = source.VboxPath;
          VmName = source.VmName;
          VmIp = source.VmIp;
+         IsSilent = source.Silent;
       }
 
       protected override void _Query(bool clearCache)
@@ -125,6 +127,7 @@ namespace Tildetool.Status
       public override bool IsFeed { get { return false; } }
       public override bool Ephemeral { get { return true; } }
       public override bool Important { get { return false; } }
+      public override bool Silent => IsSilent;
       public override int Order { get { return -2; } }
       public override string Domain { get { return VmIp; } }
       public override bool NeedsRefresh(DateTime lastUpdate, TimeSpan interval)
