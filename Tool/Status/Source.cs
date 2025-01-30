@@ -88,13 +88,13 @@ namespace Tildetool.Status
 
       public bool IsQuerying { get { return QueryTask != null && !QueryTask.IsCompleted; } }
       public Task QueryTask { get; protected set; }
-      public Task Query()
+      public Task Query(bool clearCache)
       {
          QueryTask = Task.Run(() =>
          {
             try
             {
-               _Query();
+               _Query(clearCache);
             }
             catch (Exception ex)
             {
@@ -105,7 +105,7 @@ namespace Tildetool.Status
          });
          return QueryTask;
       }
-      protected abstract void _Query();
+      protected abstract void _Query(bool clearCache);
       public abstract void Display();
 
       public abstract bool IsFeed { get; }

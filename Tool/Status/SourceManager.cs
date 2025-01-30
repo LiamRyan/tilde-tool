@@ -83,7 +83,7 @@ namespace Tildetool.Status
                      // Alright then, start an update.
                      if (shouldUpdate)
                      {
-                        Query(i);
+                        Query(i, clearCache: false);
                         alreadyQuery.Add(Sources[i].Domain);
                      }
                      else
@@ -114,7 +114,7 @@ namespace Tildetool.Status
          return src.NeedsRefresh(GetUpdateTime(src), GetTimeSinceUpdate(src));
       }
 
-      public void Query(int index)
+      public void Query(int index, bool clearCache)
       {
          // Make sure we're not refreshing in a thread already.
          if (Sources[index].IsQuerying)
@@ -122,7 +122,7 @@ namespace Tildetool.Status
 
          App.WriteLog("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
          int changeIndex = Sources[index].ChangeIndex;
-         Task task = Sources[index].Query();
+         Task task = Sources[index].Query(clearCache);
 
          SourceQuery?.Invoke(this, index);
 

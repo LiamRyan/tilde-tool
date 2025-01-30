@@ -28,7 +28,7 @@ namespace Tildetool.Status
          VmIp = ip;
       }
 
-      protected override void _Query()
+      protected override void _Query(bool clearCache)
       {
          // Check the VM status from Oracle.
          {

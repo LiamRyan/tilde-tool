@@ -72,7 +72,7 @@ namespace Tildetool.Status
       #endregion
       #region Implementation
 
-      protected override void _Query()
+      protected override void _Query(bool clearCache)
       {
          //
          string responseBody = null;
@@ -131,7 +131,7 @@ namespace Tildetool.Status
             responseBody = SourceBlogTest.sTestResponseBody;
          else
          {
-            bool isFirst = true;
+            bool isFirst = !clearCache;
             string curLookup = Reference;
             foreach (SourceBlogUrl urlLink in Url)
             {

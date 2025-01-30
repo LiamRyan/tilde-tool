@@ -31,7 +31,7 @@ namespace Tildetool.Status
          RefreshRateSec = refreshRateSec;
       }
 
-      protected override void _Query()
+      protected override void _Query(bool clearCache)
       {
          CacheStruct cache = Cache as CacheStruct;
          if (cache == null)

@@ -287,7 +287,7 @@ namespace Tildetool.Status
 
             Dispatcher.Invoke(() =>
             {
-               SourceManager.Instance.Query(sourceIndex);
+               SourceManager.Instance.Query(sourceIndex, clearCache: true);
                UpdatePanel(sourceIndex, false);
             });
          }
