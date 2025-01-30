@@ -120,7 +120,9 @@ namespace Tildetool.Status
          if (Sources[index].IsQuerying)
             return;
 
-         App.WriteLog("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
+         if (!Sources[index].Ephemeral)
+            App.WriteLog("Updating source " + Sources[index].Title + " - " + Sources[index].Subtitle + " (previously " + SourceCache.SourceData[Sources[index].Guid].LastUpdate.ToString() + ", now " + DateTime.Now.ToString() + ")");
+
          int changeIndex = Sources[index].ChangeIndex;
          Task task = Sources[index].Query(clearCache);
 
