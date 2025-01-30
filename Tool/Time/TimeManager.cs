@@ -156,7 +156,6 @@ namespace Tildetool.Time
             case SessionSwitchReason.SessionUnlock:
                App.WriteLog("Screen unlocked at " + DateTime.UtcNow.ToString() + (PausedProject != null ? (", resuming " + PausedProject.Name) : ""));
                SetProject(PausedProject);
-               (App.Current as App).ShowTimekeep(true);
                break;
          }
       }

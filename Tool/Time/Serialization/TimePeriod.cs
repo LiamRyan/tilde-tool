@@ -7,7 +7,7 @@ namespace Tildetool.Time.Serialization
       [NonSerialized]
       public long DbId;
       public string Ident { get; set; }
-      public DateTime StartTime { get; set; }
-      public DateTime EndTime { get; set; }
+      public DateTime StartTime { get; set; } //utc
+      public DateTime EndTime { get; set; } //utc
    }
 }

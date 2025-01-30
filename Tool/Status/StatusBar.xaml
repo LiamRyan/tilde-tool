@@ -47,7 +47,7 @@
                     </Shape:Arc.Stroke>
                 </Shape:Arc>
                 <Grid x:Name="Divider" Background="#FF449637" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="1" Margin="8,22,8,0"/>
-                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Width="123" Margin="0,29,0,17" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
+                <TextBlock x:Name="Article" Text="Test Article Really Long Title Really Long Title Really Long Title Really Long Title" HorizontalAlignment="Center" TextAlignment="Center" Foreground="#FFC3F1AF" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Top" Width="123" Margin="0,29,0,17" TextWrapping="Wrap" TextTrimming="WordEllipsis"/>
                 <TextBlock x:Name="Status" Text="15/9/22" HorizontalAlignment="Stretch" TextAlignment="Left" Foreground="#FF449637" FontFamily="Cascadia Code Light" FontSize="12" VerticalAlignment="Bottom" Margin="8,0,8,4"/>
             </Grid>
         </DataTemplate>
