@@ -292,7 +292,13 @@ namespace Tildetool.Status
                // Pull it out and store it.
                string titleStr = lookupData(TitleLookup);
                if (!string.IsNullOrEmpty(titleStr))
+               {
+                  titleStr = System.Net.WebUtility.HtmlDecode(System.Net.WebUtility.HtmlDecode(titleStr)).Trim();
+                  int br = titleStr.IndexOf("</p>");
+                  if (br > 3 && titleStr.StartsWith("<p>"))
+                     titleStr = titleStr.Substring(3, br - 3);
                   cache.Title = titleStr;
+               }
                else
                   isValid = false;
             }
