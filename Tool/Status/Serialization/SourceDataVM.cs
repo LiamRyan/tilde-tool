@@ -15,7 +15,7 @@ namespace Tildetool.Status.Serialization
 
       public Source Spawn(SourceBundle parent)
       {
-         return new SourceVM(Title, VboxPath, VmName, VmIp);
+         return new SourceVM(this);
       }
    }
 }

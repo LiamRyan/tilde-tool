@@ -1,12 +1,9 @@
-﻿using Renci.SshNet;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.NetworkInformation;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Media;
+using Tildetool.Status.Serialization;
 
 namespace Tildetool.Status
 {
@@ -20,12 +17,12 @@ namespace Tildetool.Status
       protected string VmBoxPath;
       protected string VmName;
       protected string VmIp;
-      public SourceVM(string name, string vboxPath, string vmname, string ip)
-         : base("VM", name, typeof(CacheStruct))
+      public SourceVM(SourceDataVM source)
+         : base("VM", source.Title, typeof(CacheStruct))
       {
-         VmBoxPath = vboxPath;
-         VmName = vmname;
-         VmIp = ip;
+         VmBoxPath = source.VboxPath;
+         VmName = source.VmName;
+         VmIp = source.VmIp;
       }
 
       protected override void _Query(bool clearCache)
