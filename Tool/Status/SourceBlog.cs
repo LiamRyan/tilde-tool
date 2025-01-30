@@ -85,6 +85,8 @@ namespace Tildetool.Status
                   index = responseBody.IndexOf(lookup.Path[0]);
                else
                   index = responseBody.LastIndexOf(lookup.Path[0]);
+               if (index == -1)
+                  App.WriteLog($"lookupData unable to find initial value \"{lookup.Path[0]}\"");
                while (index != -1)
                {
                   // Find the date.
@@ -95,7 +97,10 @@ namespace Tildetool.Status
                      lastIndex = index;
                      index = responseBody.IndexOf(lookup.Path[i], index);
                      if (index == -1)
+                     {
+                        App.WriteLog($"lookupData unable to find value {i} \"{lookup.Path[i]}\" from {lastIndex}");
                         break;
+                     }
                      if (i + 1 < lookup.Path.Length)
                         index += lookup.Path[i].Length;
                   }
@@ -205,6 +210,7 @@ namespace Tildetool.Status
                // Anything besides success, fail out.
                if (!taskGet.Result.IsSuccessStatusCode)
                {
+                  App.WriteLog(taskGet.Result.ToString());
                   Status = taskGet.Result.StatusCode.ToString();
                   State = StateType.Error;
                   Cache = null;
@@ -244,9 +250,10 @@ namespace Tildetool.Status
          bool hasDate = DateLookup != null && DateLookup.Path.Length > 0;
          if (hasDate)
          {
+            string infoTimeStr = null;
             try
             {
-               string infoTimeStr = lookupData(DateLookup);
+               infoTimeStr = lookupData(DateLookup);
 
                // Parse it.
                if (!string.IsNullOrEmpty(infoTimeStr))
@@ -271,6 +278,7 @@ namespace Tildetool.Status
             catch (Exception ex)
             {
                App.WriteLog(ex.Message);
+               App.WriteLog($"  string was {infoTimeStr} vs {DateFormat}");
                isValid = false;
             }
          }
@@ -345,6 +353,7 @@ namespace Tildetool.Status
             State = StateType.Error;
          }
       }
+
       public override void Display()
       {
          CacheStruct? cache = Cache as CacheStruct;
