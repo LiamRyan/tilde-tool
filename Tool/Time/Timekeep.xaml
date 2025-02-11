@@ -111,7 +111,11 @@
         </DataTemplate>
         <DataTemplate x:Key="DailyRow">
             <Grid Height="35" Background="#50042508">
-                <TextBlock x:Name="HeaderDate" Text="22/10/25" Width="150" Margin="0,3,0,0" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                <StackPanel Margin="0,3,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock x:Name="HeaderDate" Text="22/10/25" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                    <TextBlock x:Name="HeaderNightH" Text="8" Margin="12,0,0,0" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
+                    <TextBlock x:Name="HeaderNightM" Text="01" Margin="2,0,0,0.5" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8"/>
+                </StackPanel>
                 <TextBlock x:Name="HeaderName" Text="Free Time" Width="150" HorizontalAlignment="Left" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="16"/>
                 <Grid x:Name="DailyCells" Margin="160,0,60,0">
                     <ContentControl ContentTemplate="{StaticResource DailyCell}"></ContentControl>
@@ -121,7 +125,7 @@
                     <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                 </StackPanel>
                 <Grid x:Name="RowNowGrid" Margin="160,0,60,0">
-                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FFABE2A3" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1"/>
+                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FFABE2A3" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1" IsHitTestVisible="False"/>
                 </Grid>
             </Grid>
         </DataTemplate>
@@ -155,10 +159,17 @@
                             <TextBlock x:Name="SumTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
                         </StackPanel>
                     </StackPanel>
-                    <Grid x:Name="TimeAreaHotspot" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#01ABE2A3" MouseEnter="TimeAreaHotspot_MouseEnter" MouseLeave="TimeAreaHotspot_MouseLeave" MouseMove="TimeAreaHotspot_MouseMove" MouseLeftButtonDown="TimeAreaHotspot_MouseLeftButtonDown" MouseLeftButtonUp="TimeAreaHotspot_MouseLeftButtonUp"/>
                     <Grid x:Name="NowDividerGrid" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Grid Background="#FFABE2A3" Width="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" Grid.Column="0"/>
                     </Grid>
+                    <Grid x:Name="NightLength" Margin="0,0,0,28" Width="150" Height="34" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                        <StackPanel Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock x:Name="NightLengthPre" Text="..." Margin="0,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10" VerticalAlignment="Bottom"/>
+                            <TextBlock x:Name="NightLengthH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="14" VerticalAlignment="Bottom"/>
+                            <TextBlock x:Name="NightLengthM" Text="01" Margin="3,0,0,0.5" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10" VerticalAlignment="Bottom"/>
+                        </StackPanel>
+                    </Grid>
+                    <Grid x:Name="TimeAreaHotspot" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#01ABE2A3" MouseEnter="TimeAreaHotspot_MouseEnter" MouseLeave="TimeAreaHotspot_MouseLeave" MouseMove="TimeAreaHotspot_MouseMove" MouseLeftButtonDown="TimeAreaHotspot_MouseLeftButtonDown" MouseLeftButtonUp="TimeAreaHotspot_MouseLeftButtonUp"/>
                 </Grid>
 
                 <tildetool:FreeGrid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0" MouseEnter="IndicatorPanel_MouseEnter" MouseLeave="IndicatorPanel_MouseLeave" MouseMove="IndicatorPanel_MouseMove" MouseLeftButtonDown="IndicatorPanel_MouseLeftButtonDown">

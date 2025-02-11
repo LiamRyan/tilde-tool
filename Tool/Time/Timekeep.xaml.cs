@@ -1119,6 +1119,21 @@ namespace Tildetool.Time
                }
          }
 
+         // Figure out length of night.
+         double nightLengthHour = -1.0;
+         if (CurDailyMode == DailyMode.Today)
+         {
+            TimeSpan midnight = new(3, 0, 0);
+            DateTime? earliest = projectPeriods.SelectMany(p => p).Select<TimeBlock, DateTime?>(p => p.StartTime).Where(p => p?.ToLocalTime().TimeOfDay >= midnight).DefaultIfEmpty(null).Min();
+            if (earliest != null)
+            {
+               List<TimeBlock> preperiods = TimeManager.Instance.QueryTimePeriod(earliest.Value.AddHours(-24), earliest.Value).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
+               DateTime? latest = preperiods.Select<TimeBlock, DateTime?>(p => p.EndTime).Where(p => p < earliest).DefaultIfEmpty(null).Max();
+               if (latest != null)
+                  nightLengthHour = (earliest.Value - latest.Value).TotalHours;
+            }
+         }
+
          // Figure out the time ranges
          int[] showHours = Enumerable.Range(MinHour + 1, MaxHour - (MinHour + 1)).Where(h => (h % 3) == 0).Prepend(MinHour).Append(MaxHour).ToArray();
          HeaderRow.ColumnDefinitions.Clear();
@@ -1209,6 +1224,15 @@ namespace Tildetool.Time
             }
          }
 
+         // Night length
+         NightLength.Visibility = nightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
+         if (nightLengthHour > 0.0)
+         {
+            (int h, int m) = Math.DivRem((int)Math.Round(nightLengthHour * 60.0), 60);
+            NightLengthH.Text = $"{h}";
+            NightLengthM.Text = $"{m:D2}";
+         }
+
          // Indicators
          IndicatorPanel.Visibility = (CurDailyMode == DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
          if (CurDailyMode == DailyMode.Today)
@@ -1264,6 +1288,20 @@ namespace Tildetool.Time
             }
             sumMinutes += totalMinutes;
 
+            // Figure out length of night.
+            double thisNightLengthHour = -1.0;
+            if (CurDailyMode == DailyMode.WeekProgress)
+            {
+               DateTime? earliest = projectPeriods.SelectMany(p => p).Select<TimeBlock, DateTime?>(p => p.StartTime).Where(p => p >= thisDateBeginLocal).DefaultIfEmpty(null).Min();
+               if (earliest != null)
+               {
+                  List<TimeBlock> preperiods = TimeManager.Instance.QueryTimePeriod(earliest.Value.AddHours(-24), earliest.Value).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
+                  DateTime? latest = preperiods.Select<TimeBlock, DateTime?>(p => p.EndTime).Where(p => p < earliest).DefaultIfEmpty(null).Max();
+                  if (latest != null)
+                     thisNightLengthHour = (earliest.Value - latest.Value).TotalHours;
+               }
+            }
+
             Grid cellParent;
             {
                // Pick the right control.
@@ -1275,6 +1313,8 @@ namespace Tildetool.Time
 
                TextBlock headerName = grid.FindElementByName<TextBlock>("HeaderName");
                TextBlock headerDate = grid.FindElementByName<TextBlock>("HeaderDate");
+               TextBlock headerNightH = grid.FindElementByName<TextBlock>("HeaderNightH");
+               TextBlock headerNightM = grid.FindElementByName<TextBlock>("HeaderNightM");
                TextBlock headerTimeH = grid.FindElementByName<TextBlock>("HeaderTimeH");
                TextBlock headerTimeM = grid.FindElementByName<TextBlock>("HeaderTimeM");
                cellParent = grid.FindElementByName<Grid>("DailyCells");
@@ -1289,6 +1329,16 @@ namespace Tildetool.Time
                   rowNowGrid.ColumnDefinitions.Clear();
                   rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
                   rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
+               }
+
+               //
+               headerNightH.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
+               headerNightM.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
+               if (thisNightLengthHour > 0.0)
+               {
+                  int thisNightLengthMin = (int)Math.Round(thisNightLengthHour * 60.0);
+                  headerNightH.Text = $"{thisNightLengthMin / 60}";
+                  headerNightM.Text = $"{thisNightLengthMin % 60:D2}";
                }
 
                // Update the text
