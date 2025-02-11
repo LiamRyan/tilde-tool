@@ -903,8 +903,8 @@ namespace Tildetool.Time
             TimeEvent
          }
          public string Name;
-         public DateTime StartTime;
-         public DateTime EndTime;
+         public DateTime StartTime; //utc
+         public DateTime EndTime; //utc
          public Color Color;
          public Style CurStyle;
          public int Priority;
@@ -1052,6 +1052,10 @@ namespace Tildetool.Time
 
          List<List<TimeBlock>> weeklySchedule = new List<List<TimeBlock>>();
          if (CurDailyMode == DailyMode.Today || CurDailyMode == DailyMode.WeekSchedule)
+         {
+            DateTime weekEnd = weekBegin.AddDays(7);
+            TimeBlock[] weekEvents = TimeManager.Instance.QueryTimeEvent(weekBegin, weekEnd).Select(s => TimeBlock.FromTimeEvent(s)).ToArray();
+
             for (int i = 0; i < 7; i++)
             {
                if (CurDailyMode == DailyMode.Today && (DayOfWeek)i != DailyDay.DayOfWeek)
@@ -1064,10 +1068,11 @@ namespace Tildetool.Time
 
                List<TimeBlock> block = new List<TimeBlock>();
                block.AddRange(TimeManager.Instance.ScheduleByDayOfWeek[i].Select(s => TimeBlock.FromWeeklySchedule(s, todayS)));
-               block.AddRange(TimeManager.Instance.QueryTimeEvent(todayS.ToLocalTime(), todayE.ToLocalTime()).Select(s => TimeBlock.FromTimeEvent(s)));
+               block.AddRange(weekEvents.Where(b => b.EndTime >= todayS && b.StartTime <= todayE));
                _organizePeriod(block);
                weeklySchedule.Add(block);
             }
+         }
 
          List<List<TimeBlock>> projectPeriods = new();
          {
