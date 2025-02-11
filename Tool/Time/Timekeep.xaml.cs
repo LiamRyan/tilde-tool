@@ -966,7 +966,7 @@ namespace Tildetool.Time
       Project DailyFocus;
 
       int MinHour = 6;
-      int MaxHour = 21;
+      int MaxHour = 23;
 
       void RefreshDaily()
       {
@@ -1016,7 +1016,7 @@ namespace Tildetool.Time
          }
 
          MinHour = 6;
-         MaxHour = 21;
+         MaxHour = 23;
 
          void _organizePeriod(List<TimeBlock> periods)
          {
