@@ -39,7 +39,6 @@ namespace Tildetool.Time
          DailyRowHover.Visibility = Visibility.Collapsed;
          TextEditorPane.Visibility = Visibility.Collapsed;
 
-         TimeBar = new(this);
          ProjectBar = new(this);
          IndicatorBar = new(this);
          IndicatorGraphPane = new(this);
@@ -126,10 +125,8 @@ namespace Tildetool.Time
             return;
 
          if (TimekeepTextEditor.HandleKeyDown(sender, e))
-         {
-            e.Handled = true;
             return;
-         }
+
          if (IndicatorBar.HandleKeyDown(sender, e))
          {
             e.Handled = true;
@@ -250,7 +247,23 @@ namespace Tildetool.Time
 
       void Refresh()
       {
-         TimeBar.Refresh(DailyDay);
+         Type? dailyType = CurDailyMode switch
+         {
+            DailyMode.Today => typeof(TimeBarDay),
+            DailyMode.WeekProgress => typeof(TimeBarWeek),
+            DailyMode.WeekSchedule => typeof(TimeBarPlan),
+            _ => null
+         };
+         if (dailyType == null)
+            TimeBar = null;
+         else if (TimeBar == null || TimeBar.GetType() != dailyType)
+            TimeBar = (TimeBar)Activator.CreateInstance(dailyType, this);
+
+         if (TimeBar != null)
+            TimeBar.Refresh();
+         else
+            DailyContent.Visibility = Visibility.Collapsed;
+
          IndicatorBar.Refresh();
          IndicatorGraphPane.Refresh(DailyDay);
       }
@@ -430,15 +443,15 @@ namespace Tildetool.Time
          => IndicatorBar.IndicatorPanel_MouseMove(sender, e);
 
       private void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
-         => TimeBar.TimeAreaHotspot_MouseEnter(sender, e);
+         => TimeBar?.TimeAreaHotspot_MouseEnter(sender, e);
       private void TimeAreaHotspot_MouseLeave(object sender, MouseEventArgs e)
-         => TimeBar.TimeAreaHotspot_MouseLeave(sender, e);
+         => TimeBar?.TimeAreaHotspot_MouseLeave(sender, e);
       private void TimeAreaHotspot_MouseMove(object sender, MouseEventArgs e)
-         => TimeBar.TimeAreaHotspot_MouseMove(sender, e);
+         => TimeBar?.TimeAreaHotspot_MouseMove(sender, e);
       private void TimeAreaHotspot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-         => TimeBar.TimeAreaHotspot_MouseLeftButtonDown(sender, e);
+         => TimeBar?.TimeAreaHotspot_MouseLeftButtonDown(sender, e);
       private void TimeAreaHotspot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-         => TimeBar.TimeAreaHotspot_MouseLeftButtonUp(sender, e);
+         => TimeBar?.TimeAreaHotspot_MouseLeftButtonUp(sender, e);
 
       private void TextEditor_KeyDown(object sender, KeyEventArgs e)
          => TimekeepTextEditor.TextEditor_KeyDown(sender, e);

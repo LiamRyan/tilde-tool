@@ -483,6 +483,54 @@ namespace Tildetool.Time
          return result;
       }
 
+      public double QueryNightLength(DateTime beforeDay)
+      {
+         DateTime cutoff = new DateTime(beforeDay.Year, beforeDay.Month, beforeDay.Day, 3, 0, 0);
+         DateTime cutoffUtc = cutoff.ToUniversalTime();
+         //DateTime? earliest = projectPeriods.SelectMany(p => p).Select<TimeBlock, DateTime?>(p => p.StartTime)
+         //   .Where(p => p?.ToLocalTime().TimeOfDay >= cutoff).DefaultIfEmpty(null).Min();
+         //
+         //if (earliest == null)
+         //   return -1.0;
+         //
+         //List<TimeBlock> preperiods = TimeManager.Instance.QueryTimePeriod(earliest.Value.AddHours(-24), earliest.Value).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
+         //DateTime? latest = preperiods.Select<TimeBlock, DateTime?>(p => p.EndTime).Where(p => p < earliest).DefaultIfEmpty(null).Max();
+         //if (latest == null)
+         //   return -1.0;
+
+         DateTime earliest;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = "SELECT MIN(start_time) FROM time_period WHERE start_time >= $cutoff;";
+            command.Parameters.AddWithValue("$cutoff", cutoffUtc);
+            using (var reader = command.ExecuteReader())
+            {
+               if (!reader.Read())
+                  return -1.0;
+               if (reader.IsDBNull(0))
+                  return -1.0;
+               earliest = reader.GetDateTime(0);
+            }
+         }
+
+         DateTime latest;
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = "SELECT MAX(end_time) FROM time_period WHERE end_time < $cutoff;";
+            command.Parameters.AddWithValue("$cutoff", earliest);
+            using (var reader = command.ExecuteReader())
+            {
+               if (!reader.Read())
+                  return -1.0;
+               if (reader.IsDBNull(0))
+                  return -1.0;
+               latest = reader.GetDateTime(0);
+            }
+         }
+
+         return (earliest - latest).TotalHours;
+      }
+
       public List<TimeEvent> QueryTimeEvent(DateTime minTimeLocal, DateTime maxTimeLocal)
       {
          SqliteCommand command = _Sqlite.CreateCommand();

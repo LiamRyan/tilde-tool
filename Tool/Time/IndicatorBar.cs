@@ -218,6 +218,7 @@ namespace Tildetool.Time
          FocusCategory = null;
          Parent.IndicatorHover.Visibility = Visibility.Collapsed;
          Refresh();
+         Parent.TimeBar?.Refresh();
       }
 
       #endregion

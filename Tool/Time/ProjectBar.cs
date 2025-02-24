@@ -45,7 +45,7 @@ namespace Tildetool.Time
                DailyFocus = null;
             else
                DailyFocus = project;
-            Parent.TimeBar.Refresh(Parent.DailyDay);
+            Parent.TimeBar.Refresh();
             return;
          }
 

@@ -10,10 +10,16 @@ namespace Tildetool
 {
    public abstract class DataTemplater
    {
+      public ContentControl? Content;
+      public FrameworkElement Root;
+
       public DataTemplater(FrameworkElement root)
       {
+         Root = root;
          foreach (FieldInfo field in GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
          {
+            if (field.Name.CompareTo(nameof(Root)) == 0)
+               continue;
             object value = root.FindName(field.Name);
             field.SetValue(this, value);
          }
@@ -51,6 +57,17 @@ namespace Tildetool
          }
          while (parent.Children.Count > index)
             parent.Children.RemoveAt(parent.Children.Count - 1);
+      }
+
+      public static void Populate<TData, TTemplater>(Panel parent, DataTemplate template, IEnumerable<TData> datalist, System.Action<TTemplater, int, TData> populate) where TTemplater : DataTemplater
+      {
+         Populate<TData>(parent, template, datalist,
+            (content, root, i, data) =>
+            {
+               TTemplater templater = (TTemplater)Activator.CreateInstance(typeof(TTemplater), root); // TODO: slow
+               templater.Content = content;
+               populate(templater, i, data);
+            });
       }
    }
 }

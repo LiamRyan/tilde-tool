@@ -10,7 +10,7 @@ using Tildetool.WPF;
 
 namespace Tildetool.Time
 {
-   public class TimeBar
+   public abstract class TimeBar
    {
       public Timekeep Parent;
       public TimeBar(Timekeep parent)
@@ -18,8 +18,32 @@ namespace Tildetool.Time
          Parent = parent;
       }
 
+      #region Population
+
       public int MinHour = 6;
       public int MaxHour = 23;
+
+      protected DateTime DayBegin;  // new DateTime(day.Year, day.Month, day.Day, 0, 0, 0)
+      protected DateTime WeekBegin; // dayBegin.AddDays(-(int)day.DayOfWeek)
+
+      #endregion
+      #region Population Data
+
+      public class TimeBlockRow
+      {
+         public string RowName;
+         public bool IsHighlight;
+         public bool IsGray;
+
+         public bool HasDate;
+         public bool ShowNowLine;
+         public double NightLength = -1.0;
+         public double TotalMinutes;
+
+         public DateTime DayBeginUtc;
+
+         public List<TimeBlock> Blocks;
+      }
 
       public class TimeBlock
       {
@@ -38,6 +62,14 @@ namespace Tildetool.Time
 
          public Project? Project = null;
          public long DbId = -1;
+
+         public bool IsActiveCell = false;
+         public double PeriodMinutes = -1.0;
+         public string CellTitle = null;
+         public string CellProject = null;
+         public SolidColorBrush ColorGrid = null;
+         public SolidColorBrush ColorBack = null;
+         public SolidColorBrush ColorFore = null;
 
          public static TimeBlock FromTimePeriod(TimePeriod period)
          {
@@ -81,172 +113,94 @@ namespace Tildetool.Time
          }
       }
 
-      class IndicatorCtrl : DataTemplater
+      #endregion
+      #region Population
+
+      List<TimeBlockRow> Populate()
       {
-         public TextBlock Text;
-         public TextBlock Icon;
-         public IndicatorCtrl(FrameworkElement root) : base(root) { }
-      }
-
-      public void Refresh(DateTime day)
-      {
-         Parent.DailyContent.Visibility = (Parent.CurDailyMode != Timekeep.DailyMode.Indicators) ? Visibility.Visible : Visibility.Collapsed;
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Indicators)
-            return;
-
-         if (day > DateTime.Now.AddDays(7))
-            day = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
-
-         DateTime dayBegin = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
-         DateTime weekBegin = dayBegin.AddDays(-(int)day.DayOfWeek);
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
-            Parent.DailyDate.Text = day.ToString("yy/MM/dd ddd");
-         else if (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress)
-            Parent.DailyDate.Text = "Progress";
-         else
-            Parent.DailyDate.Text = "Schedule";
-
-         DataTemplate? templateRow = Parent.Resources["DailyRow"] as DataTemplate;
-         DataTemplate? templateIndicator = Parent.Resources["Indicator"] as DataTemplate;
-         DataTemplate? templateHeaderCell = Parent.Resources["DailyHeaderCell"] as DataTemplate;
-         DataTemplate? templateCell = Parent.Resources["DailyCell"] as DataTemplate;
-         DataTemplate? templateDivider = Parent.Resources["DailyDivider"] as DataTemplate;
-         DataTemplate? templateSchedule = Parent.Resources["ScheduleEntry"] as DataTemplate;
-
-         // Add or remove to get the right quantity.
-         void _populate(Panel parent, DataTemplate template, int count)
-         {
-            while (parent.Children.Count > count)
-               parent.Children.RemoveAt(parent.Children.Count - 1);
-            while (parent.Children.Count < count)
-            {
-               ContentControl content = new ContentControl { ContentTemplate = template };
-               parent.Children.Add(content);
-               content.ApplyTemplate();
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-            }
-         }
-
          MinHour = 6;
          MaxHour = 23;
 
-         void _organizePeriod(List<TimeBlock> periods)
-         {
-            // Sort by time.
-            periods.Sort((a, b) => a.StartTime != b.StartTime ? a.StartTime.CompareTo(b.StartTime) : a.EndTime.CompareTo(b.EndTime));
-
-            // Handle time periods
-            TimeBlock prevPeriod = null;
-            foreach (TimeBlock period in periods)
+         List<TimeBlockRow> projectPeriods = CollectTimeBlocks();
+         foreach (TimeBlockRow periods in projectPeriods)
+            _organizePeriod(periods.Blocks);
+         foreach (TimeBlockRow periods in projectPeriods)
+            for (int i = periods.Blocks.Count - 1; i >= 0; i--)
             {
-               // Increase or decrease our total time range.
-               if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
-                  MinHour = period.StartTime.ToLocalTime().Hour;
-               if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
-                  MaxHour = period.EndTime.ToLocalTime().Hour + 1;
-
-               // check if there's an overlap and shrink the lower priority one
-               if (prevPeriod != null && prevPeriod.EndTime > period.StartTime)
-               {
-                  if (period.Priority > prevPeriod.Priority)
-                     prevPeriod.EndTime = period.StartTime;
-                  else
-                     period.StartTime = prevPeriod.EndTime;
-               }
-               prevPeriod = period;
+               if (periods.Blocks[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
+                  periods.Blocks.RemoveAt(i);
+               else if (periods.Blocks[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
+                  periods.Blocks.RemoveAt(i);
             }
 
-            // Filter to periods with a new that have a positive period.
-            for (int i = periods.Count - 1; i >= 0; i--)
-               if (string.IsNullOrEmpty(periods[i].Name) || periods[i].EndTime <= periods[i].StartTime)
-                  periods.Remove(periods[i]);
-         }
+         return projectPeriods;
+      }
 
-         List<List<TimeBlock>> weeklySchedule = new List<List<TimeBlock>>();
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today || Parent.CurDailyMode == Timekeep.DailyMode.WeekSchedule)
+      public abstract List<TimeBlockRow> CollectTimeBlocks();
+
+      protected void _organizePeriod(List<TimeBlock> periods)
+      {
+         // Sort by time.
+         periods.Sort((a, b) => a.StartTime != b.StartTime ? a.StartTime.CompareTo(b.StartTime) : a.EndTime.CompareTo(b.EndTime));
+
+         // Handle time periods
+         TimeBlock? prevPeriod = null;
+         foreach (TimeBlock period in periods)
          {
-            DateTime weekEnd = weekBegin.AddDays(7);
-            TimeBlock[] weekEvents = TimeManager.Instance.QueryTimeEvent(weekBegin, weekEnd).Select(s => TimeBlock.FromTimeEvent(s)).ToArray();
+            // Increase or decrease our total time range.
+            if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
+               MinHour = period.StartTime.ToLocalTime().Hour;
+            if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
+               MaxHour = period.EndTime.ToLocalTime().Hour + 1;
 
-            for (int i = 0; i < 7; i++)
+            // check if there's an overlap and shrink the lower priority one
+            if (prevPeriod != null && prevPeriod.EndTime > period.StartTime)
             {
-               if (Parent.CurDailyMode == Timekeep.DailyMode.Today && (DayOfWeek)i != day.DayOfWeek)
-               {
-                  weeklySchedule.Add(null);
-                  continue;
-               }
-               DateTime todayS = weekBegin.AddDays(i).ToUniversalTime();
-               DateTime todayE = weekBegin.AddDays(i + 1).ToUniversalTime();
-
-               List<TimeBlock> block = new List<TimeBlock>();
-               block.AddRange(TimeManager.Instance.ScheduleByDayOfWeek[i].Select(s => TimeBlock.FromWeeklySchedule(s, todayS)));
-               block.AddRange(weekEvents.Where(b => b.EndTime >= todayS && b.StartTime <= todayE));
-               _organizePeriod(block);
-               weeklySchedule.Add(block);
+               if (period.Priority > prevPeriod.Priority)
+                  prevPeriod.EndTime = period.StartTime;
+               else
+                  period.StartTime = prevPeriod.EndTime;
             }
+            prevPeriod = period;
          }
 
-         List<List<TimeBlock>> projectPeriods = new();
-         {
-            if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
-            {
-               for (int i = 0; i < TimeManager.Instance.Data.Length + 1; i++)
-                  projectPeriods.Add(new List<TimeBlock>());
-               Dictionary<string, int> identToIndex = Enumerable.Range(0, TimeManager.Instance.Data.Length).ToDictionary(i => TimeManager.Instance.Data[i].Ident, i => i);
+         // Filter to periods with a new that have a positive period.
+         for (int i = periods.Count - 1; i >= 0; i--)
+            if (string.IsNullOrEmpty(periods[i].Name) || periods[i].EndTime <= periods[i].StartTime)
+               periods.Remove(periods[i]);
+      }
 
-               DateTime todayS = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0).ToUniversalTime();
-               DateTime todayE = todayS.AddDays(1);
-               List<TimeBlock> periods = TimeManager.Instance.QueryTimePeriod(todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
+      #endregion
+      #region Master Refresh
 
-               foreach (TimeBlock block in periods)
-               {
-                  int index = 0;
-                  if (block.Project == null || !identToIndex.TryGetValue(block.Project.Ident, out index))
-                     index = projectPeriods.Count - 1;
-                  projectPeriods[index].Add(block);
-               }
-            }
-            else
-               for (int i = 0; i < 7; i++)
-               {
-                  DateTime todayS = weekBegin.AddDays(i).ToUniversalTime();
-                  DateTime todayE = weekBegin.AddDays(i + 1).ToUniversalTime();
-                  if (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress)
-                     projectPeriods.Add(TimeManager.Instance.QueryTimePeriod(todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList());
-                  else
-                     projectPeriods.Add(weeklySchedule[i]);
-               }
+      public void Refresh()
+      {
+         Parent.DailyContent.Visibility = Visibility.Visible;
 
-            foreach (List<TimeBlock> periods in projectPeriods)
-               _organizePeriod(periods);
-         }
-         {
-            foreach (List<TimeBlock> periods in projectPeriods)
-               for (int i = periods.Count - 1; i >= 0; i--)
-               {
-                  if (periods[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
-                     periods.RemoveAt(i);
-                  else if (periods[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
-                     periods.RemoveAt(i);
-               }
-         }
+         DateTime dailyDay = Parent.DailyDay;
+         DayBegin = new DateTime(dailyDay.Year, dailyDay.Month, dailyDay.Day, 0, 0, 0);
+         if (DayBegin > DateTime.Now.AddDays(7))
+            DayBegin = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
+         WeekBegin = DayBegin.AddDays(-(int)DayBegin.DayOfWeek);
 
-         // Figure out length of night.
-         double nightLengthHour = -1.0;
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
-         {
-            TimeSpan midnight = new(3, 0, 0);
-            DateTime? earliest = projectPeriods.SelectMany(p => p).Select<TimeBlock, DateTime?>(p => p.StartTime).Where(p => p?.ToLocalTime().TimeOfDay >= midnight).DefaultIfEmpty(null).Min();
-            if (earliest != null)
-            {
-               List<TimeBlock> preperiods = TimeManager.Instance.QueryTimePeriod(earliest.Value.AddHours(-24), earliest.Value).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
-               DateTime? latest = preperiods.Select<TimeBlock, DateTime?>(p => p.EndTime).Where(p => p < earliest).DefaultIfEmpty(null).Max();
-               if (latest != null)
-                  nightLengthHour = (earliest.Value - latest.Value).TotalHours;
-            }
-         }
+         List<TimeBlockRow> rows = Populate();
+         RefreshTimeHeader();
+         RefreshPane(rows);
 
+         Parent.IndicatorPanel.Visibility = Visibility.Collapsed;
+         Parent.NightLength.Visibility = Visibility.Collapsed;
+         Parent.ScheduleGrid.Visibility = Visibility.Collapsed;
+         Parent.NowDividerGrid.Visibility = Visibility.Collapsed;
+         SubRefresh();
+      }
+
+      public virtual void SubRefresh() { }
+
+      #endregion
+      #region Subcontrol
+
+      public void RefreshTimeHeader()
+      {
          // Figure out the time ranges
          int[] showHours = Enumerable.Range(MinHour + 1, MaxHour - (MinHour + 1)).Where(h => (h % 3) == 0).Prepend(MinHour).Append(MaxHour).ToArray();
          Parent.HeaderRow.ColumnDefinitions.Clear();
@@ -254,6 +208,7 @@ namespace Tildetool.Time
             Parent.HeaderRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(showHours[i + 1] - showHours[i], GridUnitType.Star) });
 
          // Fill in time headers
+         DataTemplate? templateHeaderCell = Parent.Resources["DailyHeaderCell"] as DataTemplate;
          _populate(Parent.HeaderRow, templateHeaderCell, showHours.Length);
          for (int i = 0; i < showHours.Length; i++)
          {
@@ -275,6 +230,7 @@ namespace Tildetool.Time
          for (int i = 0; i < hourCount * 2; i++)
             Parent.DailyDividers.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+         DataTemplate? templateDivider = Parent.Resources["DailyDivider"] as DataTemplate;
          _populate(Parent.DailyDividers, templateDivider, (hourCount * 2) + 1);
          for (int i = 0; i < (hourCount * 2) + 1; i++)
          {
@@ -288,326 +244,254 @@ namespace Tildetool.Time
             grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((i % 2) == 0 ? 0x40449637 : 0x60042508)));
             grid.HorizontalAlignment = (i == hourCount * 2) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
          }
+      }
 
-         // Show the current time.
-         bool showNowLine = (Parent.CurDailyMode == Timekeep.DailyMode.Today) && dayBegin <= DateTime.Now && DateTime.Now < dayBegin.AddDays(1);
-         Parent.NowDividerGrid.Visibility = showNowLine ? Visibility.Visible : Visibility.Collapsed;
-         if (showNowLine)
+      #endregion
+
+      protected void _populate(Panel parent, DataTemplate template, int count)
+      {
+         while (parent.Children.Count > count)
+            parent.Children.RemoveAt(parent.Children.Count - 1);
+         while (parent.Children.Count < count)
          {
-            double hourProgress = Math.Min(1.0, (DateTime.Now - dayBegin.AddHours(MinHour)).TotalHours / (double)(MaxHour - MinHour));
-            Parent.NowDividerGrid.ColumnDefinitions.Clear();
-            Parent.NowDividerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
-            Parent.NowDividerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
+            ContentControl content = new ContentControl { ContentTemplate = template };
+            parent.Children.Add(content);
+            content.ApplyTemplate();
+            ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            presenter.ApplyTemplate();
          }
+      }
 
-         // Scheduled events
-         Parent.ScheduleGrid.Visibility = (Parent.CurDailyMode == Timekeep.DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
+      public List<List<TimeBlock>> GetWeeklySchedule()
+      {
+         List<List<TimeBlock>> weeklySchedule = new List<List<TimeBlock>>();
+
+         DateTime weekEnd = WeekBegin.AddDays(7);
+         TimeBlock[] weekEvents = TimeManager.Instance.QueryTimeEvent(WeekBegin, weekEnd).Select(s => TimeBlock.FromTimeEvent(s)).ToArray();
+
+         for (int i = 0; i < 7; i++)
          {
-            DateTime dayBeginUtc = dayBegin.ToUniversalTime();
-            List<TimeBlock> block = weeklySchedule[(int)day.DayOfWeek];
-
-            Parent.ScheduleGrid.ColumnDefinitions.Clear();
-            double lastHour = MinHour;
-            for (int i = 0; i < block.Count; i++)
+            if (Parent.CurDailyMode == Timekeep.DailyMode.Today && (DayOfWeek)i != DayBegin.DayOfWeek)
             {
-               double hourBegin = (block[i].StartTime - dayBeginUtc).TotalHours;
-               double hourEnd = (block[i].EndTime - dayBeginUtc).TotalHours;
-               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(hourBegin - lastHour, 0), GridUnitType.Star) });
-               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
-               lastHour = hourEnd;
+               weeklySchedule.Add(null);
+               continue;
             }
-            Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(MaxHour - lastHour, GridUnitType.Star) });
+            DateTime todayS = WeekBegin.AddDays(i).ToUniversalTime();
+            DateTime todayE = WeekBegin.AddDays(i + 1).ToUniversalTime();
 
-            _populate(Parent.ScheduleGrid, templateSchedule, block.Count);
-            for (int i = 0; i < block.Count; i++)
-            {
-               ContentControl content = Parent.ScheduleGrid.Children[i] as ContentControl;
-               content.ApplyTemplate();
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-
-               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-               TextBlock scheduleTextCtrl = grid.FindElementByName<TextBlock>("ScheduleText");
-
-               Grid.SetColumn(content, (i * 2) + 1);
-               grid.Background = new SolidColorBrush(block[i].Color.Alpha(0x20));
-               scheduleTextCtrl.Foreground = new SolidColorBrush(block[i].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
-               scheduleTextCtrl.Text = block[i].Name;
-            }
+            List<TimeBlock> block = new List<TimeBlock>();
+            block.AddRange(TimeManager.Instance.ScheduleByDayOfWeek[i].Select(s => TimeBlock.FromWeeklySchedule(s, todayS)));
+            block.AddRange(weekEvents.Where(b => b.EndTime >= todayS && b.StartTime <= todayE));
+            weeklySchedule.Add(block);
          }
 
-         // Night length
-         Parent.NightLength.Visibility = nightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
-         if (nightLengthHour > 0.0)
-         {
-            (int h, int m) = Math.DivRem((int)Math.Round(nightLengthHour * 60.0), 60);
-            Parent.NightLengthH.Text = $"{h}";
-            Parent.NightLengthM.Text = $"{m:D2}";
-         }
+         return weeklySchedule;
+      }
 
-         // Indicators
-         Parent.IndicatorPanel.Visibility = (Parent.CurDailyMode == Timekeep.DailyMode.Today) ? Visibility.Visible : Visibility.Collapsed;
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
-         {
-            DateTime todayLocalS = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
-            DateTime todayLocalE = todayLocalS.AddDays(1);
-            DateTime todayS = todayLocalS.ToUniversalTime();
-            DateTime todayE = todayS.AddDays(1);
-            List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
-            HashSet<IndicatorValue> already = new HashSet<IndicatorValue>();
+      #region Pane Refresh
 
-            DataTemplater.Populate(Parent.Indicators, templateIndicator, indicators, (content, root, _, entry) =>
-            {
-               double pct = ((entry.Time.ToLocalTime() - todayLocalS).TotalHours - MinHour) / (MaxHour - MinHour);
-               StackPanelShift.SetAlong(content, pct);
-
-               IndicatorCtrl ctrl = new IndicatorCtrl(root);
-               IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
-               (root as Panel).Background = new SolidColorBrush(value.GetColorBack(0x58));
-               ctrl.Icon.Foreground = new SolidColorBrush(value.GetColorFore());
-               ctrl.Text.Foreground = new SolidColorBrush(value.GetColorBack());
-               ctrl.Icon.Text = value.Icon;
-
-               bool isNew = already.Add(value);
-               ctrl.Text.Visibility = isNew ? Visibility.Visible : Visibility.Collapsed;
-               if (isNew)
-                  ctrl.Text.Text = value.Name;
-            });
-         }
-
+      protected void RefreshPane(List<TimeBlockRow> projectPeriods)
+      {
          // Fill in rows
-         double sumMinutes = 0;
-         _populate(Parent.DailyRows, templateRow, projectPeriods.Count);
-         for (int i = 0; i < projectPeriods.Count; i++)
+         DataTemplate? templateRow = Parent.Resources["DailyRow"] as DataTemplate;
+         DataTemplater.Populate<TimeBlockRow, TimeRow>(Parent.DailyRows, templateRow, projectPeriods, RefreshRow);
+
+         double sumMinutes = projectPeriods.Sum(r => r.TotalMinutes);
+         Parent.SumTimeH.Text = ((int)sumMinutes / 60).ToString();
+         Parent.SumTimeM.Text = $"{((int)sumMinutes % 60):D2}";
+      }
+
+      class TimeRow : DataTemplater
+      {
+         public TextBlock HeaderName;
+         public TextBlock HeaderDate;
+         public TextBlock HeaderNightH;
+         public TextBlock HeaderNightM;
+         public TextBlock HeaderTimeH;
+         public TextBlock HeaderTimeM;
+
+         public Grid RowNowGrid;
+
+         public Grid DailyCells;
+
+         public TimeRow(FrameworkElement root) : base(root) { }
+      }
+
+      void RefreshRow(TimeRow ui, int index, TimeBlockRow row)
+      {
+         DateTime thisDateBegin = row.DayBeginUtc.AddHours(MinHour);
+         DateTime thisDateEnd = row.DayBeginUtc.AddHours(MaxHour);
+         DateTime thisDateBeginLocal = row.DayBeginUtc.AddHours(MinHour).ToLocalTime();
+
+         bool today = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) == 0;
+         bool postToday = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) > 0;
+         bool preToday = !today && !postToday;
+
+         RefreshRowHeader(ui, index, row);
+
+         // Merge time blocks that are adjacent.
+         List<TimeBlock> periodsFilter = new List<TimeBlock>(row.Blocks.Count);
          {
-            DateTime thisDateBeginLocal = (Parent.CurDailyMode != Timekeep.DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).AddHours(MinHour);
-            DateTime thisDateBegin = (Parent.CurDailyMode != Timekeep.DailyMode.Today ? weekBegin.AddDays(i) : dayBegin).ToUniversalTime().AddHours(MinHour);
-            DateTime thisDateEnd = thisDateBegin.AddHours(MaxHour - MinHour);
-
-            bool today = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) == 0;
-            bool postToday = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) > 0;
-            bool preToday = !today && !postToday;
-
-            List<TimeBlock> periods = projectPeriods[i];
-            double totalMinutes;
-            {
-               IEnumerable<TimeBlock> periodsForThis;
-               if (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress && Parent.ProjectBar.DailyFocus != null)
-                  periodsForThis = periods.Where(p => p.Project == Parent.ProjectBar.DailyFocus);
-               else
-                  periodsForThis = periods.AsEnumerable();
-               totalMinutes = periodsForThis.Sum(p => (p.EndTime - p.StartTime).TotalMinutes);
-            }
-            sumMinutes += totalMinutes;
-
-            // Figure out length of night.
-            double thisNightLengthHour = -1.0;
-            if (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress)
-            {
-               DateTime? earliest = projectPeriods.SelectMany(p => p).Select<TimeBlock, DateTime?>(p => p.StartTime).Where(p => p >= thisDateBeginLocal).DefaultIfEmpty(null).Min();
-               if (earliest != null)
-               {
-                  List<TimeBlock> preperiods = TimeManager.Instance.QueryTimePeriod(earliest.Value.AddHours(-24), earliest.Value).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
-                  DateTime? latest = preperiods.Select<TimeBlock, DateTime?>(p => p.EndTime).Where(p => p < earliest).DefaultIfEmpty(null).Max();
-                  if (latest != null)
-                     thisNightLengthHour = (earliest.Value - latest.Value).TotalHours;
-               }
-            }
-
-            Grid cellParent;
-            {
-               // Pick the right control.
-               ContentControl content = Parent.DailyRows.Children[i] as ContentControl;
-               content.ApplyTemplate();
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-
-               TextBlock headerName = grid.FindElementByName<TextBlock>("HeaderName");
-               TextBlock headerDate = grid.FindElementByName<TextBlock>("HeaderDate");
-               TextBlock headerNightH = grid.FindElementByName<TextBlock>("HeaderNightH");
-               TextBlock headerNightM = grid.FindElementByName<TextBlock>("HeaderNightM");
-               TextBlock headerTimeH = grid.FindElementByName<TextBlock>("HeaderTimeH");
-               TextBlock headerTimeM = grid.FindElementByName<TextBlock>("HeaderTimeM");
-               cellParent = grid.FindElementByName<Grid>("DailyCells");
-
-               // Show the current time.
-               bool showNowLineRow = (Parent.CurDailyMode != Timekeep.DailyMode.Today) && thisDateBeginLocal <= DateTime.Now;
-               Grid rowNowGrid = grid.FindElementByName<Grid>("RowNowGrid");
-               rowNowGrid.Visibility = showNowLineRow ? Visibility.Visible : Visibility.Collapsed;
-               if (showNowLineRow)
-               {
-                  double hourProgress = Math.Min(1.0, (DateTime.Now - thisDateBeginLocal).TotalHours / (double)(MaxHour - MinHour));
-                  rowNowGrid.ColumnDefinitions.Clear();
-                  rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
-                  rowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
-               }
-
-               //
-               headerNightH.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
-               headerNightM.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
-               if (thisNightLengthHour > 0.0)
-               {
-                  int thisNightLengthMin = (int)Math.Round(thisNightLengthHour * 60.0);
-                  headerNightH.Text = $"{thisNightLengthMin / 60}";
-                  headerNightM.Text = $"{thisNightLengthMin % 60:D2}";
-               }
-
-               // Update the text
-               Project? project = i < TimeManager.Instance.Data.Length ? TimeManager.Instance.Data[i] : null;
-               if ((Parent.CurDailyMode == Timekeep.DailyMode.Today && project == Parent.ProjectBar.InitialProject) || (Parent.CurDailyMode != Timekeep.DailyMode.Today && today))
-               {
-                  grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
-                  headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
-                  headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
-               }
-               else if ((Parent.CurDailyMode == Timekeep.DailyMode.WeekSchedule && preToday) || (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress && postToday))
-               {
-                  grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((i % 2) == 0 ? 0x80202020 : 0x80282828)));
-                  headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
-                  headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
-               }
-               else
-               {
-                  grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((i % 2) == 0 ? 0x00042508 : 0x38042508)));
-                  headerName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
-                  headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
-               }
-
-               headerName.Text = Parent.CurDailyMode != Timekeep.DailyMode.Today ? thisDateBegin.ToString("ddd") : (project?.Name ?? "");
-               headerDate.Visibility = Parent.CurDailyMode != Timekeep.DailyMode.Today ? Visibility.Visible : Visibility.Collapsed;
-               headerDate.Text = thisDateBegin.ToString("yy/MM/dd");
-
-               if ((Parent.CurDailyMode == Timekeep.DailyMode.WeekSchedule && preToday) || (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress && postToday))
-               {
-                  headerTimeH.Foreground = new SolidColorBrush(Extension.FromRgb((uint)0x606060));
-                  headerTimeM.Foreground = new SolidColorBrush(Extension.FromRgb((uint)0x606060));
-               }
-               else
-               {
-                  headerTimeH.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((totalMinutes > 0) ? 0xC3F1AF : 0x449637)));
-                  headerTimeM.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((totalMinutes > 0) ? 0xC3F1AF : 0x449637)));
-               }
-               headerTimeH.Text = ((int)totalMinutes / 60).ToString();
-               headerTimeM.Text = $"{((int)totalMinutes % 60):D2}";
-            }
-
-            // Merge time blocks that are adjacent.
-            List<TimeBlock> periodsFilter = new List<TimeBlock>(periods.Count);
             TimeBlock pendingBlock = null;
-            for (int r = 0; r < periods.Count; r++)
+            for (int r = 0; r < row.Blocks.Count; r++)
             {
-               if (pendingBlock != null && pendingBlock.CanMerge(periods[r]))
-                  pendingBlock = pendingBlock.Merge(periods[r]);
+               if (pendingBlock != null && pendingBlock.CanMerge(row.Blocks[r]))
+                  pendingBlock = pendingBlock.Merge(row.Blocks[r]);
                else
                {
                   if (pendingBlock != null)
                      periodsFilter.Add(pendingBlock);
-                  pendingBlock = periods[r];
+                  pendingBlock = row.Blocks[r];
                }
             }
             if (pendingBlock != null)
                periodsFilter.Add(pendingBlock);
-
-            _populate(cellParent, templateCell, periodsFilter.Count);
-
-            DateTime lastDate = thisDateBegin;
-            cellParent.ColumnDefinitions.Clear();
-            for (int o = 0; o < periodsFilter.Count; o++)
-            {
-               // Pick the right control.
-               ContentControl content = cellParent.Children[o] as ContentControl;
-               content.ApplyTemplate();
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               presenter.ApplyTemplate();
-               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-
-               TextBlock startTime = grid.FindElementByName<TextBlock>("StartTime");
-               TextBlock endTime = grid.FindElementByName<TextBlock>("EndTime");
-               TextBlock cellTimeH = grid.FindElementByName<TextBlock>("CellTimeH");
-               TextBlock cellTimeM = grid.FindElementByName<TextBlock>("CellTimeM");
-               TextBlock projectName = grid.FindElementByName<TextBlock>("ProjectName");
-               Grid activeGlow = grid.FindElementByName<Grid>("ActiveGlow");
-
-               if (Parent.CurDailyMode == Timekeep.DailyMode.WeekSchedule || Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress)
-               {
-                  activeGlow.Visibility = Visibility.Collapsed;
-                  cellTimeH.Visibility = Visibility.Collapsed;
-                  startTime.Visibility = Visibility.Collapsed;
-                  endTime.Visibility = Visibility.Collapsed;
-                  cellTimeM.Visibility = Visibility.Visible;
-                  projectName.Visibility = Visibility.Collapsed;
-                  bool thisProject = Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress && periodsFilter[o].Project == Parent.ProjectBar.DailyFocus;
-                  if (Parent.CurDailyMode == Timekeep.DailyMode.WeekProgress && Parent.ProjectBar.DailyFocus != null && !thisProject)
-                  {
-                     grid.Background = new SolidColorBrush(Extension.FromArgb(0xFF383838));
-                     cellTimeM.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF909090));
-                  }
-                  else if (Parent.CurDailyMode == Timekeep.DailyMode.WeekSchedule && preToday)
-                  {
-                     grid.Background = new SolidColorBrush(periodsFilter[o].Color.Lerp(Extension.FromArgb(0xFF202020), 0.8f));
-                     cellTimeM.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF808080));
-                  }
-                  else
-                  {
-                     grid.Background = new SolidColorBrush(periodsFilter[o].Color);
-                     SolidColorBrush colorBack = periodsFilter[o].CurStyle == TimeBlock.Style.TimePeriod && periodsFilter[o].Project == null
-                        ? new(Extension.FromArgb(0xFF69A582))
-                        : new(periodsFilter[o].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), thisProject ? 1.0f : 0.75f));
-                     cellTimeM.Foreground = colorBack;
-                  }
-                  cellTimeM.Text = periodsFilter[o].Name;
-               }
-               else
-               {
-                  grid.Background = new SolidColorBrush(periodsFilter[o].Color);
-                  SolidColorBrush colorBack = new(Extension.FromArgb(periodsFilter[o].Project != null ? 0xFF449637 : 0xFF517F65));
-                  SolidColorBrush colorFore = new(Extension.FromArgb(periodsFilter[o].Project != null ? 0xFFC3F1AF : 0xFF69A582));
-
-                  bool isActiveCell = TimeManager.Instance.CurrentTimePeriod == periodsFilter[o].DbId;
-                  activeGlow.Visibility = isActiveCell ? Visibility.Visible : Visibility.Collapsed;
-
-                  double periodMinutes = (periodsFilter[o].EndTime - periodsFilter[o].StartTime).TotalMinutes;
-                  cellTimeH.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-                  cellTimeM.Visibility = (periodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-                  cellTimeH.Foreground = colorFore;
-                  cellTimeM.Foreground = colorFore;
-                  cellTimeH.Text = ((int)periodMinutes / 60).ToString();
-                  cellTimeM.Text = $"{((int)periodMinutes % 60):D2}";
-
-                  projectName.Visibility = (i >= TimeManager.Instance.Data.Length) ? Visibility.Visible : Visibility.Collapsed;
-                  projectName.Foreground = colorBack;
-                  if (i >= TimeManager.Instance.Data.Length)
-                     projectName.Text = periodsFilter[o].Name;
-
-                  startTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-                  endTime.Visibility = (periodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-                  startTime.Foreground = colorBack;
-                  endTime.Foreground = colorBack;
-                  if (periodMinutes >= 45)
-                  {
-                     startTime.Text = $"{periodsFilter[o].StartTime.ToLocalTime().Hour:D2}{periodsFilter[o].StartTime.ToLocalTime().Minute:D2}";
-                     endTime.Text = $"{periodsFilter[o].EndTime.ToLocalTime().Hour:D2}{periodsFilter[o].EndTime.ToLocalTime().Minute:D2}";
-                  }
-               }
-
-               // Show the current time.
-               DateTime periodStartTime = periodsFilter[o].StartTime > lastDate ? periodsFilter[o].StartTime : lastDate;
-               DateTime periodEndTime = periodsFilter[o].EndTime < thisDateEnd ? periodsFilter[o].EndTime : thisDateEnd;
-               if (periodEndTime > periodStartTime)
-               {
-                  cellParent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodStartTime - lastDate).TotalHours, GridUnitType.Star) });
-                  cellParent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodEndTime - periodStartTime).TotalHours, GridUnitType.Star) });
-                  lastDate = periodEndTime;
-                  Grid.SetColumn(content, (o * 2) + 1);
-               }
-            }
-            cellParent.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((thisDateEnd - lastDate).TotalHours, GridUnitType.Star) });
          }
-         Parent.SumTimeH.Text = ((int)sumMinutes / 60).ToString();
-         Parent.SumTimeM.Text = $"{((int)sumMinutes % 60):D2}";
+
+         // Populate
+         DateTime lastDate = thisDateBegin;
+         ui.DailyCells.ColumnDefinitions.Clear();
+
+         DataTemplate? templateCell = Parent.Resources["DailyCell"] as DataTemplate;
+         DataTemplater.Populate<TimeBlock, TimeCell>(ui.DailyCells, templateCell, periodsFilter, (subui, subindex, subdata) =>
+         {
+            RefreshCell(subui, subindex, subdata);
+
+            // Show the current time.
+            DateTime periodStartTime = subdata.StartTime > lastDate ? subdata.StartTime : lastDate;
+            DateTime periodEndTime = subdata.EndTime < thisDateEnd ? subdata.EndTime : thisDateEnd;
+            if (periodEndTime > periodStartTime)
+            {
+               ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodStartTime - lastDate).TotalHours, GridUnitType.Star) });
+               ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodEndTime - periodStartTime).TotalHours, GridUnitType.Star) });
+               lastDate = periodEndTime;
+               Grid.SetColumn(subui.Content, (subindex * 2) + 1);
+            }
+         });
+         ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((thisDateEnd - lastDate).TotalHours, GridUnitType.Star) });
       }
+
+      void RefreshRowHeader(TimeRow ui, int index, TimeBlockRow row)
+      {
+         DateTime thisDateBeginLocal = row.DayBeginUtc.AddHours(MinHour).ToLocalTime();
+
+         // Show the current time.
+         ui.RowNowGrid.Visibility = row.ShowNowLine ? Visibility.Visible : Visibility.Collapsed;
+         if (row.ShowNowLine)
+         {
+            double hourProgress = Math.Min(1.0, (DateTime.Now - thisDateBeginLocal).TotalHours / (double)(MaxHour - MinHour));
+            ui.RowNowGrid.ColumnDefinitions.Clear();
+            ui.RowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourProgress, GridUnitType.Star) });
+            ui.RowNowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.0 - hourProgress, GridUnitType.Star) });
+         }
+
+         // Night length
+         {
+            double thisNightLengthHour = row.NightLength;
+            ui.HeaderNightH.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
+            ui.HeaderNightM.Visibility = thisNightLengthHour > 0.0 ? Visibility.Visible : Visibility.Collapsed;
+            if (thisNightLengthHour > 0.0)
+            {
+               int thisNightLengthMin = (int)Math.Round(thisNightLengthHour * 60.0);
+               ui.HeaderNightH.Text = $"{thisNightLengthMin / 60}";
+               ui.HeaderNightM.Text = $"{thisNightLengthMin % 60:D2}";
+            }
+         }
+
+         // Update the text
+         Grid grid = ui.Root as Grid;
+         if (row.IsHighlight)
+         {
+            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
+            ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
+            ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
+         }
+         else if (row.IsGray)
+         {
+            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x80202020 : 0x80282828)));
+            ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
+            ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
+         }
+         else
+         {
+            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x00042508 : 0x38042508)));
+            ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
+            ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
+         }
+
+         ui.HeaderName.Text = row.RowName;
+         ui.HeaderDate.Visibility = row.HasDate ? Visibility.Visible : Visibility.Collapsed;
+         if (row.HasDate)
+            ui.HeaderDate.Text = thisDateBeginLocal.ToString("yy/MM/dd");
+
+         if (row.IsGray)
+         {
+            ui.HeaderTimeH.Foreground = new SolidColorBrush(Extension.FromRgb((uint)0x606060));
+            ui.HeaderTimeM.Foreground = new SolidColorBrush(Extension.FromRgb((uint)0x606060));
+         }
+         else
+         {
+            ui.HeaderTimeH.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((row.TotalMinutes > 0) ? 0xC3F1AF : 0x449637)));
+            ui.HeaderTimeM.Foreground = new SolidColorBrush(Extension.FromRgb((uint)((row.TotalMinutes > 0) ? 0xC3F1AF : 0x449637)));
+         }
+         ui.HeaderTimeH.Text = ((int)row.TotalMinutes / 60).ToString();
+         ui.HeaderTimeM.Text = $"{((int)row.TotalMinutes % 60):D2}";
+      }
+
+      class TimeCell : DataTemplater
+      {
+         public TextBlock StartTime;
+         public TextBlock EndTime;
+         public TextBlock CellTimeH;
+         public TextBlock CellTimeM;
+         public TextBlock ProjectName;
+         public Grid ActiveGlow;
+
+         public TimeCell(FrameworkElement root) : base(root) { }
+      }
+
+      void RefreshCell(TimeCell subui, int subindex, TimeBlock subdata)
+      {
+         Grid grid = subui.Root as Grid;
+         grid.Background = subdata.ColorGrid;
+
+         subui.ActiveGlow.Visibility = subdata.IsActiveCell ? Visibility.Visible : Visibility.Collapsed;
+
+         subui.ProjectName.Visibility = !string.IsNullOrEmpty(subdata.CellProject) ? Visibility.Visible : Visibility.Collapsed;
+         if (!string.IsNullOrEmpty(subdata.CellProject))
+         {
+            subui.ProjectName.Foreground = subdata.ColorBack;
+            subui.ProjectName.Text = subdata.CellProject;
+         }
+
+         subui.CellTimeH.Visibility = (subdata.PeriodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
+         subui.CellTimeM.Visibility = (subdata.PeriodMinutes >= 10.0 || !string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
+         if (subdata.PeriodMinutes >= 10.0)
+         {
+            subui.CellTimeH.Foreground = subdata.ColorFore;
+            subui.CellTimeM.Foreground = subdata.ColorFore;
+            subui.CellTimeH.Text = ((int)subdata.PeriodMinutes / 60).ToString();
+            subui.CellTimeM.Text = $"{((int)subdata.PeriodMinutes % 60):D2}";
+         }
+         else if (!string.IsNullOrEmpty(subdata.CellTitle))
+         {
+            subui.CellTimeM.Foreground = subdata.ColorBack;
+            subui.CellTimeM.Text = subdata.CellTitle;
+         }
+
+         subui.StartTime.Visibility = (subdata.PeriodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
+         subui.EndTime.Visibility = (subdata.PeriodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
+         if (subdata.PeriodMinutes >= 45)
+         {
+            subui.StartTime.Foreground = subdata.ColorBack;
+            subui.EndTime.Foreground = subdata.ColorBack;
+            subui.StartTime.Text = $"{subdata.StartTime.ToLocalTime().Hour:D2}{subdata.StartTime.ToLocalTime().Minute:D2}";
+            subui.EndTime.Text = $"{subdata.EndTime.ToLocalTime().Hour:D2}{subdata.EndTime.ToLocalTime().Minute:D2}";
+         }
+      }
+
+      #endregion
+      #region Mouse Input
 
       double? DailyRow_Pct1 = null;
       public void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
@@ -704,8 +588,10 @@ namespace Tildetool.Time
             int projectId = TimeManager.Instance.AddProject(text);
             TimeManager.Instance.AddHistoryLine(new TimePeriod() { DbId = projectId, Ident = text, StartTime = periodBegin, EndTime = periodEnd });
 
-            Refresh(Parent.DailyDay);
+            Refresh();
          });
       }
+
+      #endregion
    }
 }
