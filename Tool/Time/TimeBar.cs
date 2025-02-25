@@ -583,13 +583,14 @@ namespace Tildetool.Time
          if ((periodEnd - periodBegin).TotalMinutes < 2.0)
             return;
 
+         List<string> idents = TimeManager.Instance.ProjectIdentToId.Keys.ToList();
          Parent.TimekeepTextEditor.Show((text) =>
          {
             int projectId = TimeManager.Instance.AddProject(text);
             TimeManager.Instance.AddHistoryLine(new TimePeriod() { DbId = projectId, Ident = text, StartTime = periodBegin, EndTime = periodEnd });
 
             Refresh();
-         });
+         }, idents);
       }
 
       #endregion

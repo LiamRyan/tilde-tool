@@ -210,11 +210,12 @@ namespace Tildetool.Time
          // Handle key entry.
          if ((e.Key == Key.D0 || e.Key == Key.NumPad0) && (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)))
          {
+            List<string> idents = TimeManager.Instance.ProjectIdentToId.Keys.ToList();
             Parent.TimekeepTextEditor.Show((text) =>
             {
                int projectId = TimeManager.Instance.AddProject(text);
                SetActiveProject(TimeManager.Instance.IdentToProject[text]);
-            });
+            }, idents);
          }
          else if (e.Key >= Key.A && e.Key <= Key.Z)
          {

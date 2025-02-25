@@ -282,7 +282,7 @@ namespace Tildetool.Time
       #region SQLite
 
       SqliteConnection _Sqlite;
-      Dictionary<string, int> ProjectIdentToId = new Dictionary<string, int>();
+      public Dictionary<string, int> ProjectIdentToId = new Dictionary<string, int>();
       public void ConnectSqlite()
       {
          if (_Sqlite != null)

@@ -455,6 +455,8 @@ namespace Tildetool.Time
 
       private void TextEditor_KeyDown(object sender, KeyEventArgs e)
          => TimekeepTextEditor.TextEditor_KeyDown(sender, e);
+      private void TextEditor_TextChanged(object sender, TextChangedEventArgs e)
+         => TimekeepTextEditor.TextEditor_TextChanged(sender, e);
 
       #endregion
    }
