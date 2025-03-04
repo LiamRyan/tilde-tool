@@ -92,7 +92,7 @@ namespace Tildetool.Time
          }
 
          int oldLength = Parent.TextEditor.Text.Length;
-         IEnumerable<string> options = Options.Where(o => o.Length > oldLength && o.StartsWith(Parent.TextEditor.Text));
+         IEnumerable<string> options = Options.Where(o => o.Length >= oldLength && o.StartsWith(Parent.TextEditor.Text));
          string[] foundOptions = options.Take(4).ToArray();
          if (foundOptions.Length > 0)
          {
