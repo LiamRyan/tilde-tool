@@ -224,12 +224,12 @@ namespace Tildetool.Time
          }
          else if (e.Key >= Key.D0 && e.Key <= Key.D9)
          {
-            SetActiveTime(('0' + e.Key - Key.D0).ToString());
+            SetActiveTime((e.Key - Key.D0).ToString());
             return true;
          }
          else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
          {
-            SetActiveTime(('0' + e.Key - Key.NumPad0).ToString());
+            SetActiveTime((e.Key - Key.NumPad0).ToString());
             return true;
          }
 
