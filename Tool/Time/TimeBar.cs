@@ -40,7 +40,7 @@ namespace Tildetool.Time
          public double NightLength = -1.0;
          public double TotalMinutes;
 
-         public DateTime DayBeginUtc;
+         public DateOnly Day;
 
          public List<TimeBlock> Blocks;
       }
@@ -311,9 +311,9 @@ namespace Tildetool.Time
 
       void RefreshRow(TimeRow ui, int index, TimeBlockRow row)
       {
-         DateTime thisDateBegin = row.DayBeginUtc.AddHours(MinHour);
-         DateTime thisDateEnd = row.DayBeginUtc.AddHours(MaxHour);
-         DateTime thisDateBeginLocal = row.DayBeginUtc.AddHours(MinHour).ToLocalTime();
+         DateTime thisDateBeginLocal = row.Day.ToDateTime(new TimeOnly(MinHour, 0));
+         DateTime thisDateBegin = row.Day.ToDateTime(new TimeOnly(MinHour, 0)).ToUniversalTime();
+         DateTime thisDateEnd = row.Day.ToDateTime(new TimeOnly(MaxHour % 24, 0)).AddDays(MaxHour / 24).ToUniversalTime();
 
          bool today = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) == 0;
          bool postToday = thisDateBeginLocal.Date.CompareTo(DateTime.Now.Date) > 0;
@@ -365,7 +365,7 @@ namespace Tildetool.Time
 
       void RefreshRowHeader(TimeRow ui, int index, TimeBlockRow row)
       {
-         DateTime thisDateBeginLocal = row.DayBeginUtc.AddHours(MinHour).ToLocalTime();
+         DateTime thisDateBeginLocal = row.Day.ToDateTime(new TimeOnly(MinHour, 0));
 
          // Show the current time.
          ui.RowNowGrid.Visibility = row.ShowNowLine ? Visibility.Visible : Visibility.Collapsed;

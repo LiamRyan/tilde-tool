@@ -24,9 +24,9 @@ namespace Tildetool.Time
          List<List<TimeBlock>> scheduleRows = GetWeeklySchedule();
          for (int i = 0; i < scheduleRows.Count; i++)
          {
-            DateTime dayBeginUtc = WeekBegin.AddDays(i).ToUniversalTime();
-            int dayCompare = dayBeginUtc.ToLocalTime().Date.CompareTo(DateTime.Now.Date);
-            bool showNowLineRow = dayBeginUtc <= DateTime.UtcNow;
+            DateTime dayBegin = WeekBegin.AddDays(i);
+            int dayCompare = dayBegin.Date.CompareTo(DateTime.Now.Date);
+            bool showNowLineRow = dayBegin.ToUniversalTime() <= DateTime.UtcNow;
             double totalMinutes = scheduleRows[i].Sum(p => (p.EndTime - p.StartTime).TotalMinutes);
 
             foreach (TimeBlock block in scheduleRows[i])
@@ -49,8 +49,8 @@ namespace Tildetool.Time
             projectPeriods.Add(new TimeBlockRow()
             {
                Blocks = scheduleRows[i],
-               RowName = dayBeginUtc.ToString("ddd"),
-               DayBeginUtc = dayBeginUtc,
+               RowName = dayBegin.ToString("ddd"),
+               Day = new DateOnly(dayBegin.Year, dayBegin.Month, dayBegin.Day),
                TotalMinutes = totalMinutes,
 
                IsHighlight = dayCompare == 0,

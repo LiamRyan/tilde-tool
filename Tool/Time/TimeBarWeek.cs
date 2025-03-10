@@ -23,12 +23,12 @@ namespace Tildetool.Time
 
          for (int i = 0; i < 7; i++)
          {
+            DateTime dayBegin = WeekBegin.AddDays(i);
             DateTime todayS = WeekBegin.AddDays(i).ToUniversalTime();
             DateTime todayE = WeekBegin.AddDays(i + 1).ToUniversalTime();
             List<TimeBlock> weekRow = TimeManager.Instance.QueryTimePeriod(todayS, todayE).Select(p => TimeBlock.FromTimePeriod(p)).ToList();
 
-            DateTime dayBeginUtc = WeekBegin.AddDays(i).ToUniversalTime();
-            int dayCompare = dayBeginUtc.ToLocalTime().Date.CompareTo(DateTime.Now.Date);
+            int dayCompare = todayS.ToLocalTime().Date.CompareTo(DateTime.Now.Date);
 
             foreach (TimeBlock block in weekRow)
             {
@@ -48,16 +48,16 @@ namespace Tildetool.Time
                block.CellTitle = block.Name;
             }
 
-            double thisNightLengthHour = TimeManager.Instance.QueryNightLength(dayBeginUtc);
-            bool showNowLineRow = dayBeginUtc <= DateTime.UtcNow;
+            double thisNightLengthHour = TimeManager.Instance.QueryNightLength(todayS);
+            bool showNowLineRow = todayS <= DateTime.UtcNow;
 
             double totalMinutes = weekRow.Where(p => p.Project == Parent.ProjectBar.DailyFocus).Sum(p => (p.EndTime - p.StartTime).TotalMinutes);
 
             projectPeriods.Add(new TimeBlockRow()
             {
                Blocks = weekRow,
-               RowName = dayBeginUtc.ToString("ddd"),
-               DayBeginUtc = dayBeginUtc,
+               RowName = dayBegin.ToString("ddd"),
+               Day = new DateOnly(dayBegin.Year, dayBegin.Month, dayBegin.Day),
                TotalMinutes = totalMinutes,
 
                IsHighlight = dayCompare == 0,

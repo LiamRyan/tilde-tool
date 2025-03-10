@@ -30,7 +30,7 @@ namespace Tildetool.Time
             {
                Blocks = new(),
                RowName = project?.Name ?? "",
-               DayBeginUtc = DayBegin.ToUniversalTime(),
+               Day = new DateOnly(DayBegin.Year, DayBegin.Month, DayBegin.Day),
 
                IsHighlight = project == Parent.ProjectBar.InitialProject,
                IsGray = false,
