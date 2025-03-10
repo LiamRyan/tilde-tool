@@ -119,7 +119,7 @@ namespace Tildetool.Time
          DataTemplater.Populate(Parent.IndicatorGraphs, templateGraph, TimeManager.Instance.Indicators, (content, root, i, data) =>
          {
             const double dayLength = 24.0 / ((double)periodCount * 7.0 * 24.0);
-
+            const double lineHeight = 14.0;
             IndicatorGraph pane = new IndicatorGraph(root);
 
             List<double> points = new List<double>();
@@ -193,9 +193,9 @@ namespace Tildetool.Time
 
             PathGeometry geometry = new PathGeometry();
             PathFigure figure = new PathFigure() { IsClosed = false };
-            figure.StartPoint = new Point(points[0], -20.0 * (values[0] + data.Offset));
+            figure.StartPoint = new Point(points[0], -lineHeight * (values[0] + data.Offset));
             for (int o = 1; o < points.Count; o++)
-               figure.Segments.Add(new LineSegment(new Point(points[o], -20.0 * (values[o] + data.Offset)), true));
+               figure.Segments.Add(new LineSegment(new Point(points[o], -lineHeight * (values[o] + data.Offset)), true));
             geometry.Figures.Add(figure);
             pane.IndicatorGraphLine.Data = geometry;
 
@@ -216,8 +216,9 @@ namespace Tildetool.Time
                IndicatorValue subdata = data.Values[index - data.MinValue];
                double pct = (maxValue > minValue) ? 1.0 - ((double)(index - minValue) / (double)(maxValue - minValue))
                   : 0.5;
-               FreeGrid.SetTop(row.RowLine, new PercentValue(PercentValue.ModeType.Percent, pct - 0.15));
-               FreeGrid.SetTop(row.Title, new PercentValue(PercentValue.ModeType.Percent, pct - 0.15));
+               double pctOff = 0.15 * 20.0 / lineHeight;
+               FreeGrid.SetTop(row.RowLine, new PercentValue(PercentValue.ModeType.Percent, pct - pctOff));
+               FreeGrid.SetTop(row.Title, new PercentValue(PercentValue.ModeType.Percent, pct - pctOff));
                row.RowLine.Background = new SolidColorBrush(subdata.GetColorBack(0x20));
                row.Title.Foreground = new SolidColorBrush(subdata.GetColorBack(0x60));
                row.Title.Text = subdata.Name;
