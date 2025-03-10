@@ -124,14 +124,6 @@ namespace Tildetool.Time
          List<TimeBlockRow> projectPeriods = CollectTimeBlocks();
          foreach (TimeBlockRow periods in projectPeriods)
             _organizePeriod(periods.Blocks);
-         foreach (TimeBlockRow periods in projectPeriods)
-            for (int i = periods.Blocks.Count - 1; i >= 0; i--)
-            {
-               if (periods.Blocks[i].StartTime.ToLocalTime().TimeOfDay.TotalHours > MaxHour)
-                  periods.Blocks.RemoveAt(i);
-               else if (periods.Blocks[i].EndTime.ToLocalTime().TimeOfDay.TotalHours < MinHour)
-                  periods.Blocks.RemoveAt(i);
-            }
 
          return projectPeriods;
       }
