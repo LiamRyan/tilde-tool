@@ -281,6 +281,14 @@ namespace Tildetool.Time
       #endregion
       #region SQLite
 
+      void Query(string commandText)
+      {
+         using (SqliteCommand command = _Sqlite.CreateCommand())
+         {
+            command.CommandText = commandText;
+            command.ExecuteNonQuery();
+         }
+      }
       SqliteConnection _Sqlite;
       public Dictionary<string, int> ProjectIdentToId = new Dictionary<string, int>();
       public void ConnectSqlite()
@@ -323,23 +331,17 @@ namespace Tildetool.Time
                ProjectIdentToId[reader.GetString(0)] = reader.GetInt32(1);
          command.Dispose();
 
-         // Create the time period table
-         command = _Sqlite.CreateCommand();
-         command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
-         command.ExecuteNonQuery();
-         command.Dispose();
+         // Create the tables.
+         Query("CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
+         Query("CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
+         Query("CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" INTEGER, \"time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
 
-         // Create the event table.
-         command = _Sqlite.CreateCommand();
-         command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
-         command.ExecuteNonQuery();
-         command.Dispose();
-
-         // Create the indicator table.
-         command = _Sqlite.CreateCommand();
-         command.CommandText = "CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" INTEGER, \"time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
-         command.ExecuteNonQuery();
-         command.Dispose();
+         // Create the indices.
+         Query("CREATE INDEX IF NOT EXISTS \"time_event_start_time\" ON \"time_event\" ( \"start_time\" ASC );");
+         Query("CREATE INDEX IF NOT EXISTS \"time_event_end_time\" ON \"time_event\" ( \"end_time\" ASC );");
+         Query("CREATE INDEX IF NOT EXISTS \"time_period_start_time\" ON \"time_period\" ( \"start_time\" ASC );");
+         Query("CREATE INDEX IF NOT EXISTS \"time_period_end_time\" ON \"time_period\" ( \"end_time\" ASC );");
+         Query("CREATE INDEX IF NOT EXISTS \"time_indicator_time\" ON \"time_indicator\" ( \"time\" ASC );");
 
          //
          RefreshTodayTime();
