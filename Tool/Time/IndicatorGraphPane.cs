@@ -114,9 +114,10 @@ namespace Tildetool.Time
             });
          }
 
+         Indicator[] indicators = TimeManager.Instance.Indicators.Where(i => !i.Hidden).ToArray();
          DataTemplate? templateGraph = Parent.Resources["IndicatorGraph"] as DataTemplate;
          DataTemplate? templateRow = Parent.Resources["IndicatorRow"] as DataTemplate;
-         DataTemplater.Populate(Parent.IndicatorGraphs, templateGraph, TimeManager.Instance.Indicators, (content, root, i, data) =>
+         DataTemplater.Populate(Parent.IndicatorGraphs, templateGraph, indicators, (content, root, i, data) =>
          {
             const double dayLength = 24.0 / ((double)periodCount * 7.0 * 24.0);
             const double lineHeight = 14.0;
