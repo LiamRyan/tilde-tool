@@ -3,4 +3,5 @@
 /.vs/*
 *.csproj.user
 
+/Properties/*
 /Internal/*

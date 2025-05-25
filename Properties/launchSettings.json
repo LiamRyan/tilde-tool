@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "Tildetool": {
-      "commandName": "Project",
-      "workingDirectory": "D:\\dev\\Tildetool\\Internal\\Stable",
-      "nativeDebugging": true
-    }
-  }
-}
