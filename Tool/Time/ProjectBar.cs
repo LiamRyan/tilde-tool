@@ -28,16 +28,16 @@ namespace Tildetool.Time
 
       public Project DailyFocus;
 
-      public void SetActiveTime(string key)
+      public void SetActiveTime(string key, bool alter)
       {
          // Make sure we actually changed to a valid project.
          Project? project = null;
          if (!TimeManager.Instance.HotkeyToProject.TryGetValue(key, out project))
             return;
-         SetActiveProject(project);
+         SetActiveProject(project, alter);
       }
 
-      public void SetActiveProject(Project project)
+      public void SetActiveProject(Project project, bool alter)
       {
          if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
          {
@@ -55,7 +55,7 @@ namespace Tildetool.Time
 
          // Switch
          Project oldProject = TimeManager.Instance.CurrentProject;
-         if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+         if (alter)
             TimeManager.Instance.AlterProject(project);
          else
             TimeManager.Instance.SetProject(project);
@@ -63,7 +63,11 @@ namespace Tildetool.Time
          // Update the display.
          Parent.RefreshTime();
          if (project != null)
-            _AnimateCommand(GuiToProject.IndexOf(project));
+         {
+            int index = GuiToProject.IndexOf(project);
+            if (index != -1)
+               _AnimateCommand(index);
+         }
 
          // Turn off a scheduled cancel since we'll finish on our own soon.
          Parent.UnscheduleCancel();
@@ -84,22 +88,7 @@ namespace Tildetool.Time
          Parent.CurrentTimeM.Foreground = Parent.Resources["ColorTextBack"] as SolidColorBrush;
 
          //
-         if (Parent.CurDailyMode == Timekeep.DailyMode.Today)
-         {
-            for (int i = 0; i < TimeManager.Instance.Data.Length; i++)
-            {
-               ContentControl content = Parent.DailyRows.Children[i] as ContentControl;
-               ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-               Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-               TextBlock headerName = grid.FindElementByName<TextBlock>("HeaderName");
-               TextBlock headerDate = grid.FindElementByName<TextBlock>("HeaderDate");
-
-               bool isCurrent = TimeManager.Instance.Data[i] == TimeManager.Instance.CurrentProject;
-               grid.Background = new SolidColorBrush(Extension.FromArgb((uint)(isCurrent ? 0x404A6030 : ((i % 2) == 0 ? 0x00042508 : 0x38042508))));
-               headerName.Foreground = new SolidColorBrush(Extension.FromArgb(isCurrent ? 0xFFC3F1AF : 0xFF449637));
-               headerDate.Foreground = new SolidColorBrush(Extension.FromArgb(isCurrent ? 0xFFC3F1AF : 0xFF449637));
-            }
-         }
+         Parent.TimeBar.Refresh();
       }
 
       public void RebuildList()
@@ -207,29 +196,37 @@ namespace Tildetool.Time
 
       public bool HandleKeyDown(object sender, KeyEventArgs e)
       {
+         bool alter = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+
          // Handle key entry.
-         if ((e.Key == Key.D0 || e.Key == Key.NumPad0) && (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)))
+         if (e.Key == Key.Insert)
          {
             List<string> idents = TimeManager.Instance.ProjectIdentToId.Keys.ToList();
             Parent.TimekeepTextEditor.Show((text) =>
             {
-               int projectId = TimeManager.Instance.AddProject(text);
-               SetActiveProject(TimeManager.Instance.IdentToProject[text]);
+               if (TimeManager.Instance.IdentToProject.TryGetValue(text, out Project project))
+                  SetActiveProject(project, alter);
+               else
+               {
+                  int projectId = TimeManager.Instance.AddProject(text);
+                  SetActiveProject(new Project() { Ident = text, Name = text }, alter);
+               }
             }, idents);
+            return true;
          }
          else if (e.Key >= Key.A && e.Key <= Key.Z)
          {
-            SetActiveTime(e.Key.ToString());
+            SetActiveTime(e.Key.ToString(), alter);
             return true;
          }
          else if (e.Key >= Key.D0 && e.Key <= Key.D9)
          {
-            SetActiveTime((e.Key - Key.D0).ToString());
+            SetActiveTime((e.Key - Key.D0).ToString(), alter);
             return true;
          }
          else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
          {
-            SetActiveTime((e.Key - Key.NumPad0).ToString());
+            SetActiveTime((e.Key - Key.NumPad0).ToString(), alter);
             return true;
          }
 
