@@ -56,6 +56,7 @@ namespace Tildetool.Time
          public string Name;
          public DateTime StartTime; //utc
          public DateTime EndTime; //utc
+         public bool OnComputer;
          public Color Color;
          public Style CurStyle;
          public int Priority;
@@ -82,6 +83,7 @@ namespace Tildetool.Time
                Name = project?.Name ?? period.Ident,
                StartTime = period.StartTime,
                EndTime = period.EndTime,
+               OnComputer = period.OnComputer,
                Color = project != null ? Extension.FromArgb(0xFF143518) : Extension.FromArgb(0xFF0D211D),
                Project = project,
                DbId = period.DbId
@@ -98,6 +100,8 @@ namespace Tildetool.Time
 
          public bool CanMerge(TimeBlock next)
          {
+            if (OnComputer != next.OnComputer)
+               return false;
             if (Project != next.Project)
                return false;
             if (Project == null && Name.CompareTo(next.Name) != 0)

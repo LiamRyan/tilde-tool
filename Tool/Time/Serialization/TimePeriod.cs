@@ -9,5 +9,6 @@ namespace Tildetool.Time.Serialization
       public string Ident { get; set; }
       public DateTime StartTime { get; set; } //utc
       public DateTime EndTime { get; set; } //utc
+      public bool OnComputer;
    }
 }

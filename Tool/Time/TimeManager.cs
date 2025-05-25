@@ -332,7 +332,7 @@ namespace Tildetool.Time
          command.Dispose();
 
          // Create the tables.
-         Query("CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
+         Query("CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, \"on_computer\" INTEGER DEFAULT 0, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
          Query("CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
          Query("CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" INTEGER, \"time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
 
@@ -366,10 +366,11 @@ namespace Tildetool.Time
       public int AddHistoryLine(TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time) VALUES ($project_id, $start_time, $end_time); SELECT last_insert_rowid();";
+         command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer) VALUES ($project_id, $start_time, $end_time, $on_computer); SELECT last_insert_rowid();";
          command.Parameters.AddWithValue("$project_id", ProjectIdentToId[period.Ident]);
          command.Parameters.AddWithValue("$start_time", period.StartTime);
          command.Parameters.AddWithValue("$end_time", period.EndTime);
+         command.Parameters.AddWithValue("$on_computer", period.OnComputer);
          int rowId = Convert.ToInt32(command.ExecuteScalar());
          command.Dispose();
 
@@ -416,7 +417,7 @@ namespace Tildetool.Time
 
          // Either add or update.
          if (CurrentTimePeriod == -1)
-            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow });
+            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow, OnComputer = true });
          else
             UpdateHistoryLine(CurrentTimePeriod, new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow });
       }
@@ -444,7 +445,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
+         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
 
@@ -456,7 +457,8 @@ namespace Tildetool.Time
                string projectIdent = reader.GetString(1);
                DateTime startTime = reader.GetDateTime(2);
                DateTime endTime = reader.GetDateTime(3);
-               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime });
+               bool onComputer = reader.GetBoolean(4);
+               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
             }
          command.Dispose();
 
@@ -466,7 +468,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(Project project, DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,start_time,end_time FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
+         command.CommandText = "SELECT time_period.id,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
          command.Parameters.AddWithValue("$ident", project.Ident);
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
@@ -478,7 +480,8 @@ namespace Tildetool.Time
                long dbid = reader.GetInt64(0);
                DateTime startTime = reader.GetDateTime(1);
                DateTime endTime = reader.GetDateTime(2);
-               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime });
+               bool onComputer = reader.GetBoolean(3);
+               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
             }
          command.Dispose();
 
