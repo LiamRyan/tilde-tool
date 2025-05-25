@@ -18,27 +18,36 @@ namespace Tildetool.Time
       List<List<TimeBlock>> WeeklySchedule;
       public override List<TimeBlockRow> CollectTimeBlocks()
       {
+         bool showNowLine = DayBegin <= DateTime.Now && DateTime.Now < DayBegin.AddDays(1);
+         if (showNowLine && DateTime.Now.AddMinutes(-30).Hour < MinHour)
+            MinHour = DateTime.Now.AddMinutes(-30).Hour;
+         if (showNowLine && DateTime.Now.AddMinutes(30).Hour > MaxHour)
+            MaxHour = DateTime.Now.AddMinutes(30).Hour;
+
          List<TimeBlockRow> projectPeriods = new();
 
          WeeklySchedule = GetWeeklySchedule();
          _organizePeriod(WeeklySchedule[(int)DayBegin.DayOfWeek]);
 
-         for (int i = 0; i < TimeManager.Instance.Data.Length + 1; i++)
+         Dictionary<string, int> identToIndex = new();
+         Dictionary<string, int> nameToIndex = new();
+
+         if (Parent.ProjectBar.InitialProject != null)
          {
-            Project? project = i < TimeManager.Instance.Data.Length ? TimeManager.Instance.Data[i] : null;
             projectPeriods.Add(new TimeBlockRow()
             {
+               Project = Parent.ProjectBar.InitialProject,
                Blocks = new(),
-               RowName = project?.Name ?? "",
+               RowName = Parent.ProjectBar.InitialProject.Name,
                Day = new DateOnly(DayBegin.Year, DayBegin.Month, DayBegin.Day),
 
-               IsHighlight = project == Parent.ProjectBar.InitialProject,
+               IsHighlight = true,
                IsGray = false,
 
                HasDate = false
             });
+            identToIndex[Parent.ProjectBar.InitialProject.Ident] = 0;
          }
-         Dictionary<string, int> identToIndex = Enumerable.Range(0, TimeManager.Instance.Data.Length).ToDictionary(i => TimeManager.Instance.Data[i].Ident, i => i);
 
          DateTime todayS = new DateTime(DayBegin.Year, DayBegin.Month, DayBegin.Day, 0, 0, 0).ToUniversalTime();
          DateTime todayE = todayS.AddDays(1);
@@ -46,18 +55,36 @@ namespace Tildetool.Time
 
          foreach (TimeBlock block in periods)
          {
-            int index = 0;
+            int index;
             if (block.Project == null || !identToIndex.TryGetValue(block.Project.Ident, out index))
-               index = projectPeriods.Count - 1;
+               if (!nameToIndex.TryGetValue(block.Name, out index))
+               {
+                  index = projectPeriods.Count;
+                  projectPeriods.Add(new TimeBlockRow()
+                  {
+                     Project = block.Project,
+                     Blocks = new(),
+                     RowName = block.Project?.Name ?? block.Name,
+                     Day = new DateOnly(DayBegin.Year, DayBegin.Month, DayBegin.Day),
+
+                     IsHighlight = block.Project == Parent.ProjectBar.InitialProject,
+                     IsGray = false,
+
+                     HasDate = false
+                  });
+                  if (block.Project != null)
+                     identToIndex[block.Project.Ident] = index;
+                  else
+                     nameToIndex[block.Name] = index;
+               }
 
             block.ColorGrid = new SolidColorBrush(block.Color);
-            block.ColorBack = new(Extension.FromArgb(block.Project != null ? 0xFF449637 : 0xFF517F65));
-            block.ColorFore = new(Extension.FromArgb(block.Project != null ? 0xFFC3F1AF : 0xFF69A582));
+            block.ColorBack = new(Extension.FromArgb(block.OnComputer ? 0xFF449637 : 0xFF517F65));
+            block.ColorFore = new(Extension.FromArgb(block.OnComputer ? 0xFFC3F1AF : 0xFF69A582));
 
             block.IsActiveCell = TimeManager.Instance.CurrentTimePeriod == block.DbId;
-            block.PeriodMinutes = (block.EndTime - block.StartTime).TotalMinutes;
 
-            if (index >= TimeManager.Instance.Data.Length)
+            if (block.Project == null)
                block.CellProject = block.Name;
 
             projectPeriods[index].Blocks.Add(block);
@@ -65,8 +92,41 @@ namespace Tildetool.Time
 
          for (int i = 0; i < projectPeriods.Count; i++)
             projectPeriods[i].TotalMinutes = projectPeriods[i].Blocks.Sum(p => (p.EndTime - p.StartTime).TotalMinutes);
+         projectPeriods.Sort((a, b) =>
+         {
+            bool onComputerA = a.Blocks.Any(b => b.OnComputer);
+            bool onComputerB = b.Blocks.Any(b => b.OnComputer);
+            if (onComputerA != onComputerB)
+               return onComputerB ? 1 : -1;
+            if ((a.Project != null) != (b.Project != null))
+               return b.Project != null ? 1 : -1;
+            //if (a.Project != null)
+            return b.TotalMinutes.CompareTo(a.TotalMinutes);
+            //return a.Blocks[0].StartTime.CompareTo(b.Blocks[0].StartTime);
+         });
 
          return projectPeriods;
+      }
+
+      protected override void _RefreshRow(TimeRow ui, int index, TimeBlockRow row)
+      {
+         bool isOnComputer = row.Blocks.Any(b => b.OnComputer);
+         ui.HeaderNameR.Visibility = isOnComputer ? Visibility.Collapsed : Visibility.Visible;
+         if (!isOnComputer)
+         {
+            (ui.Root as Grid).Height = 17;
+            ui.HeaderName.FontSize = 12;
+            ui.HeaderTimeH.FontSize = 12;
+            ui.HeaderTimeM.FontSize = 10;
+            ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromRgb(0xFF416F55));
+            ui.HeaderTimeH.Foreground = new SolidColorBrush(Extension.FromRgb(0xFF80B080));
+            ui.HeaderTimeM.Foreground = new SolidColorBrush(Extension.FromRgb(0xFF80B080));
+         }
+      }
+
+      protected override void _RefreshCell(TimeCell subui, int subindex, TimeBlock subdata)
+      {
+         (subui.Root as Grid).Height = subdata.OnComputer ? 20 : 15;
       }
 
       class IndicatorCtrl : DataTemplater
@@ -74,6 +134,12 @@ namespace Tildetool.Time
          public TextBlock Text;
          public TextBlock Icon;
          public IndicatorCtrl(FrameworkElement root) : base(root) { }
+      }
+
+      class ScheduleEntry : DataTemplater
+      {
+         public TextBlock ScheduleText;
+         public ScheduleEntry(FrameworkElement root) : base(root) { }
       }
 
       public override void SubRefresh()
@@ -104,38 +170,39 @@ namespace Tildetool.Time
          // Scheduled events
          Parent.ScheduleGrid.Visibility = Visibility.Visible;
          DateTime dayBeginUtc = DayBegin.ToUniversalTime();
+         DateTime dayEndUtc = dayBeginUtc.AddDays(1);
 
-         List<TimeBlock> block = WeeklySchedule[(int)DayBegin.DayOfWeek];
+         List<TimeBlock> blocks = WeeklySchedule[(int)DayBegin.DayOfWeek];
 
          Parent.ScheduleGrid.ColumnDefinitions.Clear();
          double lastHour = MinHour;
-         for (int i = 0; i < block.Count; i++)
+         for (int i = 0; i < blocks.Count; i++)
          {
-            double hourBegin = (block[i].StartTime - dayBeginUtc).TotalHours;
-            double hourEnd = (block[i].EndTime - dayBeginUtc).TotalHours;
-            Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(hourBegin - lastHour, 0), GridUnitType.Star) });
-            Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
-            lastHour = hourEnd;
+            DateTime startTime = blocks[i].StartTime > dayBeginUtc ? blocks[i].StartTime : dayBeginUtc;
+            DateTime endTime = blocks[i].EndTime < dayEndUtc ? blocks[i].EndTime : dayEndUtc;
+            double hourBegin = (startTime - dayBeginUtc).TotalHours;
+            double hourEnd = (endTime - dayBeginUtc).TotalHours;
+            if (hourEnd > hourBegin)
+            {
+               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(hourBegin - lastHour, 0), GridUnitType.Star) });
+               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
+               lastHour = hourEnd;
+            }
          }
-         Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(MaxHour - lastHour, GridUnitType.Star) });
+         if (MaxHour > lastHour)
+            Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(MaxHour - lastHour, GridUnitType.Star) });
 
          DataTemplate? templateSchedule = Parent.Resources["ScheduleEntry"] as DataTemplate;
-         _populate(Parent.ScheduleGrid, templateSchedule, block.Count);
-         for (int i = 0; i < block.Count; i++)
+         DataTemplater.Populate<TimeBlock, ScheduleEntry>(Parent.ScheduleGrid, templateSchedule, blocks, (ui, index, block) =>
          {
-            ContentControl content = Parent.ScheduleGrid.Children[i] as ContentControl;
-            content.ApplyTemplate();
-            ContentPresenter presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
-            presenter.ApplyTemplate();
+            //FreeGrid.SetLeft(ui.Content, new PercentValue(PercentValue.ModeType.Percent, pctX));
+            //FreeGrid.SetWidth(ui.Content, new PercentValue(PercentValue.ModeType.Pixel, 1));
 
-            Grid grid = VisualTreeHelper.GetChild(presenter, 0) as Grid;
-            TextBlock scheduleTextCtrl = grid.FindElementByName<TextBlock>("ScheduleText");
-
-            Grid.SetColumn(content, (i * 2) + 1);
-            grid.Background = new SolidColorBrush(block[i].Color.Alpha(0x20));
-            scheduleTextCtrl.Foreground = new SolidColorBrush(block[i].Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
-            scheduleTextCtrl.Text = block[i].Name;
-         }
+            Grid.SetColumn(ui.Content, (index * 2) + 1);
+            (ui.Root as Grid).Background = new SolidColorBrush(block.Color.Alpha(0x20));
+            ui.ScheduleText.Foreground = new SolidColorBrush(block.Color.Lerp(Extension.FromArgb(0xFFC3F1AF), 0.75f));
+            ui.ScheduleText.Text = block.Name;
+         });
       }
 
       void RefreshIndicatorPanel()

@@ -536,6 +536,19 @@ namespace Tildetool.Time
          return (earliest - latest).TotalHours;
       }
 
+      public int AddTimeEvent(TimeEvent evt)
+      {
+         SqliteCommand command = _Sqlite.CreateCommand();
+         command.CommandText = "INSERT INTO time_event (description, start_time, end_time) VALUES ($description, $startTime, $endTime); SELECT last_insert_rowid();";
+         command.Parameters.AddWithValue("$description", evt.Description);
+         command.Parameters.AddWithValue("$startTime", evt.StartTime);
+         command.Parameters.AddWithValue("endTime", evt.EndTime);
+         int rowId = Convert.ToInt32(command.ExecuteScalar());
+         command.Dispose();
+
+         return rowId;
+      }
+
       public List<TimeEvent> QueryTimeEvent(DateTime minTimeLocal, DateTime maxTimeLocal)
       {
          SqliteCommand command = _Sqlite.CreateCommand();

@@ -60,8 +60,8 @@
         </DataTemplate>
         <DataTemplate x:Key="IndicatorRow">
             <tildetool:FreeGrid Margin="0,0,0,0">
-                <TextBlock x:Name="Title" Text="Twilight" FontFamily="Cascadia Code Light" TextAlignment="Right" VerticalAlignment="Center" FontSize="10" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="160" tildetool:FreeGrid.Height="18"  Margin="0,0,5,0"/>
-                <Grid x:Name="RowLine" Background="#A0FF0000" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="100%" tildetool:FreeGrid.Height="18" Margin="160,0,0,0"/>
+                <TextBlock x:Name="Title" Text="Twilight" FontFamily="Cascadia Code Light" TextAlignment="Right" VerticalAlignment="Center" FontSize="10" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="160" tildetool:FreeGrid.Height="12"  Margin="0,0,5,0"/>
+                <Grid x:Name="RowLine" Background="#A0FF0000" tildetool:FreeGrid.Top="15%" tildetool:FreeGrid.Width="100%" tildetool:FreeGrid.Height="12" Margin="160,0,0,0"/>
             </tildetool:FreeGrid>
         </DataTemplate>
         <DataTemplate x:Key="IndicatorGraph">
@@ -71,7 +71,7 @@
                     <ContentControl ContentTemplate="{StaticResource IndicatorRow}"></ContentControl>
                 </Grid>
                 <Grid Margin="180,0,80,0">
-                    <Path x:Name="IndicatorGraphLine" Margin="0 10 0 10" StrokeThickness="2" Stretch="Fill">
+                    <Path x:Name="IndicatorGraphLine" Margin="0 10 0 10" StrokeThickness="2" Stretch="Fill" StrokeLineJoin="Bevel">
                         <Path.Stroke>
                             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
                                 <GradientStop Color="{DynamicResource ColorGlow1}"/>
@@ -79,7 +79,7 @@
                             </LinearGradientBrush>
                         </Path.Stroke>
                         <Path.Data>
-                            <PathGeometry Figures="M 0,-1 L 0.1,-40 0.6,20 1,0" />
+                            <PathGeometry Figures="M 0,-1 L 0.02,-40 L 0.04,0 0.6,20 1,0" />
                         </Path.Data>
                     </Path>
                 </Grid>
@@ -120,6 +120,27 @@
                 <Grid x:Name="DailyCells" Margin="160,0,60,0">
                     <ContentControl ContentTemplate="{StaticResource DailyCell}"></ContentControl>
                 </Grid>
+                <TextBlock x:Name="HeaderNameR" Text="Free Time" Margin="0,0,70,0" HorizontalAlignment="Right" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF416F55" FontSize="12"/>
+                <StackPanel Width="50" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock x:Name="HeaderTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Bottom"/>
+                    <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
+                </StackPanel>
+                <Grid x:Name="RowNowGrid" Margin="160,0,60,0">
+                    <Grid x:Name="RowNow" Margin="0,2,0,2" Background="#FFABE2A3" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1" IsHitTestVisible="False"/>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="SummaryRow">
+            <Grid Height="35" Background="#50042508">
+                <StackPanel Margin="0,3,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock x:Name="HeaderDate" Text="22/10/25" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                    <TextBlock x:Name="HeaderNightH" Text="8" Margin="12,0,0,0" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
+                    <TextBlock x:Name="HeaderNightM" Text="01" Margin="2,0,0,0.5" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8"/>
+                </StackPanel>
+                <TextBlock x:Name="HeaderName" Text="Free Time" Width="150" HorizontalAlignment="Left" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="16"/>
+                <Grid x:Name="DailyCells" Margin="160,0,60,0">
+                    <ContentControl ContentTemplate="{StaticResource DailyCell}"></ContentControl>
+                </Grid>
                 <StackPanel Width="50" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
                     <TextBlock x:Name="HeaderTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Bottom"/>
                     <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12" VerticalAlignment="Bottom"/>
@@ -139,6 +160,8 @@
                     <TextBlock x:Name="DailyDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="14" Margin="-1,1,0,0"/>
                     <tildetool:FreeGrid Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Grid x:Name="DailyRowHover" Background="#60248528" tildetool:FreeGrid.Left="25%" tildetool:FreeGrid.Width="20%"/>
+                        <TextBlock x:Name="DailyRowHoverL" Text="0800" tildetool:FreeGrid.Width="25%" Margin="0,-28,0,0" HorizontalAlignment="Right" VerticalAlignment="Top" TextAlignment="Center" TextWrapping="NoWrap" FontFamily="Cascadia Code Light" Foreground="#60248528" FontSize="12"/>
+                        <TextBlock x:Name="DailyRowHoverR" Text="0800" tildetool:FreeGrid.Left="45%" tildetool:FreeGrid.Width="50" Margin="0,-28,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" TextAlignment="Center" TextWrapping="NoWrap" FontFamily="Cascadia Code Light" Foreground="#60248528" FontSize="12"/>
                     </tildetool:FreeGrid>
                     <Grid x:Name="HeaderRow" Margin="160,0,60,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <ContentControl ContentTemplate="{StaticResource DailyHeaderCell}"></ContentControl>
@@ -170,6 +193,15 @@
                         </StackPanel>
                     </Grid>
                     <Grid x:Name="TimeAreaHotspot" Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#01ABE2A3" MouseEnter="TimeAreaHotspot_MouseEnter" MouseLeave="TimeAreaHotspot_MouseLeave" MouseMove="TimeAreaHotspot_MouseMove" MouseLeftButtonDown="TimeAreaHotspot_MouseLeftButtonDown" MouseLeftButtonUp="TimeAreaHotspot_MouseLeftButtonUp"/>
+                </Grid>
+    
+                <Grid x:Name="Summary" Margin="20,25,20,10" HorizontalAlignment="Stretch" VerticalAlignment="Top" Visibility="Collapsed">
+                    <TextBlock x:Name="SummaryDate" Text="22/10/25 Sun" Width="160" Height="20" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="14" Margin="-1,1,0,0"/>
+                    <tildetool:FreeGrid Margin="160,18,60,25" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    </tildetool:FreeGrid>
+                    <StackPanel x:Name="SummaryRows" Orientation="Vertical" Margin="0,20,0,0">
+                        <ContentControl ContentTemplate="{StaticResource SummaryRow}"></ContentControl>
+                    </StackPanel>
                 </Grid>
 
                 <tildetool:FreeGrid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0" MouseEnter="IndicatorPanel_MouseEnter" MouseLeave="IndicatorPanel_MouseLeave" MouseMove="IndicatorPanel_MouseMove" MouseLeftButtonDown="IndicatorPanel_MouseLeftButtonDown">
