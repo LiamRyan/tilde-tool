@@ -169,7 +169,7 @@ namespace VirtualDesktopApi
    [Guid("53F5CA0B-158F-4124-900C-057158060B27")]
    public interface IVirtualDesktopManagerInternal
    {
-      int GetCount();
+      void GetCount(out int count);
       void MoveViewToDesktop(IApplicationView view, IVirtualDesktop desktop);
       bool CanViewMoveDesktops(IApplicationView view);
       IVirtualDesktop GetCurrentDesktop();
@@ -412,7 +412,7 @@ namespace VirtualDesktopApi
 
       internal static IVirtualDesktop GetDesktop(int index)
       {  // get desktop with index
-         int count = VirtualDesktopManagerInternal.GetCount();
+         VirtualDesktopManagerInternal.GetCount(out int count);
          if (index < 0 || index >= count) throw new ArgumentOutOfRangeException("index");
          IObjectArray desktops;
          VirtualDesktopManagerInternal.GetDesktops(out desktops);
@@ -429,7 +429,8 @@ namespace VirtualDesktopApi
          IObjectArray desktops;
          VirtualDesktopManagerInternal.GetDesktops(out desktops);
          object objdesktop;
-         for (int i = 0; i < VirtualDesktopManagerInternal.GetCount(); i++)
+         VirtualDesktopManagerInternal.GetCount(out int count);
+         for (int i = 0; i < count; i++)
          {
             desktops.GetAt(i, typeof(IVirtualDesktop).GUID, out objdesktop);
             if (IdSearch.CompareTo(((IVirtualDesktop)objdesktop).GetId()) == 0)
@@ -568,7 +569,7 @@ namespace VirtualDesktopApi
             return;
 
          // Grab the new list of virtual desktops.
-         int count = VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount();
+         VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount(out int count);
          IVirtualDesktop[] desktops = Enumerable.Range(0, count).Select(VirtualDesktopManager.GetDesktop).ToArray();
 
          // build a new dictionary, reusing old ones when possible.
@@ -694,7 +695,8 @@ namespace VirtualDesktopApi
             return -1;
 
          int index = -1;
-         for (int i = 0; i < VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount(); i++)
+         VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount(out int count);
+         for (int i = 0; i < count; i++)
          { // loop through all virtual desktops and compare partial name to desktop name
             string desktopName = DesktopNameFromIndex(i);
             if (desktopName.ToUpper().IndexOf(partialName.ToUpper()) >= 0)
@@ -729,7 +731,8 @@ namespace VirtualDesktopApi
             IObjectArray desktops;
             VirtualDesktopManager.VirtualDesktopManagerInternal.GetDesktops(out desktops);
             object objdesktop;
-            for (int i = 0; i < VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount(); i++)
+            VirtualDesktopManager.VirtualDesktopManagerInternal.GetCount(out int count);
+            for (int i = 0; i < count; i++)
             {
                desktops.GetAt(i, typeof(IVirtualDesktop).GUID, out objdesktop);
                if (IdSearch.CompareTo(((IVirtualDesktop)objdesktop).GetId()) == 0)
