@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.Timers;
 using System.Windows.Media.Animation;
 using System.ComponentModel;
 
@@ -19,6 +16,7 @@ namespace Tildetool.Status
    public partial class StatusProgress : Window
    {
       private Storyboard? _StoryboardFade;
+      private Storyboard? _StoryboardFill;
       private Storyboard? _StoryboardSpin;
 
       public StatusProgress()
@@ -26,6 +24,7 @@ namespace Tildetool.Status
          InitializeComponent();
 
          _AnimateShow();
+         Update();
       }
       protected override void OnClosing(CancelEventArgs e)
       {
@@ -40,6 +39,12 @@ namespace Tildetool.Status
       public void Cancel()
       {
          _AnimateHide();
+      }
+
+      HashSet<Source> SourcesNeed = new();
+      public void Update()
+      {
+         _AnimateFill();
       }
 
       void _AnimateShow()
@@ -122,6 +127,8 @@ namespace Tildetool.Status
       public bool Finished { get; protected set; }
       void _AnimateHide()
       {
+         _AnimateFill();
+
          Finished = true;
 
          if (_StoryboardFade != null)
@@ -192,6 +199,10 @@ namespace Tildetool.Status
                _StoryboardFade.Remove(this);
             _StoryboardFade = null;
 
+            if (_StoryboardFill != null)
+               _StoryboardFill.Remove(this);
+            _StoryboardFill = null;
+
             if (_StoryboardSpin != null)
             {
                _StoryboardSpin.Stop(this);
@@ -202,6 +213,33 @@ namespace Tildetool.Status
             Close();
          };
          _StoryboardFade.Begin(this, HandoffBehavior.SnapshotAndReplace);
+      }
+
+      void _AnimateFill()
+      {
+         HashSet<Source> sourcesLeft = SourceManager.Instance.Sources.Where(src => !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src))).ToHashSet();
+         SourcesNeed.UnionWith(sourcesLeft);
+
+         ProgressFill.EndAngle = 90.0f + 360.0f - (360.0f * sourcesLeft.Count / SourcesNeed.Count);
+
+         if (_StoryboardFill != null)
+         {
+            _StoryboardFill.Stop(this);
+            _StoryboardFill.Remove(this);
+         }
+
+         _StoryboardFill = new Storyboard();
+         {
+            float targetAngle = 90.0f + 360.0f - (360.0f * sourcesLeft.Count / SourcesNeed.Count);
+            var animation = new DoubleAnimation(targetAngle, new Duration(TimeSpan.FromSeconds(0.5f)));
+            animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
+            _StoryboardFill.Children.Add(animation);
+            Storyboard.SetTarget(animation, ProgressFill);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(Shape.Arc.EndAngleProperty));
+         }
+
+         _StoryboardFill.Begin(this, HandoffBehavior.SnapshotAndReplace);
+         _StoryboardFill.Completed += (sender, e) => { if (_StoryboardFill != null) _StoryboardFill.Remove(this); _StoryboardFill = null; };
       }
    }
 }

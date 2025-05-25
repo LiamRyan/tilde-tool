@@ -138,31 +138,31 @@ namespace Tildetool
                   else if (!_StatusBar.IsShowing)
                      _StatusBar.AnimateShow();
                   _StatusBar.Dispatcher.Invoke(new Action(() => _StatusBar.UpdatePanel(args.Index, args.CacheChanged)));
+
+                  if (_StatusProgress != null)
+                     _StatusProgress.Dispatcher.Invoke(new Action(() => _StatusProgress.Update()));
                }));
             };
          SourceManager.Instance.SourceQuery += (s, args) =>
             {
-               StatusProgress? oldProgressUi = _StatusProgress;
                bool shouldShow = SourceManager.Instance.Sources.Any(src => !src.Ephemeral && (src.IsQuerying || SourceManager.Instance.NeedRefresh(src)));
-               bool isShowing = oldProgressUi != null && !oldProgressUi.Finished;
-
-               if (shouldShow == isShowing)
-                  return;
-
                Dispatcher.Invoke(new Action(() =>
                {
                   if (shouldShow)
                   {
-                     _StatusProgress = new StatusProgress();
-                     _StatusProgress.Closing += (sender, e) => { if (sender == _StatusProgress) _StatusProgress = null; };
+                     if (_StatusProgress == null)
+                     {
+                        _StatusProgress = new StatusProgress();
+                        _StatusProgress.Closing += (sender, e) => { if (sender == _StatusProgress) _StatusProgress = null; };
 
-                     _StatusProgress.Show();
-                     _StatusProgress.Topmost = true;
+                        _StatusProgress.Show();
+                        _StatusProgress.Topmost = true;
+                     }
+                     else
+                        _StatusProgress.Dispatcher.Invoke(new Action(() => _StatusProgress.Update()));
                   }
-                  else
-                  {
-                     oldProgressUi.Cancel();
-                  }
+                  else if (_StatusProgress != null)
+                     _StatusProgress.Cancel();
                }));
             };
 
