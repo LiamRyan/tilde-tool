@@ -198,7 +198,6 @@ namespace Tildetool.Time
          // Handle key entry.
          if (e.Key == Key.Insert)
          {
-            List<string> idents = TimeManager.Instance.ProjectIdentToId.Keys.ToList();
             Parent.TimekeepTextEditor.Show((text) =>
             {
                if (TimeManager.Instance.IdentToProject.TryGetValue(text, out Project project))
@@ -208,7 +207,7 @@ namespace Tildetool.Time
                   int projectId = TimeManager.Instance.AddProject(text);
                   SetActiveProject(new Project() { Ident = text, Name = text }, alter);
                }
-            }, idents);
+            }, TimeManager.Instance.ProjectIdentAutoSuggest);
             return true;
          }
          else if (e.Key >= Key.A && e.Key <= Key.Z)

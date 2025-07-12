@@ -703,7 +703,6 @@ namespace Tildetool.Time
             return;
 
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
-         List<string> idents = TimeManager.Instance.ProjectIdentToId.Keys.ToList();
          Parent.TimekeepTextEditor.Show((text) =>
          {
             if (isSchedule)
@@ -715,7 +714,7 @@ namespace Tildetool.Time
             }
 
             Refresh();
-         }, idents);
+         }, TimeManager.Instance.ProjectIdentAutoSuggest);
       }
 
       #endregion

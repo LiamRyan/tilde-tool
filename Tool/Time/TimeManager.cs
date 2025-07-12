@@ -290,7 +290,10 @@ namespace Tildetool.Time
          }
       }
       SqliteConnection _Sqlite;
-      public Dictionary<string, int> ProjectIdentToId = new Dictionary<string, int>();
+      public Dictionary<string, int> ProjectIdentToId = new();
+      public Dictionary<string, string> ProjectIdentToCategory = new();
+      public Dictionary<string, int> ProjectIdentToOrder = new();
+      public List<string> ProjectIdentAutoSuggest = new();
       public void ConnectSqlite()
       {
          if (_Sqlite != null)
@@ -301,7 +304,7 @@ namespace Tildetool.Time
          // Create and populate the project table.
          SqliteCommand command;
          command = _Sqlite.CreateCommand();
-         command.CommandText = "CREATE TABLE IF NOT EXISTS \"project\" ( \"id\"\tINTEGER, \"ident\" TEXT UNIQUE, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
+         command.CommandText = "CREATE TABLE IF NOT EXISTS \"project\" ( \"id\"\tINTEGER, \"ident\" TEXT UNIQUE, \"category\" INTEGER, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"auto_suggest\" INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
          command.ExecuteNonQuery();
          command.Dispose();
 
@@ -324,12 +327,7 @@ namespace Tildetool.Time
             }
 
          // Read an ident to id mapping.
-         command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT ident,id FROM project;";
-         using (var reader = command.ExecuteReader())
-            while (reader.Read())
-               ProjectIdentToId[reader.GetString(0)] = reader.GetInt32(1);
-         command.Dispose();
+         UpdateProjectData();
 
          // Create the tables.
          Query("CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, \"on_computer\" INTEGER DEFAULT 0, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
@@ -345,6 +343,35 @@ namespace Tildetool.Time
 
          //
          RefreshTodayTime();
+      }
+
+      public void UpdateProjectData()
+      {
+         ProjectIdentToId.Clear();
+         ProjectIdentToOrder.Clear();
+         ProjectIdentToCategory.Clear();
+         ProjectIdentAutoSuggest.Clear();
+
+         var command = _Sqlite.CreateCommand();
+         command.CommandText = "SELECT ident, id, category, sort_order, auto_suggest FROM project;";
+         Dictionary<int, string> idToIdent = new();
+         Dictionary<string, int> identToCategoryId = new();
+         using (var reader = command.ExecuteReader())
+            while (reader.Read())
+            {
+               string ident = reader.GetString(0);
+               int id = reader.GetInt32(1);
+               ProjectIdentToId[ident] = id;
+               idToIdent[id] = ident;
+               if (!reader.IsDBNull(2))
+                  identToCategoryId[ident] = reader.GetInt32(2);
+               ProjectIdentToOrder[ident] = reader.GetInt32(3);
+               if (reader.GetInt32(3) > 0)
+                  ProjectIdentAutoSuggest.Add(ident);
+            }
+         foreach (var kv in identToCategoryId)
+            ProjectIdentToCategory[kv.Key] = idToIdent.GetValueOrDefault(kv.Value, null);
+         command.Dispose();
       }
 
       public int AddProject(string ident)
