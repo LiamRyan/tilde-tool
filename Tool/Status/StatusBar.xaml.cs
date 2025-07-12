@@ -733,7 +733,7 @@ namespace Tildetool.Status
             var animation = new ThicknessAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(pause);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.2f));
-            animation.To = new Thickness(0,0,0,0);
+            animation.To = new Thickness(0, 0, 0, 0);
             storyboard.Children.Add(animation);
             Storyboard.SetTarget(animation, grid);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
@@ -887,25 +887,34 @@ namespace Tildetool.Status
          AnimateResize(open: true);
 
          if (_HasTimer)
-         {
-            if (_HideTimer != null)
-            {
-               _HideTimer.Stop();
-               _HideTimer.Dispose();
-            }
-            _HideTimer = new Timer();
-            _HideTimer.Interval = 2500;
-            _HideTimer.Elapsed += (s, e) =>
-            {
-               _HideTimer.Stop();
-               _HideTimer.Dispose();
-               _HideTimer = null;
-               Dispatcher.Invoke(() => AnimateClose());
-               App.PlayBeep(App.BeepSound.Cancel);
-            };
-            _HideTimer.Start();
-         }
+            SetTimer();
       }
+
+      System.Timers.Timer? _HideTimer = null;
+
+      public void SetTimer()
+      {
+         // Clear the old
+         if (_HideTimer != null)
+         {
+            _HideTimer.Stop();
+            _HideTimer.Dispose();
+         }
+
+         // Start the new.
+         _HideTimer = new Timer();
+         _HideTimer.Interval = 2500;
+         _HideTimer.Elapsed += (s, e) =>
+         {
+            _HideTimer.Stop();
+            _HideTimer.Dispose();
+            _HideTimer = null;
+            Dispatcher.Invoke(() => AnimateClose());
+            App.PlayBeep(App.BeepSound.Cancel);
+         };
+         _HideTimer.Start();
+      }
+
       public void ClearTimer()
       {
          if (_HideTimer == null)
@@ -915,8 +924,6 @@ namespace Tildetool.Status
          _HideTimer.Dispose();
          _HideTimer = null;
       }
-
-      System.Timers.Timer? _HideTimer = null;
 
       public void AnimateClose()
       {

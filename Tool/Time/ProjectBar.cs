@@ -69,8 +69,8 @@ namespace Tildetool.Time
                _AnimateCommand(index);
          }
 
-         // Turn off a scheduled cancel since we'll finish on our own soon.
-         Parent.UnscheduleCancel();
+         // Schedule a cancel.
+         Parent.ScheduleCancel(200);
 
          // Update the coloring of the text.
          for (int i = 0; i < GuiToProject.Count; i++)
@@ -163,12 +163,13 @@ namespace Tildetool.Time
          }
       }
 
+      bool Finished = false;
       private Storyboard? _StoryboardCommand;
       void _AnimateCommand(int guiIndex)
       {
-         if (Parent._Finished)
+         if (Parent._Finished || Finished)
             return;
-         Parent._Finished = true;
+         Parent.ScheduleCancel(200);
 
          Panel grid = ProjectGui[guiIndex];
          Grid area = grid.FindElementByName<Grid>("Area");
@@ -184,11 +185,7 @@ namespace Tildetool.Time
             Storyboard.SetTargetProperty(flashAnimation, new PropertyPath("Background.Color"));
          }
 
-         _StoryboardCommand.Completed += (sender, e) =>
-         {
-            _StoryboardCommand.Remove(Parent);
-            Parent._AnimateFadeOut();
-         };
+         _StoryboardCommand.Completed += (sender, e) => _StoryboardCommand.Remove(Parent);
          _StoryboardCommand.Begin(Parent, HandoffBehavior.SnapshotAndReplace);
 
          App.PlayBeep(App.BeepSound.Accept);

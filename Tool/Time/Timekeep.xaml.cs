@@ -91,10 +91,12 @@ namespace Tildetool.Time
       #region Cancel Timer
 
       Timer? _CancelTimer;
-      public void ScheduleCancel()
+      public void ScheduleCancel(int timeMs = 4000)
       {
+         UnscheduleCancel();
+
          _CancelTimer = new Timer();
-         _CancelTimer = new Timer { Interval = 4000 };
+         _CancelTimer = new Timer { Interval = timeMs };
          _CancelTimer.Elapsed += (o, e) => { _CancelTimer.Stop(); Dispatcher.Invoke(() => Cancel()); };
          _CancelTimer.Start();
       }
