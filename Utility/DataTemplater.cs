@@ -69,5 +69,19 @@ namespace Tildetool
                populate(templater, i, data);
             });
       }
+
+      public static IEnumerable<FrameworkElement> GetRoots(Panel parent)
+      {
+         for (int i = 0; i < parent.Children.Count; i++)
+         {
+            var content = parent.Children[i] as ContentControl;
+            content.ApplyTemplate();
+            var presenter = VisualTreeHelper.GetChild(content, 0) as ContentPresenter;
+            presenter.ApplyTemplate();
+
+            FrameworkElement root = VisualTreeHelper.GetChild(presenter, 0) as FrameworkElement;
+            yield return root;
+         }
+      }
    }
 }

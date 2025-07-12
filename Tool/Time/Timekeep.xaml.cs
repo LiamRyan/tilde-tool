@@ -27,6 +27,7 @@ namespace Tildetool.Time
       public ProjectBar ProjectBar;
       public IndicatorBar IndicatorBar;
       public IndicatorGraphPane IndicatorGraphPane;
+      public SummaryPane SummaryPane;
       public TimekeepTextEditor TimekeepTextEditor;
 
       public Timekeep()
@@ -44,6 +45,7 @@ namespace Tildetool.Time
          ProjectBar = new(this);
          IndicatorBar = new(this);
          IndicatorGraphPane = new(this);
+         SummaryPane = new(this);
          TimekeepTextEditor = new(this);
 
          DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
@@ -244,6 +246,7 @@ namespace Tildetool.Time
          Today = 0,
          WeekProgress,
          WeekSchedule,
+         Summary,
          Indicators,
          COUNT
       }
@@ -270,6 +273,7 @@ namespace Tildetool.Time
 
          IndicatorBar.Refresh();
          IndicatorGraphPane.Refresh(DailyDay);
+         SummaryPane.Refresh(DailyDay);
       }
 
       #endregion
@@ -461,6 +465,11 @@ namespace Tildetool.Time
          => TimekeepTextEditor.TextEditor_KeyDown(sender, e);
       private void TextEditor_TextChanged(object sender, TextChangedEventArgs e)
          => TimekeepTextEditor.TextEditor_TextChanged(sender, e);
+
+      private void SummaryBlockT_MouseEnter(object sender, MouseEventArgs e)
+         => SummaryPane?.SummaryBlockT_MouseEnter(sender, e);
+      private void SummaryBlockT_MouseLeave(object sender, MouseEventArgs e)
+         => SummaryPane?.SummaryBlockT_MouseLeave(sender, e);
 
       #endregion
    }
