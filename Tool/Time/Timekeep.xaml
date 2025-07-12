@@ -153,7 +153,7 @@
     </Window.Resources>
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top">
         <!-- Timeline Display -->
-        <Grid x:Name="Daily" HorizontalAlignment="Stretch" VerticalAlignment="Top" MinWidth="500" Margin="100,100,100,0">
+        <Grid x:Name="Daily" HorizontalAlignment="Stretch" VerticalAlignment="Top" MinWidth="500" Margin="0,100,0,0">
             <Grid x:Name="BackfillDaily" Background="#FFF1F7E5"/>
             <StackPanel Orientation="Vertical" Margin="0,0,0,0">
                 <Grid x:Name="DailyContent" Margin="20,25,20,10" HorizontalAlignment="Stretch" VerticalAlignment="Top">
@@ -351,14 +351,7 @@
             </StackPanel>
 
             <!-- Glow effects -->
-            <Grid x:Name="GlowDaily2" Margin="0 0 0 0" HorizontalAlignment="Left" Width="2">
-                <Grid.Background>
-                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
-                        <GradientStop Color="{DynamicResource ColorGlow1}"/>
-                    </LinearGradientBrush>
-                </Grid.Background>
-            </Grid>
-            <Grid x:Name="GlowDaily3" Margin="0 0 0 0" VerticalAlignment="Bottom" Height="2">
+            <Grid Margin="0 0 0 0" VerticalAlignment="Top" Height="2">
                 <Grid.Background>
                     <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
                         <GradientStop Color="{DynamicResource ColorGlow1}"/>
@@ -366,9 +359,10 @@
                     </LinearGradientBrush>
                 </Grid.Background>
             </Grid>
-            <Grid x:Name="GlowDaily4" Margin="0 0 0 0" HorizontalAlignment="Right" Width="2">
+            <Grid Margin="0 0 0 0" VerticalAlignment="Bottom" Height="2">
                 <Grid.Background>
                     <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                        <GradientStop Color="{DynamicResource ColorGlow1}"/>
                         <GradientStop Color="{DynamicResource ColorGlow2}" Offset="1"/>
                     </LinearGradientBrush>
                 </Grid.Background>
@@ -391,7 +385,7 @@
             </Grid>
         </Grid>
         <!-- Task selector -->
-        <Grid x:Name="Content" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="124">
+        <Grid x:Name="Content" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="124" Margin="100,0,100,0">
             <Path x:Name="Backfill" Fill="#FFF1F7E5" Margin="-10 10 -10 10" StrokeThickness="2" Stretch="Fill">
                 <Path.Data>
                     <PathGeometry Figures="M 0,0 C 0,10 100,10 100,0 V 100,100 C 100,90 0,90 0,100" />
@@ -419,7 +413,7 @@
                     </StackPanel>
                 </Grid>
             </Grid>
-            
+
             <!-- Glow effects -->
             <Path x:Name="Glow1" Margin="-10 10 -10 10" StrokeThickness="2" VerticalAlignment="Top" Stretch="Fill">
                 <Path.Effect>
