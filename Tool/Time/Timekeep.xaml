@@ -380,8 +380,14 @@
                         <TextBlock x:Name="TextOption0" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
                         <TextBlock x:Name="TextOption1" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
                         <TextBlock x:Name="TextOption2" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
-                </StackPanel>
-                    </Grid>
+                        <TextBlock x:Name="TextOption3" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                        <TextBlock x:Name="TextOption4" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                        <TextBlock x:Name="TextOption5" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                        <TextBlock x:Name="TextOption6" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                        <TextBlock x:Name="TextOption7" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                        <TextBlock x:Name="TextOption8" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Grid>
         <!-- Task selector -->

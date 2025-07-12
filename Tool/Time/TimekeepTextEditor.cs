@@ -24,6 +24,7 @@ namespace Tildetool.Time
       System.Action<string>? _TextEditorCallback;
       List<string> Options;
       bool EatEvent = false;
+      TextBlock[] TextOptions;
       public void Show(System.Action<string> callback, List<string> options)
       {
          _TextEditorCallback = callback;
@@ -32,9 +33,11 @@ namespace Tildetool.Time
          Parent.TextEditorPane.Visibility = Visibility.Visible;
          Parent.TextEditor.Text = "";
          Parent.TextEditor.Focus();
-         Parent.TextOption0.Visibility = Visibility.Collapsed;
-         Parent.TextOption1.Visibility = Visibility.Collapsed;
-         Parent.TextOption2.Visibility = Visibility.Collapsed;
+
+         TextOptions = new[] { Parent.TextOption0, Parent.TextOption1, Parent.TextOption2, Parent.TextOption3, Parent.TextOption4, Parent.TextOption5,
+            Parent.TextOption6, Parent.TextOption7, Parent.TextOption8 };
+         foreach (var opt in TextOptions)
+            opt.Visibility = Visibility.Collapsed;
       }
 
       public bool HandleKeyDown(object sender, KeyEventArgs e)
@@ -84,33 +87,27 @@ namespace Tildetool.Time
 
          if (Parent.TextEditor.Text.Length == 0)
          {
-            Parent.TextOption0.Visibility = Visibility.Collapsed;
-            Parent.TextOption1.Visibility = Visibility.Collapsed;
-            Parent.TextOption2.Visibility = Visibility.Collapsed;
+            foreach (var option in TextOptions)
+               option.Visibility = Visibility.Collapsed;
             _ManualChange = false;
             return;
          }
 
          int oldLength = Parent.TextEditor.Text.Length;
          IEnumerable<string> options = Options.Where(o => o.Length >= oldLength && o.StartsWith(Parent.TextEditor.Text));
-         string[] foundOptions = options.Take(4).ToArray();
+         string[] foundOptions = options.Take(TextOptions.Length + 1).ToArray();
          if (foundOptions.Length > 0)
          {
             Parent.TextEditor.Text = foundOptions[0];
             Parent.TextEditor.Select(oldLength, foundOptions[0].Length - oldLength);
          }
 
-         Parent.TextOption0.Visibility = foundOptions.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-         if (foundOptions.Length > 0)
-            Parent.TextOption0.Text = foundOptions[0];
-
-         Parent.TextOption1.Visibility = foundOptions.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
-         if (foundOptions.Length > 1)
-            Parent.TextOption1.Text = foundOptions[1];
-
-         Parent.TextOption2.Visibility = foundOptions.Length > 2 ? Visibility.Visible : Visibility.Collapsed;
-         if (foundOptions.Length > 2)
-            Parent.TextOption2.Text = foundOptions[2];
+         for (int i = 0; i < TextOptions.Length; i++)
+         {
+            TextOptions[i].Visibility = foundOptions.Length > i ? Visibility.Visible : Visibility.Collapsed;
+            if (foundOptions.Length > i)
+               TextOptions[i].Text = foundOptions[i];
+         }
 
          _ManualChange = false;
       }
