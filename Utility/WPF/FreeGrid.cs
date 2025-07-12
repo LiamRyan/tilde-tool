@@ -145,6 +145,10 @@ namespace Tildetool.WPF
             double top = GetTop(child).GetValue(finalSize.Height);
             double width = GetWidth(child).GetValue(finalSize.Width);
             double height = GetHeight(child).GetValue(finalSize.Height);
+            if (width < 0.0)
+               width = 0.0;
+            if (height < 0.0)
+               height = 0.0;
 
             Point childPos = new Point(left, top);
             Size childSize = new Size(width, height);

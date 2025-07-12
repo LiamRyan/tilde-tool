@@ -37,6 +37,8 @@ namespace Tildetool.Time
 
          IndicatorHover.Visibility = Visibility.Collapsed;
          DailyRowHover.Visibility = Visibility.Collapsed;
+         DailyRowHoverL.Visibility = Visibility.Collapsed;
+         DailyRowHoverR.Visibility = Visibility.Collapsed;
          TextEditorPane.Visibility = Visibility.Collapsed;
 
          ProjectBar = new(this);

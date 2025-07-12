@@ -492,24 +492,24 @@ namespace Tildetool.Time
             subui.ProjectName.Text = subdata.CellProject;
          }
 
-         subui.CellTimeH.Visibility = (subdata.PeriodMinutes >= 10.0) ? Visibility.Visible : Visibility.Hidden;
-         subui.CellTimeM.Visibility = (subdata.PeriodMinutes >= 10.0 || !string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
-         if (subdata.PeriodMinutes >= 10.0)
+         subui.CellTimeH.Visibility = (subdata.PeriodMinutes >= 10.0 && string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
+         subui.CellTimeM.Visibility = (subdata.PeriodMinutes >= 10.0 || string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
+         if (!string.IsNullOrEmpty(subdata.CellTitle))
+         {
+            subui.CellTimeM.Foreground = subdata.ColorBack;
+            subui.CellTimeM.Text = subdata.CellTitle;
+         }
+         else if (subdata.PeriodMinutes >= 10.0)
          {
             subui.CellTimeH.Foreground = subdata.ColorFore;
             subui.CellTimeM.Foreground = subdata.ColorFore;
             subui.CellTimeH.Text = ((int)subdata.PeriodMinutes / 60).ToString();
             subui.CellTimeM.Text = $"{((int)subdata.PeriodMinutes % 60):D2}";
          }
-         else if (!string.IsNullOrEmpty(subdata.CellTitle))
-         {
-            subui.CellTimeM.Foreground = subdata.ColorBack;
-            subui.CellTimeM.Text = subdata.CellTitle;
-         }
 
-         subui.StartTime.Visibility = (subdata.PeriodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-         subui.EndTime.Visibility = (subdata.PeriodMinutes >= 45) ? Visibility.Visible : Visibility.Collapsed;
-         if (subdata.PeriodMinutes >= 45)
+         subui.StartTime.Visibility = (subdata.PeriodMinutes >= 45 && string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Collapsed;
+         subui.EndTime.Visibility = (subdata.PeriodMinutes >= 45 && string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Collapsed;
+         if (subdata.PeriodMinutes >= 45 && string.IsNullOrEmpty(subdata.CellTitle))
          {
             subui.StartTime.Foreground = subdata.ColorBack;
             subui.EndTime.Foreground = subdata.ColorBack;
@@ -524,9 +524,6 @@ namespace Tildetool.Time
       double? DailyRow_Pct1 = null;
       public void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
       {
-         if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
-            return;
-         Parent.DailyRowHover.Visibility = Visibility.Visible;
          DailyRow_Pct1 = null;
          TimeAreaHotspot_MouseMove(sender, e);
       }
@@ -540,9 +537,6 @@ namespace Tildetool.Time
 
       public void TimeAreaHotspot_MouseMove(object sender, MouseEventArgs e)
       {
-         if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
-            return;
-
          Point pos = e.GetPosition(Parent.TimeAreaHotspot);
          double pctX = pos.X / Parent.TimeAreaHotspot.RenderSize.Width;
          if (DailyRow_Pct1 == null)
@@ -553,6 +547,7 @@ namespace Tildetool.Time
             DateTime dayBegin = new DateTime(Parent.DailyDay.Year, Parent.DailyDay.Month, Parent.DailyDay.Day, 0, 0, 0);
             DateTime periodBegin = dayBegin.AddHours(Parent.TimeBar.MinHour + (pctX * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
 
+            Parent.DailyRowHover.Visibility = Visibility.Visible;
             Parent.DailyRowHoverR.Visibility = Visibility.Collapsed;
             Parent.DailyRowHoverL.Visibility = Visibility.Visible;
             FreeGrid.SetLeft(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Percent, pctX));
@@ -576,16 +571,17 @@ namespace Tildetool.Time
             FreeGrid.SetWidth(Parent.DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, pctMax - pctMin));
 
             bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
-            bool tooShort = (periodEnd - periodBegin).TotalMinutes < 2.0;
+            bool tooShort = (periodEnd - periodBegin).TotalMinutes < 1.0;
             Parent.DailyRowHover.Background = new SolidColorBrush(Extension.FromArgb(
                isSchedule ? (uint)0x60282485
                : tooShort ? (uint)0x60852428
                : (uint)0x60248528));
 
+            Parent.DailyRowHover.Visibility = Visibility.Visible;
             Parent.DailyRowHoverL.Visibility = Visibility.Visible;
             Parent.DailyRowHoverR.Visibility = Visibility.Visible;
             FreeGrid.SetLeft(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Pixel, 0));
-            FreeGrid.SetWidth(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Percent, pctMin));
+            FreeGrid.SetWidth(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Percent, Math.Max(pctMin, 0)));
             Parent.DailyRowHoverL.HorizontalAlignment = HorizontalAlignment.Right;
             Parent.DailyRowHoverL.Margin = new Thickness(0, -28, 0, 0);
             FreeGrid.SetLeft(Parent.DailyRowHoverR, new PercentValue(PercentValue.ModeType.Percent, pctMax));
@@ -701,11 +697,9 @@ namespace Tildetool.Time
          DailyRow_Pct1 = null;
          GapsBegin = null;
          GapsEnd = null;
-         Parent.DailyRowHover.Visibility = Visibility.Collapsed;
-         Parent.DailyRowHoverL.Visibility = Visibility.Collapsed;
-         Parent.DailyRowHoverR.Visibility = Visibility.Collapsed;
+         TimeAreaHotspot_MouseMove(sender, e);
 
-         if ((periodEnd - periodBegin).TotalMinutes < 2.0)
+         if ((periodEnd - periodBegin).TotalMinutes < 1.0)
             return;
 
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
