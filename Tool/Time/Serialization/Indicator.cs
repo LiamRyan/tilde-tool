@@ -48,5 +48,48 @@ namespace Tildetool.Time.Serialization
             return _Offset;
          }
       }
+
+      public int GetIndex(double value)
+         => (int)Math.Round(value) + Offset;
+
+      public IndicatorValue GetValue(double value)
+      {
+         int index = (int)Math.Round(value) + Offset;
+         if (index < 0 || index >= Values.Length)
+            return null;
+
+         return Values[index];
+      }
+
+      Color GetColor(double value, byte alpha, System.Func<IndicatorValue, byte, Color> fnGetColor)
+      {
+         int index = (int)Math.Round(value) + Offset;
+         if (index < 0 || index >= Values.Length)
+            return new();
+
+         IndicatorValue valueCls = Values[index];
+         Color baseColor = fnGetColor(valueCls, alpha);
+
+         double valueRounded = Math.Round(value);
+         if (value < valueRounded && index > 0)
+         {
+            IndicatorValue altValueCls = Values[index - 1];
+            Color altColor = fnGetColor(altValueCls, alpha);
+            return baseColor.Lerp(altColor, 0.5f * (float)(valueRounded - value));
+         }
+         if (value > valueRounded && index + 1 < Values.Length)
+         {
+            IndicatorValue altValueCls = Values[index + 1];
+            Color altColor = fnGetColor(altValueCls, alpha);
+            return baseColor.Lerp(altColor, 0.5f * (float)(value - valueRounded));
+         }
+         return baseColor;
+      }
+
+      public Color GetColorBack(double value, byte alpha = 0xFF)
+         => GetColor(value, alpha, (valueCls, alpha) => valueCls.GetColorBack(alpha));
+
+      public Color GetColorFore(double value, byte alpha = 0xFF)
+         => GetColor(value, alpha, (valueCls, alpha) => valueCls.GetColorFore(alpha));
    }
 }

@@ -124,32 +124,30 @@ namespace Tildetool.Time
             IndicatorGraph pane = new IndicatorGraph(root);
 
             List<double> points = new List<double>();
-            List<int> values = new List<int>();
+            List<double> values = new List<double>();
             List<Color> colors = new List<Color>();
             var indicators = TimeManager.Instance.QueryTimeIndicator(periodBegin, periodEnd);
             foreach (TimeIndicator entry in indicators)
             {
                if (data.Name.CompareTo(entry.Category) != 0)
                   continue;
-               IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
                DateTime thisTime = entry.Time.ToLocalTime();
                DateTime thisDayBegin = new DateTime(thisTime.Year, thisTime.Month, thisTime.Day, 0, 0, 0);
                double pct = (thisTime - periodBeginLocal).TotalHours / ((double)periodCount * 7.0 * 24.0);
                points.Add(pct);
                values.Add(entry.Value);
-               colors.Add(value.GetColorBack());
+               colors.Add(TimeManager.Instance.GetIndicator(entry.Category).GetColorBack(entry.Value));
             }
 
-            TimeManager.Instance.QueryAdjacentTimeIndicators(data.Name, periodBegin, periodEnd, out int prevValue, out int nextValue);
+            TimeManager.Instance.QueryAdjacentTimeIndicators(data.Name, periodBegin, periodEnd, out double prevValue, out double nextValue);
             if (points.Count == 0 || points[0] > 0.001)
             {
                points.Insert(0, 0.0);
-               if (prevValue != int.MinValue)
+               if (prevValue != double.MinValue)
                {
-                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, prevValue);
                   values.Insert(0, prevValue);
-                  bool same = points.Count >= 2 && values[0] == values[1];
-                  colors.Insert(0, value.GetColorBack(0xFF));
+                  bool same = points.Count >= 2 && (int)Math.Round(values[0]) == (int)Math.Round(values[1]);
+                  colors.Insert(0, TimeManager.Instance.GetIndicator(data.Name).GetColorBack(prevValue));
                }
                else if (values.Count > 0)
                {
@@ -158,20 +156,18 @@ namespace Tildetool.Time
                }
                else
                {
-                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, 0);
                   values.Add(0);
-                  colors.Add(value.GetColorBack(0x00));
+                  colors.Add(TimeManager.Instance.GetIndicator(data.Name).GetColorBack(0.0, 0x00));
                }
             }
             if (points[^1] < 0.999)
             {
-               if (nextValue != int.MinValue)
+               if (nextValue != double.MinValue)
                {
-                  IndicatorValue value = TimeManager.Instance.GetIndicatorValue(data.Name, nextValue);
                   points.Add(1.0);
                   values.Add(nextValue);
-                  bool same = values.Count >= 2 && (int)values[^1] == (int)values[^2];
-                  colors.Add(value.GetColorBack(0xFF));
+                  bool same = values.Count >= 2 && (int)Math.Round(values[^1]) == (int)Math.Round(values[^2]);
+                  colors.Add(TimeManager.Instance.GetIndicator(data.Name).GetColorBack(nextValue));
                }
                else
                {
@@ -207,7 +203,7 @@ namespace Tildetool.Time
                brush.GradientStops.Add(new GradientStop(colors[o], points[o]));
             pane.IndicatorGraphLine.Stroke = brush;
 
-            List<int> valuesSet = values.Distinct().ToList();
+            List<int> valuesSet = values.Select(v => (int)Math.Round(v)).Distinct().ToList();
             valuesSet.Sort();
             int minValue = valuesSet.Min();
             int maxValue = valuesSet.Max();

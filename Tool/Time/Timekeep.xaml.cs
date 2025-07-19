@@ -450,6 +450,15 @@ namespace Tildetool.Time
       private void IndicatorPanel_MouseMove(object sender, MouseEventArgs e)
          => IndicatorBar.IndicatorPanel_MouseMove(sender, e);
 
+      private void IndicatorSlider_MouseEnter(object sender, MouseEventArgs e)
+         => IndicatorBar.IndicatorSlider_MouseEnter(sender, e);
+      private void IndicatorSlider_MouseLeave(object sender, MouseEventArgs e)
+         => IndicatorBar.IndicatorSlider_MouseLeave(sender, e);
+      private void IndicatorSlider_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+         => IndicatorBar.IndicatorSlider_MouseLeftButtonDown(sender, e);
+      private void IndicatorSlider_MouseMove(object sender, MouseEventArgs e)
+         => IndicatorBar.IndicatorSlider_MouseMove(sender, e);
+
       private void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
          => TimeBar?.TimeAreaHotspot_MouseEnter(sender, e);
       private void TimeAreaHotspot_MouseLeave(object sender, MouseEventArgs e)

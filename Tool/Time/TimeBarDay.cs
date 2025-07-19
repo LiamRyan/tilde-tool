@@ -223,10 +223,10 @@ namespace Tildetool.Time
             StackPanelShift.SetAlong(content, pct);
 
             IndicatorCtrl ctrl = new IndicatorCtrl(root);
-            IndicatorValue value = TimeManager.Instance.GetIndicatorValue(entry.Category, entry.Value);
-            (root as Panel).Background = new SolidColorBrush(value.GetColorBack(0x58));
-            ctrl.Icon.Foreground = new SolidColorBrush(value.GetColorFore());
-            ctrl.Text.Foreground = new SolidColorBrush(value.GetColorBack());
+            TimeManager.Instance.TryGetIndicatorValue(entry.Category, entry.Value, out Indicator? indicator, out IndicatorValue? value);
+            (root as Panel).Background = new SolidColorBrush(indicator.GetColorBack(entry.Value, 0x58));
+            ctrl.Icon.Foreground = new SolidColorBrush(indicator.GetColorFore(entry.Value));
+            ctrl.Text.Foreground = new SolidColorBrush(indicator.GetColorBack(entry.Value));
             ctrl.Icon.Text = value.Icon;
 
             bool isNew = already.Add(value);

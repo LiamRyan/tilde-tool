@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Markup;
+using System.Windows.Media;
 using Tildetool.Time.Serialization;
 
 namespace Tildetool.Time
@@ -34,7 +36,7 @@ namespace Tildetool.Time
    public class TimeIndicator
    {
       public string Category;
-      public int Value;
+      public double Value;
       public DateTime Time;  //utc
       public float Hour => (float)Time.ToLocalTime().TimeOfDay.TotalHours;
    }
@@ -53,26 +55,27 @@ namespace Tildetool.Time
       public Dictionary<string, Indicator> IndicatorByCategory;
       public Dictionary<string, Indicator> IndicatorByHotkey;
 
-      public IndicatorValue GetIndicatorValue(string category, int value)
+      public Indicator GetIndicator(string category)
       {
-         if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
-         {
-            int index = value + indicator.Offset;
-            if (index >= 0 && index < indicator.Values.Length)
-               return indicator.Values[index];
-         }
-         return null;
-      }
-      public string GetIndicatorIcon(string category, int value)
-      {
-         IndicatorValue valueCls = GetIndicatorValue(category, value);
-         return valueCls?.Icon ?? value.ToString();
+         return IndicatorByCategory.GetValueOrDefault(category);
       }
 
-      public string GetIndicatorName(string category, int value)
+      public IndicatorValue GetIndicatorValue(string category, double value)
       {
-         IndicatorValue valueCls = GetIndicatorValue(category, value);
-         return valueCls?.Name ?? value.ToString();
+         if (IndicatorByCategory.TryGetValue(category, out Indicator indicator))
+            return indicator.GetValue(value);
+         return null;
+      }
+
+      public bool TryGetIndicatorValue(string category, double value, out Indicator indicator, out IndicatorValue valueCls)
+      {
+         if (!IndicatorByCategory.TryGetValue(category, out indicator))
+         {
+            valueCls = null;
+            return false;
+         }
+         valueCls = indicator.GetValue(value);
+         return valueCls != null;
       }
 
       // Raw data
@@ -332,7 +335,7 @@ namespace Tildetool.Time
          // Create the tables.
          Query("CREATE TABLE IF NOT EXISTS \"time_period\" ( \"id\" INTEGER, \"project_id\" INTEGER, \"start_time\" TEXT, \"end_time\" TEXT, \"on_computer\" INTEGER DEFAULT 0, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
          Query("CREATE TABLE IF NOT EXISTS \"time_event\" ( \"id\" INTEGER, \"description\" TEXT, \"start_time\" TEXT, \"end_time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
-         Query("CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" INTEGER, \"time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
+         Query("CREATE TABLE IF NOT EXISTS \"time_indicator\" ( \"id\" INTEGER, \"category\" TEXT, \"value\" REAL, \"time\" TEXT, \"notes\" TEXT, PRIMARY KEY(\"id\" AUTOINCREMENT) );");
 
          // Create the indices.
          Query("CREATE INDEX IF NOT EXISTS \"time_event_start_time\" ON \"time_event\" ( \"start_time\" ASC );");
@@ -622,7 +625,7 @@ namespace Tildetool.Time
             while (reader.Read())
             {
                string category = reader.GetString(0);
-               int value = reader.GetInt32(1);
+               double value = reader.GetDouble(1);
                DateTime time = reader.GetDateTime(2);
                result.Add(new TimeIndicator { Category = category, Value = value, Time = time });
             }
@@ -631,7 +634,7 @@ namespace Tildetool.Time
          return result;
       }
 
-      public void QueryLastTimeIndicators(out int[] values, out DateTime[] datesUtc)
+      public void QueryLastTimeIndicators(out double[] values, out DateTime[] datesUtc)
       {
          Dictionary<int, int> idToIndex = new Dictionary<int, int>();
          using (SqliteCommand command = _Sqlite.CreateCommand())
@@ -651,11 +654,11 @@ namespace Tildetool.Time
                }
          }
 
-         values = new int[Indicators.Length];
+         values = new double[Indicators.Length];
          datesUtc = new DateTime[Indicators.Length];
          for (int i = 0; i < values.Length; i++)
          {
-            values[i] = int.MinValue;
+            values[i] = double.MinValue;
             datesUtc[i] = DateTime.MinValue;
          }
          using (SqliteCommand command = _Sqlite.CreateCommand())
@@ -670,7 +673,7 @@ namespace Tildetool.Time
                while (reader.Read())
                {
                   int id = reader.GetInt32(0);
-                  int value = reader.GetInt32(1);
+                  double value = reader.GetDouble(1);
                   DateTime date = reader.GetDateTime(2);
                   int index = idToIndex[id];
                   values[index] = value;
@@ -679,7 +682,7 @@ namespace Tildetool.Time
          }
       }
 
-      public void QueryAdjacentTimeIndicators(string category, DateTime minTimeLocal, DateTime maxTimeLocal, out int prevValue, out int nextValue)
+      public void QueryAdjacentTimeIndicators(string category, DateTime minTimeLocal, DateTime maxTimeLocal, out double prevValue, out double nextValue)
       {
          int minId = -1;
          using (SqliteCommand command = _Sqlite.CreateCommand())
@@ -705,8 +708,8 @@ namespace Tildetool.Time
                      maxId = reader.GetInt32(0);
          }
 
-         prevValue = int.MinValue;
-         nextValue = int.MinValue;
+         prevValue = double.MinValue;
+         nextValue = double.MinValue;
          using (SqliteCommand command = _Sqlite.CreateCommand())
          {
             command.CommandText = $"SELECT id,value FROM time_indicator WHERE id IN ($minId, $maxId);";
@@ -717,7 +720,7 @@ namespace Tildetool.Time
                while (reader.Read())
                {
                   int id = reader.GetInt32(0);
-                  int value = reader.GetInt32(1);
+                  double value = reader.GetInt32(1);
                   if (id == minId)
                      prevValue = value;
                   else

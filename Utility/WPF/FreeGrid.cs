@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -112,20 +113,48 @@ namespace Tildetool.WPF
       public static PercentValue GetLeft(UIElement element) => (PercentValue)element.GetValue(LeftProperty);
       public static void SetLeft(UIElement element, PercentValue value) => element.SetValue(LeftProperty, value);
 
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetLeftPct(UIElement element, double pct) => SetLeft(element, new PercentValue(PercentValue.ModeType.Percent, pct));
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetLeftPix(UIElement element, double pix) => SetLeft(element, new PercentValue(PercentValue.ModeType.Pixel, pix));
+
+
       public static readonly DependencyProperty TopProperty = DependencyProperty.RegisterAttached("Top", typeof(PercentValue), typeof(FreeGrid),
          new FrameworkPropertyMetadata(new PercentValue(PercentValue.ModeType.Percent, 0.0), OnAttachedPropertyChanged));
       public static PercentValue GetTop(UIElement element) => (PercentValue)element.GetValue(TopProperty);
       public static void SetTop(UIElement element, PercentValue value) => element.SetValue(TopProperty, value);
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetTopPct(UIElement element, double pct) => SetTop(element, new PercentValue(PercentValue.ModeType.Percent, pct));
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetTopPix(UIElement element, double pix) => SetTop(element, new PercentValue(PercentValue.ModeType.Pixel, pix));
+
 
       new public static readonly DependencyProperty WidthProperty = DependencyProperty.RegisterAttached("Width", typeof(PercentValue), typeof(FreeGrid),
          new FrameworkPropertyMetadata(new PercentValue(PercentValue.ModeType.Percent, 1.0), OnAttachedPropertyChanged));
       public static PercentValue GetWidth(UIElement element) => (PercentValue)element.GetValue(WidthProperty);
       public static void SetWidth(UIElement element, PercentValue value) => element.SetValue(WidthProperty, value);
 
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetWidthPct(UIElement element, double pct) => SetWidth(element, new PercentValue(PercentValue.ModeType.Percent, pct));
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetWidthPix(UIElement element, double pix) => SetWidth(element, new PercentValue(PercentValue.ModeType.Pixel, pix));
+
+
       new public static readonly DependencyProperty HeightProperty = DependencyProperty.RegisterAttached("Height", typeof(PercentValue), typeof(FreeGrid),
          new FrameworkPropertyMetadata(new PercentValue(PercentValue.ModeType.Percent, 1.0), OnAttachedPropertyChanged));
       public static PercentValue GetHeight(UIElement element) => (PercentValue)element.GetValue(HeightProperty);
       public static void SetHeight(UIElement element, PercentValue value) => element.SetValue(HeightProperty, value);
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetHeightPct(UIElement element, double pct) => SetHeight(element, new PercentValue(PercentValue.ModeType.Percent, pct));
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public static void SetHeightPix(UIElement element, double pix) => SetHeight(element, new PercentValue(PercentValue.ModeType.Pixel, pix));
+
 
       private static void OnAttachedPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
       {

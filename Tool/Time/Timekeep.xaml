@@ -368,8 +368,34 @@
                         </StackPanel>
                     </StackPanel>
                 </Grid>
-                <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="20,10,20,0">
-                    <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
+                <StackPanel x:Name="IndicatorPane" Orientation="Horizontal" Margin="20,10,20,0">
+                    <Grid x:Name="IndicatorSlider" Width="200"  MouseEnter="IndicatorSlider_MouseEnter" MouseLeave="IndicatorSlider_MouseLeave" MouseMove="IndicatorSlider_MouseMove" MouseLeftButtonDown="IndicatorSlider_MouseLeftButtonDown">
+                        <Frame x:Name="SliderBackfill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#40449637"></Frame>
+                        <Grid Margin="4,0,4,0" VerticalAlignment="Top">
+                            <tildetool:FreeGrid>
+                                <TextBlock x:Name="SliderPaneName" Text="Free Time" Margin="-100,0,-100,0" tildetool:FreeGrid.Left="33%" tildetool:FreeGrid.Width="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="12"/>
+                            </tildetool:FreeGrid>
+                        </Grid>
+                        <Grid Height="18" Margin="4,14,4,4" VerticalAlignment="Bottom">
+                            <tildetool:FreeGrid x:Name="IndicatorSliderGrid">
+                                <Grid x:Name="SliderBar1" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar2" Margin="0,2,0,2" tildetool:FreeGrid.Left="25%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar3" Margin="0,2,0,2" tildetool:FreeGrid.Left="50%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar4" Margin="0,2,0,2" tildetool:FreeGrid.Left="75%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar5" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar6" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar7" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar8" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar9" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar10" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderBar11" Margin="0,2,0,2" tildetool:FreeGrid.Left="0%" tildetool:FreeGrid.Width="25%" VerticalAlignment="Stretch" Background="#112011"></Grid>
+                                <Grid x:Name="SliderLine" Width="1" Margin="0,-4,0,-4" tildetool:FreeGrid.Left="33%" tildetool:FreeGrid.Width="1" VerticalAlignment="Stretch" Background="#449637"></Grid>
+                            </tildetool:FreeGrid>
+                        </Grid>
+                    </Grid>
+                    <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="0,0,0,0">
+                        <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
+                    </StackPanel>
                 </StackPanel>
                 <Grid Height="20"></Grid>
             </StackPanel>
