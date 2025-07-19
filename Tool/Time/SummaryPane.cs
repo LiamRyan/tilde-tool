@@ -186,7 +186,7 @@ namespace Tildetool.Time
                if (minPerDay / 60 > 0)
                   subui.TimeM.Text = $"{min % 60:D2} {minPerDay / 60}h{minPerDay % 60:D2}m";
                else
-                  subui.TimeM.Text = $"{min % 60:D2} {minPerDay % 60:D2}m";
+                  subui.TimeM.Text = $"{min % 60} {minPerDay % 60}m";
 
                double pctBegin = beginPct;
                if (!string.IsNullOrEmpty(category))
@@ -230,7 +230,7 @@ namespace Tildetool.Time
                int min = (int)Math.Round(hours * 60.0);
                subui.TimeH.Visibility = (min >= 60) ? Visibility.Visible : Visibility.Collapsed;
                subui.TimeH.Text = $"{min / 60}";
-               subui.TimeM.Text = $"{min % 60:D2}";
+               subui.TimeM.Text = min >= 60 ? $"{min % 60:D2}" : $"{min % 60}";
 
                const double projectPad = 0.0015;
                double catTotalW = categoryW[category];
