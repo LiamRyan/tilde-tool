@@ -609,6 +609,9 @@ namespace Tildetool.Time
             return;
 
          DateTime utcNow = DateTime.UtcNow;
+         if (TimeManager.Instance.CurrentStartTime < utcNow)
+            utcNow = TimeManager.Instance.CurrentStartTime;
+
          if (periodBegin > utcNow)
             periodBegin = utcNow;
          if (periodEnd > utcNow)
