@@ -369,7 +369,7 @@ namespace Tildetool.Time
                if (!reader.IsDBNull(2))
                   identToCategoryId[ident] = reader.GetInt32(2);
                ProjectIdentToOrder[ident] = reader.GetInt32(3);
-               if (reader.GetInt32(3) > 0)
+               if (reader.GetInt32(4) > 0)
                   ProjectIdentAutoSuggest.Add(ident);
             }
          foreach (var kv in identToCategoryId)
