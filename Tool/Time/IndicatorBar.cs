@@ -162,10 +162,14 @@ namespace Tildetool.Time
       #endregion
       #region Hotkey Input
 
+      const double TickCount = 12.0;
+
       public bool HandleKeyDown(object sender, KeyEventArgs e)
       {
          if (FocusCategory != null)
          {
+            double value = Math.Round(FocusCategoryValue);
+            double subvalue = Math.Round((FocusCategoryValue - value + 0.49) * TickCount / 0.98);
             switch (e.Key)
             {
                case Key.Escape:
@@ -177,24 +181,38 @@ namespace Tildetool.Time
                   return true;
 
                case Key.Up:
-                  IncValue();
+                  SetIndicatorValue(value + 1.0);
                   return true;
 
                case Key.Down:
-                  DecValue();
+                  SetIndicatorValue(value - 1.0);
+                  return true;
+
+               case Key.Left:
+                  if (subvalue <= 0.5)
+                     SetIndicatorValue(value - 1.0 + 0.49);
+                  else
+                     SetIndicatorValue(FocusCategoryValue - (0.98 / TickCount));
+                  return true;
+
+               case Key.Right:
+                  if (subvalue >= TickCount - 0.5)
+                     SetIndicatorValue(value + 1.0 - 0.49);
+                  else
+                     SetIndicatorValue(FocusCategoryValue + (0.98 / TickCount));
                   return true;
             }
 
-            if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            if (e.Key >= Key.D1 && e.Key <= Key.D9)
             {
-               double subpct = e.Key == Key.D0 ? 1.0 : (e.Key - Key.D1) / 9.0;
+               double subpct = (e.Key - Key.D1) / TickCount;
                FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.49 + (0.98 * subpct);
                Refresh();
                return true;
             }
-            else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
+            else if (e.Key >= Key.NumPad1 && e.Key <= Key.NumPad9)
             {
-               double subpct = e.Key == Key.NumPad0 ? 1.0 : (e.Key - Key.NumPad1) / 9.0;
+               double subpct = (e.Key - Key.NumPad1) / TickCount;
                FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.49 + (0.98 * subpct);
                Refresh();
                return true;
@@ -251,15 +269,10 @@ namespace Tildetool.Time
          Refresh();
       }
 
-      public void IncValue()
+      public void SetIndicatorValue(double value)
       {
-         FocusCategoryValue = Math.Min(FocusCategoryValue + 1, 0.49 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
-         Refresh();
-      }
-
-      public void DecValue()
-      {
-         FocusCategoryValue = Math.Max(FocusCategoryValue - 1, -FocusCategory.Offset - 0.49);
+         FocusCategoryValue = Math.Clamp(value,
+            -FocusCategory.Offset - 0.49, 0.49 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
          Refresh();
       }
 
