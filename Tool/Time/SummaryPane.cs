@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Tildetool.Time.Serialization;
 using Tildetool.WPF;
 
@@ -29,6 +30,7 @@ namespace Tildetool.Time
          public Grid Container;
          public Grid Pane;
          public TextBlock Name;
+         public Grid Block;
          public TextBlock TimeH;
          public TextBlock TimeM;
          public SummaryBlockT(FrameworkElement root) : base(root) { }
@@ -38,6 +40,7 @@ namespace Tildetool.Time
          public Grid Container;
          public Grid Pane;
          public TextBlock Name;
+         public Grid Block;
          public TextBlock TimeH;
          public TextBlock TimeM;
          public SummaryBlockB(FrameworkElement root) : base(root) { }
@@ -45,6 +48,54 @@ namespace Tildetool.Time
 
       Dictionary<FrameworkElement, string> CategoryByRoot = new();
       string FocusCategory = null;
+
+      static readonly (SolidColorBrush, SolidColorBrush, SolidColorBrush) ColorLtGreen = (new(Extension.FromRgb(0x142C18)), new(Extension.FromRgb(0x64A657)), new(Extension.FromRgb(0xC3F1AF)));
+      static readonly (SolidColorBrush, SolidColorBrush, SolidColorBrush) ColorGreen = (new(Extension.FromRgb(0x042508)), new(Extension.FromRgb(0x449637)), new(Extension.FromRgb(0xC3F1AF)));
+      static readonly (SolidColorBrush, SolidColorBrush, SolidColorBrush) ColorYellow = (new(Extension.FromRgb(0x252504)), new(Extension.FromRgb(0x969237)), new(Extension.FromRgb(0xF1EEAF)));
+      static readonly (SolidColorBrush, SolidColorBrush, SolidColorBrush) ColorRed = (new(Extension.FromRgb(0x251004)), new(Extension.FromRgb(0x963737)), new(Extension.FromRgb(0xF1AFAF)));
+      string GetTargetTime(string category, double hours, Grid block, TextBlock name, TextBlock timeH, TextBlock timeM, bool forceIgnore = false)
+      {
+         string targetTimeText = "";
+         (SolidColorBrush, SolidColorBrush, SolidColorBrush) color;
+         if (forceIgnore)
+            color = ColorGreen;
+         else if (TimeManager.Instance.ProjectIdentTargetTime.TryGetValue(category, out double targetTimeHours))
+         {
+            double leeway = Math.Min(targetTimeHours * (0.25 / 2.0), 0.25);
+
+            string toHHMM(double hours, bool delta = false)
+            {
+               if (hours < 0.0)
+                  return $"-{toHHMM(-hours)}";
+               string textHours = (hours >= 1.0) ? $"{(int)Math.Floor(hours)}h" : "";
+               int mins = ((int)Math.Floor(hours * 60.0)) % 60;
+               string textMins = mins != 0 ? $"{mins}m" : "";
+               return $"{(delta ? "+" : "")}{textHours}{textMins}";
+            }
+            if (!string.IsNullOrEmpty(FocusCategory))
+               targetTimeText = $" / {toHHMM(targetTimeHours)}  {toHHMM(hours - targetTimeHours, delta: true)}";
+            else if (hours >= targetTimeHours + leeway || hours <= targetTimeHours - leeway)
+               targetTimeText += $"  {toHHMM(hours - targetTimeHours, delta: true)}";
+
+            if (hours >= targetTimeHours * 1.2)
+               color = ColorRed;
+            else if (hours >= targetTimeHours + leeway)
+               color = ColorYellow;
+            else if (hours >= targetTimeHours - leeway)
+               color = ColorGreen;
+            else
+               color = ColorLtGreen;
+         }
+         else
+            color = ColorGreen;
+
+         block.Background = color.Item1;
+         name.Foreground = color.Item3;
+         timeH.Foreground = color.Item2;
+         timeM.Foreground = color.Item2;
+
+         return targetTimeText;
+      }
 
       public void Refresh(DateTime day)
       {
@@ -98,7 +149,8 @@ namespace Tildetool.Time
             DateTime thisPeriodEndLocal = thisPeriodBeginLocal.AddDays(6);
             thisPeriodEndLocal = thisPeriodEndLocal < DateTime.Now ? thisPeriodEndLocal : DateTime.Now;
             ui.SummaryDate.Text = $"{periodBeginLocal.AddDays((i * 7) + 1).ToString("yy/MM/dd")} to {thisPeriodEndLocal.ToString("yy/MM/dd")}";
-            double totalHours = (thisPeriodEndLocal - thisPeriodBeginLocal).TotalHours;
+            double periodHours = (thisPeriodEndLocal - thisPeriodBeginLocal).TotalHours;
+            double totalHours = periodHours;
 
             // If we have a focus category, we filter down to projects that are nested in it.
             if (!string.IsNullOrEmpty(FocusCategory))
@@ -180,13 +232,20 @@ namespace Tildetool.Time
                double hours = hourByCategory[category];
                double pctWidth = pctFactor * pctByCategory[category];
 
-               int min = (int)Math.Round(hours * 60.0);
-               int minPerDay = (int)Math.Round(hours * 60.0 * 24.0 / totalHours);
-               subui.TimeH.Text = $"{min / 60}";
-               if (minPerDay / 60 > 0)
-                  subui.TimeM.Text = $"{min % 60:D2} {minPerDay / 60}h{minPerDay % 60:D2}m";
+               string targetTimeText = GetTargetTime(category, hours, subui.Block, subui.Name, subui.TimeH, subui.TimeM);
+
+               if (string.Compare(category, "Sleep") != 0)
+               {
+                  int min = (int)Math.Round(hours * 60.0);
+                  subui.TimeH.Text = $"{min / 60}";
+                  subui.TimeM.Text = $"{min % 60:D2}{targetTimeText}";
+               }
                else
-                  subui.TimeM.Text = $"{min % 60} {minPerDay % 60}m";
+               {
+                  int minPerDay = (int)Math.Round(hours * 60.0 * 24.0 / periodHours);
+                  subui.TimeH.Text = $"{minPerDay / 60}";
+                  subui.TimeM.Text = $"{minPerDay % 60:D2} / day";
+               }
 
                double pctBegin = beginPct;
                if (!string.IsNullOrEmpty(category))
@@ -227,10 +286,13 @@ namespace Tildetool.Time
                maxHeight = Math.Max(maxHeight, subui.Name.ActualHeight);
                subui.Container.Height = Math.Max(66, subui.Name.ActualWidth * Math.Sin(60.0 * Math.PI / 180.0));
 
+               string targetTimeText = GetTargetTime(ident, hours, subui.Block, subui.Name, subui.TimeH, subui.TimeM,
+                  forceIgnore: string.Compare(category, ident) == 0);
+
                int min = (int)Math.Round(hours * 60.0);
                subui.TimeH.Visibility = (min >= 60) ? Visibility.Visible : Visibility.Collapsed;
                subui.TimeH.Text = $"{min / 60}";
-               subui.TimeM.Text = min >= 60 ? $"{min % 60:D2}" : $"{min % 60}";
+               subui.TimeM.Text = min >= 60 ? $"{min % 60:D2}{targetTimeText}" : $"{min % 60}{targetTimeText}";
 
                const double projectPad = 0.0015;
                double catTotalW = categoryW[category];

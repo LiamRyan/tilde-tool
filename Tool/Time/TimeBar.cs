@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Documents;
 using Tildetool.Time.Serialization;
 using Tildetool.WPF;
 
@@ -490,19 +491,26 @@ namespace Tildetool.Time
             subui.ProjectName.Text = subdata.CellProject;
          }
 
-         subui.CellTimeH.Visibility = (subdata.PeriodMinutes >= 10.0 && string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
-         subui.CellTimeM.Visibility = (subdata.PeriodMinutes >= 10.0 || string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Hidden;
          if (!string.IsNullOrEmpty(subdata.CellTitle))
          {
+            subui.CellTimeH.Visibility = Visibility.Collapsed;
+            subui.CellTimeM.Visibility = Visibility.Visible;
             subui.CellTimeM.Foreground = subdata.ColorBack;
             subui.CellTimeM.Text = subdata.CellTitle;
          }
-         else if (subdata.PeriodMinutes >= 10.0)
+         else if (subdata.PeriodMinutes >= 4.0)
          {
+            subui.CellTimeH.Visibility = subdata.PeriodMinutes >= 60.0 ? Visibility.Visible : Visibility.Collapsed;
+            subui.CellTimeM.Visibility = Visibility.Visible;
             subui.CellTimeH.Foreground = subdata.ColorFore;
             subui.CellTimeM.Foreground = subdata.ColorFore;
             subui.CellTimeH.Text = ((int)subdata.PeriodMinutes / 60).ToString();
-            subui.CellTimeM.Text = $"{((int)subdata.PeriodMinutes % 60):D2}";
+            subui.CellTimeM.Text = subdata.PeriodMinutes >= 60.0 ? $"{((int)subdata.PeriodMinutes % 60):D2}" : $"{((int)subdata.PeriodMinutes % 60)}";
+         }
+         else
+         {
+            subui.CellTimeH.Visibility = Visibility.Collapsed;
+            subui.CellTimeM.Visibility = Visibility.Collapsed;
          }
 
          subui.StartTime.Visibility = (subdata.PeriodMinutes >= 45 && string.IsNullOrEmpty(subdata.CellTitle)) ? Visibility.Visible : Visibility.Collapsed;
@@ -530,6 +538,7 @@ namespace Tildetool.Time
       {
          Parent.DailyRowHover.Visibility = Visibility.Collapsed;
          Parent.DailyRowHoverL.Visibility = Visibility.Collapsed;
+         Parent.DailyRowHoverM.Visibility = Visibility.Collapsed;
          Parent.DailyRowHoverR.Visibility = Visibility.Collapsed;
       }
 
@@ -547,12 +556,15 @@ namespace Tildetool.Time
 
             Parent.DailyRowHover.Visibility = Visibility.Visible;
             Parent.DailyRowHoverR.Visibility = Visibility.Collapsed;
+            Parent.DailyRowHoverM.Visibility = Visibility.Collapsed;
             Parent.DailyRowHoverL.Visibility = Visibility.Visible;
             FreeGrid.SetLeft(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Percent, pctX));
             FreeGrid.SetWidth(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Pixel, 50));
             Parent.DailyRowHoverL.Margin = new Thickness(-50, -28, 0, 0);
             Parent.DailyRowHoverL.HorizontalAlignment = HorizontalAlignment.Center;
-            Parent.DailyRowHoverL.Text = $"{periodBegin.ToLocalTime().Hour:D2}{periodBegin.ToLocalTime().Minute:D2}";
+            Parent.DailyRowHoverL.Inlines.Clear();
+            Parent.DailyRowHoverL.Inlines.Add(new Run($"{periodBegin.ToLocalTime().Hour:D2}"));
+            Parent.DailyRowHoverL.Inlines.Add(new Run($"{periodBegin.ToLocalTime().Minute:D2}") { FontSize = 8 });
          }
          else
          {
@@ -577,14 +589,25 @@ namespace Tildetool.Time
 
             Parent.DailyRowHover.Visibility = Visibility.Visible;
             Parent.DailyRowHoverL.Visibility = Visibility.Visible;
+            Parent.DailyRowHoverM.Visibility = Visibility.Visible;
             Parent.DailyRowHoverR.Visibility = Visibility.Visible;
             FreeGrid.SetLeft(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Pixel, 0));
             FreeGrid.SetWidth(Parent.DailyRowHoverL, new PercentValue(PercentValue.ModeType.Percent, Math.Max(pctMin, 0)));
             Parent.DailyRowHoverL.HorizontalAlignment = HorizontalAlignment.Right;
-            Parent.DailyRowHoverL.Margin = new Thickness(0, -28, 0, 0);
+            Parent.DailyRowHoverL.Margin = new Thickness(0, -28, 8, 0);
+            FreeGrid.SetLeft(Parent.DailyRowHoverM, new PercentValue(PercentValue.ModeType.Percent, pctMin));
+            FreeGrid.SetWidth(Parent.DailyRowHoverM, new PercentValue(PercentValue.ModeType.Percent, Math.Max(pctMax - pctMin, 0)));
             FreeGrid.SetLeft(Parent.DailyRowHoverR, new PercentValue(PercentValue.ModeType.Percent, pctMax));
-            Parent.DailyRowHoverL.Text = $"{periodMin.ToLocalTime().Hour:D2}{periodMin.ToLocalTime().Minute:D2}";
-            Parent.DailyRowHoverR.Text = $"{periodMax.ToLocalTime().Hour:D2}{periodMax.ToLocalTime().Minute:D2}";
+            Parent.DailyRowHoverL.Inlines.Clear();
+            Parent.DailyRowHoverL.Inlines.Add(new Run($"{periodMin.ToLocalTime().Hour:D2}"));
+            Parent.DailyRowHoverL.Inlines.Add(new Run($"{periodMin.ToLocalTime().Minute:D2}") { FontSize = 8 });
+            Parent.DailyRowHoverM.Inlines.Clear();
+            double totalMinutes = (periodMax - periodMin).TotalMinutes;
+            Parent.DailyRowHoverM.Inlines.Add(new Run($"{(int)Math.Floor(totalMinutes)}"));
+            Parent.DailyRowHoverM.Inlines.Add(new Run($"{(int)Math.Round(totalMinutes * 60.0) % 60:D2}") { FontSize = 8 });
+            Parent.DailyRowHoverR.Inlines.Clear();
+            Parent.DailyRowHoverR.Inlines.Add(new Run($"{periodMax.ToLocalTime().Hour:D2}"));
+            Parent.DailyRowHoverR.Inlines.Add(new Run($"{periodMax.ToLocalTime().Minute:D2}") { FontSize = 8 });
          }
       }
 

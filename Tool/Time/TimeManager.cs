@@ -297,6 +297,7 @@ namespace Tildetool.Time
       public Dictionary<string, string> ProjectIdentToCategory = new();
       public Dictionary<string, int> ProjectIdentToOrder = new();
       public List<string> ProjectIdentAutoSuggest = new();
+      public Dictionary<string, double> ProjectIdentTargetTime = new();
       public void ConnectSqlite()
       {
          if (_Sqlite != null)
@@ -307,7 +308,7 @@ namespace Tildetool.Time
          // Create and populate the project table.
          SqliteCommand command;
          command = _Sqlite.CreateCommand();
-         command.CommandText = "CREATE TABLE IF NOT EXISTS \"project\" ( \"id\"\tINTEGER, \"ident\" TEXT UNIQUE, \"category\" INTEGER, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"auto_suggest\" INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
+         command.CommandText = "CREATE TABLE IF NOT EXISTS \"project\" ( \"id\"\tINTEGER, \"ident\" TEXT UNIQUE, \"category\" INTEGER, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"auto_suggest\" INTEGER NOT NULL DEFAULT 1, \"target_time\" REAL, PRIMARY KEY(\"id\" AUTOINCREMENT) );";
          command.ExecuteNonQuery();
          command.Dispose();
 
@@ -354,9 +355,10 @@ namespace Tildetool.Time
          ProjectIdentToOrder.Clear();
          ProjectIdentToCategory.Clear();
          ProjectIdentAutoSuggest.Clear();
+         ProjectIdentTargetTime.Clear();
 
          var command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT ident, id, category, sort_order, auto_suggest FROM project;";
+         command.CommandText = "SELECT ident, id, category, sort_order, auto_suggest, target_time FROM project;";
          Dictionary<int, string> idToIdent = new();
          Dictionary<string, int> identToCategoryId = new();
          using (var reader = command.ExecuteReader())
@@ -371,6 +373,8 @@ namespace Tildetool.Time
                ProjectIdentToOrder[ident] = reader.GetInt32(3);
                if (reader.GetInt32(4) > 0)
                   ProjectIdentAutoSuggest.Add(ident);
+               if (!reader.IsDBNull(5))
+                  ProjectIdentTargetTime[ident] = reader.GetDouble(5);
             }
          foreach (var kv in identToCategoryId)
             ProjectIdentToCategory[kv.Key] = idToIdent.GetValueOrDefault(kv.Value, null);

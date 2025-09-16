@@ -52,6 +52,9 @@ namespace Tildetool.Time.Serialization
       public int GetIndex(double value)
          => (int)Math.Round(value) + Offset;
 
+      public double GetSubvalue(double value)
+         => value + 0.5 - Math.Round(value);
+
       public IndicatorValue GetValue(double value)
       {
          int index = (int)Math.Round(value) + Offset;

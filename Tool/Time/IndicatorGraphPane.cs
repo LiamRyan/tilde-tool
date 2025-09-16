@@ -12,8 +12,8 @@ using Tildetool.WPF;
 
 namespace Tildetool.Time
 {
-    public class IndicatorGraphPane
-    {
+   public class IndicatorGraphPane
+   {
       public Timekeep Parent;
       public IndicatorGraphPane(Timekeep parent)
       {
@@ -22,14 +22,15 @@ namespace Tildetool.Time
 
       class IndicatorGraph : DataTemplater
       {
-         public Grid Rows;
+         public StackPanel Rows;
          public Path IndicatorGraphLine;
          public IndicatorGraph(FrameworkElement root) : base(root) { }
       }
       class IndicatorRow : DataTemplater
       {
          public Grid RowLine;
-         public TextBlock Title;
+         public TextBlock TitleL;
+         public TextBlock TitleR;
          public IndicatorRow(FrameworkElement root) : base(root) { }
       }
       class IndicatorWorkRow : DataTemplater
@@ -120,8 +121,9 @@ namespace Tildetool.Time
          DataTemplater.Populate(Parent.IndicatorGraphs, templateGraph, indicators, (content, root, i, data) =>
          {
             const double dayLength = 24.0 / ((double)periodCount * 7.0 * 24.0);
-            const double lineHeight = 14.0;
             IndicatorGraph pane = new IndicatorGraph(root);
+
+            Indicator indicator = TimeManager.Instance.GetIndicator(data.Name);
 
             List<double> points = new List<double>();
             List<double> values = new List<double>();
@@ -147,7 +149,7 @@ namespace Tildetool.Time
                {
                   values.Insert(0, prevValue);
                   bool same = points.Count >= 2 && (int)Math.Round(values[0]) == (int)Math.Round(values[1]);
-                  colors.Insert(0, TimeManager.Instance.GetIndicator(data.Name).GetColorBack(prevValue));
+                  colors.Insert(0, indicator.GetColorBack(prevValue));
                }
                else if (values.Count > 0)
                {
@@ -157,7 +159,7 @@ namespace Tildetool.Time
                else
                {
                   values.Add(0);
-                  colors.Add(TimeManager.Instance.GetIndicator(data.Name).GetColorBack(0.0, 0x00));
+                  colors.Add(indicator.GetColorBack(0.0, 0x00));
                }
             }
             if (points[^1] < 0.999)
@@ -167,7 +169,7 @@ namespace Tildetool.Time
                   points.Add(1.0);
                   values.Add(nextValue);
                   bool same = values.Count >= 2 && (int)Math.Round(values[^1]) == (int)Math.Round(values[^2]);
-                  colors.Add(TimeManager.Instance.GetIndicator(data.Name).GetColorBack(nextValue));
+                  colors.Add(indicator.GetColorBack(nextValue));
                }
                else
                {
@@ -190,11 +192,23 @@ namespace Tildetool.Time
 
             PathGeometry geometry = new PathGeometry();
             PathFigure figure = new PathFigure() { IsClosed = false };
-            figure.StartPoint = new Point(points[0], -lineHeight * (values[0] + data.Offset));
+            const double lineHeight = 10.0;
+            const double linePad = 2.0;
+            double getLineY(double value)
+            {
+               int valueIndex = indicator.GetIndex(value);
+               double valueSub = indicator.GetSubvalue(value);
+               double lineY = (lineHeight + linePad) * valueIndex;
+               double lineH = lineHeight * valueSub;
+               return lineY + lineH;
+            }
+            figure.StartPoint = new Point(points[0], -getLineY(values[0]));
             for (int o = 1; o < points.Count; o++)
-               figure.Segments.Add(new LineSegment(new Point(points[o], -lineHeight * (values[o] + data.Offset)), true));
+               figure.Segments.Add(new LineSegment(new Point(points[o], -getLineY(values[o])), true));
             geometry.Figures.Add(figure);
             pane.IndicatorGraphLine.Data = geometry;
+            double maxValue = values.Max();
+            pane.IndicatorGraphLine.Margin = new(0, 3.0 + (lineHeight * (1.0 - indicator.GetSubvalue(maxValue))), 0, 0);
 
             LinearGradientBrush brush = new LinearGradientBrush();
             brush.StartPoint = new Point(0.0, 0.5);
@@ -205,20 +219,16 @@ namespace Tildetool.Time
 
             List<int> valuesSet = values.Select(v => (int)Math.Round(v)).Distinct().ToList();
             valuesSet.Sort();
-            int minValue = valuesSet.Min();
-            int maxValue = valuesSet.Max();
+            valuesSet.Reverse();
             DataTemplater.Populate(pane.Rows, templateRow, valuesSet, (subcontent, subroot, o, index) =>
             {
                IndicatorRow row = new IndicatorRow(subroot);
                IndicatorValue subdata = data.Values[index - data.MinValue];
-               double pct = (maxValue > minValue) ? 1.0 - ((double)(index - minValue) / (double)(maxValue - minValue))
-                  : 0.5;
-               double pctOff = 0.15 * 20.0 / lineHeight;
-               FreeGrid.SetTop(row.RowLine, new PercentValue(PercentValue.ModeType.Percent, pct - pctOff));
-               FreeGrid.SetTop(row.Title, new PercentValue(PercentValue.ModeType.Percent, pct - pctOff));
                row.RowLine.Background = new SolidColorBrush(subdata.GetColorBack(0x20));
-               row.Title.Foreground = new SolidColorBrush(subdata.GetColorBack(0x60));
-               row.Title.Text = subdata.Name;
+               row.TitleL.Foreground = new SolidColorBrush(subdata.GetColorBack(0x60));
+               row.TitleR.Foreground = new SolidColorBrush(subdata.GetColorBack(0x60));
+               row.TitleL.Text = subdata.Name;
+               row.TitleR.Text = subdata.Name;
             });
          });
       }
