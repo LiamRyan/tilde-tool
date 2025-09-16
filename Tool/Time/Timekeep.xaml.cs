@@ -189,13 +189,13 @@ namespace Tildetool.Time
                return;
 
             case Key.Up:
-               DailyDay = DailyDay.AddDays(-7);
+               DailyDay = DailyDay.AddDays(-7 * (CurDailyMode == Timekeep.DailyMode.Summary ? -1 : 1));
                Refresh();
                e.Handled = true;
                return;
 
             case Key.Down:
-               DailyDay = DailyDay.AddDays(7);
+               DailyDay = DailyDay.AddDays(7 * (CurDailyMode == Timekeep.DailyMode.Summary ? -1 : 1));
                Refresh();
                e.Handled = true;
                return;
