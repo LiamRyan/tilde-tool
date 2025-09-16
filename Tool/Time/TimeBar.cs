@@ -181,8 +181,6 @@ namespace Tildetool.Time
 
          DateTime dailyDay = Parent.DailyDay;
          DayBegin = new DateTime(dailyDay.Year, dailyDay.Month, dailyDay.Day, 0, 0, 0);
-         if (DayBegin > DateTime.Now.AddDays(7))
-            DayBegin = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
          WeekBegin = DayBegin.AddDays(-(int)DayBegin.DayOfWeek);
 
          List<TimeBlockRow> rows = Populate();
