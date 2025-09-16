@@ -720,7 +720,7 @@ namespace Tildetool.Time
                while (reader.Read())
                {
                   int id = reader.GetInt32(0);
-                  double value = reader.GetInt32(1);
+                  double value = reader.GetDouble(1);
                   if (id == minId)
                      prevValue = value;
                   else
