@@ -47,7 +47,7 @@ namespace Tildetool.Time
 
          const int periodCount = 10;
          DateTime dayBeginLocal = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
-         DateTime weekBeginLocal = dayBeginLocal.AddDays(-(int)day.DayOfWeek).ToUniversalTime();
+         DateTime weekBeginLocal = dayBeginLocal.AddDays(-(int)day.DayOfWeek);
          DateTime periodEndLocal = weekBeginLocal.AddDays(7);
          DateTime periodBeginLocal = periodEndLocal.AddDays(-7 * periodCount);
          DateTime periodBegin = periodBeginLocal.ToUniversalTime();
