@@ -569,7 +569,7 @@ namespace Tildetool.Time
             FreeGrid.SetWidth(Parent.DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, pctMax - pctMin));
 
             bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
-            bool tooShort = (periodEnd - periodBegin).TotalMinutes < 1.0;
+            bool tooShort = (periodEnd - periodBegin).TotalMinutes < 0.25;
             Parent.DailyRowHover.Background = new SolidColorBrush(Extension.FromArgb(
                isSchedule ? (uint)0x60282485
                : tooShort ? (uint)0x60852428
@@ -700,7 +700,7 @@ namespace Tildetool.Time
          GapsEnd = null;
          TimeAreaHotspot_MouseMove(sender, e);
 
-         if ((periodEnd - periodBegin).TotalMinutes < 1.0)
+         if ((periodEnd - periodBegin).TotalMinutes < 0.25)
             return;
 
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
