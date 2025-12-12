@@ -581,7 +581,7 @@ namespace Tildetool.Time
             FreeGrid.SetWidth(Parent.DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, pctMax - pctMin));
 
             bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
-            bool tooShort = (periodEnd - periodBegin).TotalMinutes < 0.25;
+            bool tooShort = (periodEnd - periodBegin).TotalMinutes < MinMinutes;
             Parent.DailyRowHover.Background = new SolidColorBrush(Extension.FromArgb(
                isSchedule ? (uint)0x60282485
                : tooShort ? (uint)0x60852428
@@ -663,6 +663,8 @@ namespace Tildetool.Time
          }
       }
 
+      const double MinMinutes = 0.25;
+
       public void TimeAreaHotspot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
       {
          if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
@@ -685,7 +687,7 @@ namespace Tildetool.Time
             {
                // Once we find a time period that begins after the greatest end up till now,
                //  this is a gap from that end until this begin!
-               if (timePeriods[i].StartTime > lastEnd)
+               if (timePeriods[i].StartTime >= lastEnd.AddMinutes(MinMinutes))
                {
                   GapsBegin.Add(lastEnd);
                   GapsEnd.Add(timePeriods[i].StartTime);
@@ -723,7 +725,7 @@ namespace Tildetool.Time
          GapsEnd = null;
          TimeAreaHotspot_MouseMove(sender, e);
 
-         if ((periodEnd - periodBegin).TotalMinutes < 0.25)
+         if ((periodEnd - periodBegin).TotalMinutes < MinMinutes)
             return;
 
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
