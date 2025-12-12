@@ -162,7 +162,7 @@ namespace Tildetool.Time
       #endregion
       #region Hotkey Input
 
-      const double TickCount = 12.0;
+      const double TickCount = 16.0;
 
       public bool HandleKeyDown(object sender, KeyEventArgs e)
       {
