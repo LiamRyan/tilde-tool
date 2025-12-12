@@ -169,7 +169,7 @@ namespace Tildetool.Time
          if (FocusCategory != null)
          {
             double value = Math.Round(FocusCategoryValue);
-            double subvalue = Math.Round((FocusCategoryValue - value + 0.49) * TickCount / 0.98);
+            double subvalue = Math.Round((FocusCategoryValue - value + 0.499) * TickCount / 0.998);
             switch (e.Key)
             {
                case Key.Escape:
@@ -190,30 +190,30 @@ namespace Tildetool.Time
 
                case Key.Left:
                   if (subvalue <= 0.5)
-                     SetIndicatorValue(value - 1.0 + 0.49);
+                     SetIndicatorValue(value - 1.0 + 0.499);
                   else
-                     SetIndicatorValue(FocusCategoryValue - (0.98 / TickCount));
+                     SetIndicatorValue(FocusCategoryValue - (0.998 / TickCount));
                   return true;
 
                case Key.Right:
                   if (subvalue >= TickCount - 0.5)
-                     SetIndicatorValue(value + 1.0 - 0.49);
+                     SetIndicatorValue(value + 1.0 - 0.499);
                   else
-                     SetIndicatorValue(FocusCategoryValue + (0.98 / TickCount));
+                     SetIndicatorValue(FocusCategoryValue + (0.998 / TickCount));
                   return true;
             }
 
             if (e.Key >= Key.D1 && e.Key <= Key.D9)
             {
                double subpct = (e.Key - Key.D1) / TickCount;
-               FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.49 + (0.98 * subpct);
+               FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.499 + (0.998 * subpct);
                Refresh();
                return true;
             }
             else if (e.Key >= Key.NumPad1 && e.Key <= Key.NumPad9)
             {
                double subpct = (e.Key - Key.NumPad1) / TickCount;
-               FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.49 + (0.98 * subpct);
+               FocusCategoryValue = Math.Round(FocusCategoryValue) - 0.499 + (0.998 * subpct);
                Refresh();
                return true;
             }
@@ -272,7 +272,7 @@ namespace Tildetool.Time
       public void SetIndicatorValue(double value)
       {
          FocusCategoryValue = Math.Clamp(value,
-            -FocusCategory.Offset - 0.49, 0.49 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
+            -FocusCategory.Offset - 0.499, 0.499 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
          Refresh();
       }
 
@@ -337,7 +337,7 @@ namespace Tildetool.Time
          Point pos = e.GetPosition(Parent.IndicatorSliderGrid);
          double pct = pos.X / Parent.IndicatorSliderGrid.RenderSize.Width;
          double value = Math.Clamp((pct * FocusCategory.Values.Length) - FocusCategory.Offset - 0.5,
-            -FocusCategory.Offset - 0.49, 0.49 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
+            -FocusCategory.Offset - 0.499, 0.499 + FocusCategory.Values.Length - 1 - FocusCategory.Offset);
          return value;
       }
 
