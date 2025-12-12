@@ -615,7 +615,8 @@ namespace Tildetool.Time
       List<DateTime> GapsEnd;
       void GetDragTime(double pct1, double pct2, out DateTime periodBegin, out DateTime periodEnd)
       {
-         if (pct2 < pct1)
+         bool isDownward = pct2 < pct1;
+         if (isDownward)
          {
             double pct = pct2;
             pct2 = pct1;
@@ -626,40 +627,62 @@ namespace Tildetool.Time
          periodBegin = dayBegin.AddHours(Parent.TimeBar.MinHour + (pct1 * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
          periodEnd = dayBegin.AddHours(Parent.TimeBar.MinHour + (pct2 * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
 
-         if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
+         // In schedule mode, that's all we need to do!  No need for clamping to present or avoiding overlaps.
+         bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
+         if (isSchedule)
             return;
 
          DateTime utcNow = DateTime.UtcNow;
          if (TimeManager.Instance.CurrentStartTime < utcNow)
             utcNow = TimeManager.Instance.CurrentStartTime;
 
-         if (periodBegin > utcNow)
-            periodBegin = utcNow;
-         if (periodEnd > utcNow)
-            periodEnd = utcNow;
-
+         // Find the nearest gap so we can clamp to it.
+         DateTime gapBegin = periodBegin;
+         DateTime gapEnd = periodEnd;
          if (GapsBegin.Count > 0)
          {
-            DateTime periodBeginFull = periodBegin;
-            DateTime periodEndFull = periodEnd;
-            double bestLengthHour = -1.0;
-            for (int i = 0; i < GapsBegin.Count; i++)
+            int nearestGap;
+            if (isDownward)
             {
-               DateTime periodBeginThis = (periodBeginFull < GapsBegin[i]) ? GapsBegin[i] : periodBeginFull;
-               DateTime periodEndThis = (periodEndFull > GapsEnd[i]) ? GapsEnd[i] : periodEndFull;
-               if ((periodEndThis - periodBeginThis).TotalHours > bestLengthHour)
-               {
-                  periodBegin = periodBeginThis;
-                  periodEnd = periodEndThis;
-                  bestLengthHour = (periodEndThis - periodBeginThis).TotalHours;
-               }
+               DateTime periodEndFull = periodEnd;
+               if ((utcNow - GapsBegin[^1]).TotalSeconds < 15.0)
+                  nearestGap = GapsBegin.FindLastIndex(GapsBegin.Count - 2, GapsBegin.Count - 1, gapBeginTime => gapBeginTime < periodEndFull);
+               else
+                  nearestGap = GapsBegin.FindLastIndex(gapBeginTime => gapBeginTime < periodEndFull);
+               if (nearestGap == -1)
+                  nearestGap = 0;
             }
+            else
+            {
+               DateTime periodBeginFull = periodBegin;
+               nearestGap = GapsEnd.FindIndex(gapEndTime => periodBeginFull < gapEndTime);
+               if (nearestGap == -1)
+                  nearestGap = GapsEnd.Count - 1;
+            }
+            gapBegin = GapsBegin[nearestGap];
+            gapEnd = GapsEnd[nearestGap];
+         }
 
-            if (bestLengthHour < 0.0)
-            {
-               periodEnd = periodBeginFull;
-               periodBegin = periodEndFull;
-            }
+         // We also clamp to the present.
+         if (gapBegin > utcNow)
+            gapBegin = utcNow;
+         if (gapEnd > utcNow)
+            gapEnd = utcNow;
+
+         //
+         if (isDownward)
+         {
+            periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
+            double dpct = -(pct2 - pct1) * (pct2 - pct1) / pct2;
+            periodBegin = periodEnd.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+            periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
+         }
+         else
+         {
+            periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
+            double dpct = (pct2 - pct1) * (pct2 - pct1) / (1.0 - pct1);
+            periodEnd = periodBegin.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+            periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
          }
       }
 
