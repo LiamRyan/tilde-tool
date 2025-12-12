@@ -67,6 +67,9 @@ namespace Tildetool.Time
          return null;
       }
 
+      public bool DoesIndicatorExist(string category)
+         => IndicatorByCategory.ContainsKey(category);
+
       public bool TryGetIndicatorValue(string category, double value, out Indicator indicator, out IndicatorValue valueCls)
       {
          if (!IndicatorByCategory.TryGetValue(category, out indicator))

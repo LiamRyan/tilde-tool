@@ -213,7 +213,7 @@ namespace Tildetool.Time
          DateTime todayLocalE = todayLocalS.AddDays(1);
          DateTime todayS = todayLocalS.ToUniversalTime();
          DateTime todayE = todayS.AddDays(1);
-         List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(todayS, todayE);
+         List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(todayS, todayE).Where(entry => TimeManager.Instance.DoesIndicatorExist(entry.Category)).ToList();
          HashSet<IndicatorValue> already = new HashSet<IndicatorValue>();
 
          DataTemplate? templateIndicator = Parent.Resources["Indicator"] as DataTemplate;
