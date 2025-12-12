@@ -260,6 +260,7 @@ namespace Tildetool.Time
          if (FocusCategoryValue == double.MinValue)
             FocusCategoryValue = 0;
          Refresh();
+         Parent.TimeBar?.Refresh();
       }
 
       public void ClearActive()
@@ -267,6 +268,7 @@ namespace Tildetool.Time
          FocusCategory = null;
          Parent.IndicatorHover.Visibility = Visibility.Collapsed;
          Refresh();
+         Parent.TimeBar?.Refresh();
       }
 
       public void SetIndicatorValue(double value)

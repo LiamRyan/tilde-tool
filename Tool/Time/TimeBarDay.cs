@@ -217,7 +217,7 @@ namespace Tildetool.Time
          HashSet<IndicatorValue> already = new HashSet<IndicatorValue>();
 
          DataTemplate? templateIndicator = Parent.Resources["Indicator"] as DataTemplate;
-         DataTemplater.Populate(Parent.Indicators, templateIndicator, indicators, (content, root, _, entry) =>
+         void drawIndicator(ContentControl content, FrameworkElement root, int index, TimeIndicator entry)
          {
             double pct = ((entry.Time.ToLocalTime() - todayLocalS).TotalHours - MinHour) / (MaxHour - MinHour);
             StackPanelShift.SetAlong(content, pct);
@@ -229,11 +229,20 @@ namespace Tildetool.Time
             ctrl.Text.Foreground = new SolidColorBrush(indicator.GetColorBack(entry.Value));
             ctrl.Icon.Text = value.Icon;
 
-            bool isNew = already.Add(value);
-            ctrl.Text.Visibility = isNew ? Visibility.Visible : Visibility.Collapsed;
-            if (isNew)
+            bool showFull = (Parent.IndicatorBar.FocusCategory != null && string.Compare(entry.Category, Parent.IndicatorBar.FocusCategory.Name) == 0) || already.Add(value);
+            ctrl.Text.Visibility = showFull ? Visibility.Visible : Visibility.Collapsed;
+            if (showFull)
                ctrl.Text.Text = value.Name;
-         });
+         }
+
+         Parent.FocusIndicators.Visibility = Parent.IndicatorBar.FocusCategory != null ? Visibility.Visible : Visibility.Collapsed;
+         if (Parent.IndicatorBar.FocusCategory != null)
+         {
+            DataTemplater.Populate(Parent.FocusIndicators, templateIndicator, indicators.Where(i => string.Compare(i.Category, Parent.IndicatorBar.FocusCategory.Name) == 0), drawIndicator);
+            DataTemplater.Populate(Parent.Indicators, templateIndicator, indicators.Where(i => string.Compare(i.Category, Parent.IndicatorBar.FocusCategory.Name) != 0), drawIndicator);
+         }
+         else
+            DataTemplater.Populate(Parent.Indicators, templateIndicator, indicators, drawIndicator);
       }
 
       void RefreshNightLength()

@@ -230,12 +230,20 @@
                     </StackPanel>
                 </Grid>
 
-                <tildetool:FreeGrid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0" MouseEnter="IndicatorPanel_MouseEnter" MouseLeave="IndicatorPanel_MouseLeave" MouseMove="IndicatorPanel_MouseMove" MouseLeftButtonDown="IndicatorPanel_MouseLeftButtonDown">
-                    <tildetool:StackPanelShift Orientation="Vertical" x:Name="Indicators" Margin="0,1,0,2" ItemThickness="12" MinHeight="12">
-                        <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
-                    </tildetool:StackPanelShift>
-                    <Grid x:Name="IndicatorHover" Background="#FFABE2A3" tildetool:FreeGrid.Left="15%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
-                </tildetool:FreeGrid>
+                <Grid x:Name="IndicatorPanel" Background="#50042508" Margin="180,10,80,0" MouseEnter="IndicatorPanel_MouseEnter" MouseLeave="IndicatorPanel_MouseLeave" MouseMove="IndicatorPanel_MouseMove" MouseLeftButtonDown="IndicatorPanel_MouseLeftButtonDown">
+                    <StackPanel x:Name="IndicatorPanelV" Orientation="Vertical" HorizontalAlignment="Stretch" Margin="0,1,0,2">
+                        <tildetool:StackPanelShift Orientation="Vertical" HorizontalAlignment="Stretch" x:Name="FocusIndicators" ItemThickness="12" MinHeight="12" Background="#50406040">
+                            <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
+                        </tildetool:StackPanelShift>
+                        <tildetool:StackPanelShift Orientation="Vertical" HorizontalAlignment="Stretch" x:Name="Indicators" ItemThickness="12" MinHeight="12">
+                            <ContentControl ContentTemplate="{StaticResource Indicator}"></ContentControl>
+                        </tildetool:StackPanelShift>
+                    </StackPanel>
+
+                    <tildetool:FreeGrid x:Name="IndicatorHoverGrid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid x:Name="IndicatorHover" Background="#FFABE2A3" tildetool:FreeGrid.Left="15%" tildetool:FreeGrid.Width="1" tildetool:FreeGrid.Height="100%"/>
+                    </tildetool:FreeGrid>
+                </Grid>
                 <Grid x:Name="IndicatorGraphGrid">
                     <Grid Margin="70,30,70,0">
                         <Grid.ColumnDefinitions>
