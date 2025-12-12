@@ -123,7 +123,7 @@ namespace Tildetool.Time
          if (!result)
             SaveCacheLater();
 
-         UpdateCurrentTimePeriod();
+         UpdateCurrentTimePeriod(force: true);
          if (CurrentProject != null)
             CurrentProject.TimeTodaySec += (int)(DateTime.UtcNow - CurrentStartTime).TotalSeconds;
 
@@ -435,7 +435,7 @@ namespace Tildetool.Time
          command.Dispose();
       }
 
-      void UpdateCurrentTimePeriod()
+      void UpdateCurrentTimePeriod(bool force = false)
       {
          // If we have no project, nothing to do.
          if (CurrentProject == null)
@@ -444,7 +444,7 @@ namespace Tildetool.Time
             return;
          }
          // If it is too short right now, don't add (or remove if necessary)
-         if ((DateTime.UtcNow - CurrentStartTime).TotalMinutes < 1.0f)
+         if ((DateTime.UtcNow - CurrentStartTime).TotalMinutes < 1.0f && !force)
          {
             if (CurrentTimePeriod != -1)
                RemoveHistoryLine(CurrentTimePeriod);
