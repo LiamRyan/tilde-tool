@@ -44,9 +44,13 @@ namespace Tildetool.Time
             return;
 
          Indicator[] indicators = FocusCategory == null ? TimeManager.Instance.Indicators : new Indicator[] { FocusCategory };
+         Parent.IndicatorPanes2.HorizontalAlignment = FocusCategory == null ? HorizontalAlignment.Right : HorizontalAlignment.Left;
 
          DataTemplate? templatePane = Parent.Resources["IndicatorPane"] as DataTemplate;
-         DataTemplater.Populate(Parent.IndicatorPanes, templatePane, indicators, (content, root, _, data) =>
+         DataTemplater.Populate(Parent.IndicatorPanes, templatePane, indicators.Where(i => !i.Event), _populateIndicator);
+         DataTemplater.Populate(Parent.IndicatorPanes2, templatePane, indicators.Where(i => i.Event), _populateIndicator);
+
+         void _populateIndicator(ContentControl content, FrameworkElement root, int i, Indicator data)
          {
             IndicatorPane pane = new IndicatorPane(root);
             root.Height = 42;
@@ -118,7 +122,7 @@ namespace Tildetool.Time
                pane.Text.Visibility = Visibility.Collapsed;
                pane.Date.Visibility = Visibility.Collapsed;
             }
-         });
+         };
 
          Parent.IndicatorSlider.Visibility = FocusCategory != null ? Visibility.Visible : Visibility.Collapsed;
          if (FocusCategory != null)

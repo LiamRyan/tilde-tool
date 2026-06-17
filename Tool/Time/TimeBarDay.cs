@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Tildetool.Time.Serialization;
 using Tildetool.WPF;
@@ -78,9 +79,13 @@ namespace Tildetool.Time
                      nameToIndex[block.Name] = index;
                }
 
-            block.ColorGrid = new SolidColorBrush(block.Color);
-            block.ColorBack = new(Extension.FromArgb(block.OnComputer ? 0xFF449637 : 0xFF517F65));
-            block.ColorFore = new(Extension.FromArgb(block.OnComputer ? 0xFFC3F1AF : 0xFF69A582));
+            (Color colorGrid, Color colorBack, Color colorFore) =
+               block.Project != null ? ((RGB)0x143528, (RGB)0x449677, (RGB)0xC3F1DF)
+               : block.OnComputer ? ((RGB)0x143518, (RGB)0x449637, (RGB)0xC3F1AF)
+               : ((RGB)0x0D211D, (RGB)0x517F65, (RGB)0x69A582);
+            block.ColorGrid = new(colorGrid);
+            block.ColorBack = new(colorBack);
+            block.ColorFore = new(colorFore);
 
             block.IsActiveCell = TimeManager.Instance.CurrentTimePeriod == block.DbId;
 
@@ -174,29 +179,19 @@ namespace Tildetool.Time
 
          List<TimeBlock> blocks = WeeklySchedule[(int)DayBegin.DayOfWeek];
 
-         Parent.ScheduleGrid.ColumnDefinitions.Clear();
-         double lastHour = MinHour;
-         for (int i = 0; i < blocks.Count; i++)
+         double totalHours = MaxHour - MinHour;
+         DataTemplate? templateSchedule = Parent.Resources["ScheduleEntry"] as DataTemplate;
+         DataTemplater.Populate<TimeBlock, ScheduleEntry>(Parent.ScheduleGrid, templateSchedule, blocks, (ui, index, block) =>
          {
-            DateTime startTime = blocks[i].StartTime > dayBeginUtc ? blocks[i].StartTime : dayBeginUtc;
-            DateTime endTime = blocks[i].EndTime < dayEndUtc ? blocks[i].EndTime : dayEndUtc;
+            DateTime startTime = block.StartTime > dayBeginUtc ? block.StartTime : dayBeginUtc;
+            DateTime endTime = block.EndTime < dayEndUtc ? block.EndTime : dayEndUtc;
             double hourBegin = (startTime - dayBeginUtc).TotalHours;
             double hourEnd = (endTime - dayBeginUtc).TotalHours;
             if (hourEnd > hourBegin)
             {
-               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(hourBegin - lastHour, 0), GridUnitType.Star) });
-               Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(hourEnd - hourBegin, GridUnitType.Star) });
-               lastHour = hourEnd;
+               FreeGrid.SetLeft(ui.Content, new PercentValue(PercentValue.ModeType.Percent, (hourBegin - MinHour) / totalHours));
+               FreeGrid.SetWidth(ui.Content, new PercentValue(PercentValue.ModeType.Percent, (hourEnd - hourBegin) / totalHours));
             }
-         }
-         if (MaxHour > lastHour)
-            Parent.ScheduleGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(MaxHour - lastHour, GridUnitType.Star) });
-
-         DataTemplate? templateSchedule = Parent.Resources["ScheduleEntry"] as DataTemplate;
-         DataTemplater.Populate<TimeBlock, ScheduleEntry>(Parent.ScheduleGrid, templateSchedule, blocks, (ui, index, block) =>
-         {
-            //FreeGrid.SetLeft(ui.Content, new PercentValue(PercentValue.ModeType.Percent, pctX));
-            //FreeGrid.SetWidth(ui.Content, new PercentValue(PercentValue.ModeType.Pixel, 1));
 
             Grid.SetColumn(ui.Content, (index * 2) + 1);
             (ui.Root as Grid).Background = new SolidColorBrush(block.Color.Alpha(0x20));
@@ -227,12 +222,12 @@ namespace Tildetool.Time
             (root as Panel).Background = new SolidColorBrush(indicator.GetColorBack(entry.Value, 0x58));
             ctrl.Icon.Foreground = new SolidColorBrush(indicator.GetColorFore(entry.Value));
             ctrl.Text.Foreground = new SolidColorBrush(indicator.GetColorBack(entry.Value));
-            ctrl.Icon.Text = value.Icon;
+            ctrl.Icon.Text = value != null ? value.Icon : $"?";
 
             bool showFull = (Parent.IndicatorBar.FocusCategory != null && string.Compare(entry.Category, Parent.IndicatorBar.FocusCategory.Name) == 0) || already.Add(value);
             ctrl.Text.Visibility = showFull ? Visibility.Visible : Visibility.Collapsed;
             if (showFull)
-               ctrl.Text.Text = value.Name;
+               ctrl.Text.Text = value != null ? value.Name : $"?{entry.Category}?";
          }
 
          Parent.FocusIndicators.Visibility = Parent.IndicatorBar.FocusCategory != null ? Visibility.Visible : Visibility.Collapsed;
@@ -256,5 +251,110 @@ namespace Tildetool.Time
             Parent.NightLengthM.Text = $"{m:D2}";
          }
       }
+
+      #region Keyboard input
+
+      public override bool HandleKeyDown(object sender, KeyEventArgs e)
+      {
+         if (e.Key == Key.OemOpenBrackets || e.Key == Key.OemCloseBrackets)
+         {
+            if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
+               return false;
+
+            DateTime dayBeginUtc = new DateTime(Parent.DailyDay.Year, Parent.DailyDay.Month, Parent.DailyDay.Day, 0, 0, 0).ToUniversalTime();
+            FindGaps();
+            int gap = GapsBegin.FindLastIndex(g => g < TimeManager.Instance.CurrentStartTime.AddSeconds(-30));
+
+            List<TimePeriod> timePeriods = TimeManager.Instance.QueryTimePeriod(dayBeginUtc, dayBeginUtc.AddDays(1));
+            timePeriods.OrderBy(p => p.StartTime);
+
+            DateTime origin;
+            bool wasCtrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
+            bool isToLeft = e.Key == Key.OemOpenBrackets;
+            if (wasCtrl && isToLeft) // carve to-left: origin is NOW
+               origin = DateTime.UtcNow;
+            else if (wasCtrl && !isToLeft) // carve to-right: origin is END of the most recent gap
+               origin = gap == -1 ? TimeManager.Instance.CurrentStartTime : GapsEnd[gap];
+            else if ((wasCtrl && !isToLeft) || isToLeft) // to-left: origin is END of the most recent gap
+               origin = gap == -1 ? TimeManager.Instance.CurrentStartTime : GapsEnd[gap];
+            else // to-right: origin is START of most recent gap
+               origin = gap == -1 ? TimeManager.Instance.CurrentStartTime : GapsBegin[gap];
+
+            if (origin > TimeManager.Instance.CurrentStartTime)
+               origin = TimeManager.Instance.CurrentStartTime;
+
+            DailyRow_Pct1 = ((origin - dayBeginUtc).TotalHours - Parent.TimeBar.MinHour) / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+
+            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            {
+               DateTime finis;
+               if (isToLeft)
+                  finis = GapsBegin.LastOrDefault(g => g < origin, TimeManager.Instance.CurrentStartTime);
+               else
+                  finis = GapsEnd.LastOrDefault(g => g > origin && g <= TimeManager.Instance.CurrentStartTime.AddSeconds(30), TimeManager.Instance.CurrentStartTime);
+               DailyRow_Pct2 = (finis - origin).TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+
+               Smooth = false;
+               TimeAreaHotspot_MouseMove(null, null);
+               TimeAreaHotspot_MouseLeftButtonUp(null, null);
+               Smooth = true;
+            }
+            else
+            {
+               DailyRow_Pct2 = 0.0;
+
+               Smooth = false;
+               TimeAreaHotspot_MouseMove(null, null);
+               Smooth = true;
+
+               Parent.TimekeepTextEditor.Show("how long", (text, note) =>
+               {
+                  string[] texts = text.Split(' ');
+                  if (texts.Length > 2)
+                  {
+                     DailyRow_Pct1 = null;
+                     TimeAreaHotspot_MouseLeftButtonUp(null, null);
+                     return;
+                  }
+                  int hours = 0;
+                  if (texts.Length == 2 && !int.TryParse(texts[0], out hours))
+                  {
+                     DailyRow_Pct1 = null;
+                     TimeAreaHotspot_MouseLeftButtonUp(null, null);
+                     return;
+                  }
+                  if (!int.TryParse(texts[^1], out int value))
+                  {
+                     DailyRow_Pct1 = null;
+                     TimeAreaHotspot_MouseLeftButtonUp(null, null);
+                     return;
+                  }
+                  value += 100 * 60 * hours;
+
+                  TimeSpan interval = value >= 100 ? new TimeSpan(0, value / 100, value % 100) : new TimeSpan(0, value, 0);
+                  // ctrl means carve
+                  if (isToLeft)
+                     DailyRow_Pct2 = -interval.TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+                  else
+                     DailyRow_Pct2 = interval.TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+
+                  Smooth = false;
+                  TimeAreaHotspot_MouseMove(null, null);
+                  Carve = wasCtrl;
+                  TimeAreaHotspot_MouseLeftButtonUp(null, null);
+                  Smooth = true;
+               },
+               () =>
+               {
+                  DailyRow_Pct1 = null;
+                  TimeAreaHotspot_MouseLeftButtonUp(null, null);
+               });
+            }
+            return true;
+         }
+         return false;
+      }
+
+      #endregion
    }
 }

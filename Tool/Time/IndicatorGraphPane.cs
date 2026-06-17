@@ -128,7 +128,8 @@ namespace Tildetool.Time
             List<double> points = new List<double>();
             List<double> values = new List<double>();
             List<Color> colors = new List<Color>();
-            var indicators = TimeManager.Instance.QueryTimeIndicator(periodBegin, periodEnd);
+            List<TimeIndicator> indicators = TimeManager.Instance.QueryTimeIndicator(periodBegin, periodEnd);
+            indicators.Sort((a, b) => a.Time.CompareTo(b.Time));
             foreach (TimeIndicator entry in indicators)
             {
                if (data.Name.CompareTo(entry.Category) != 0)
@@ -182,12 +183,21 @@ namespace Tildetool.Time
                }
             }
 
+            HashSet<int> fades = new();
             for (int o = 1; o < values.Count; o++)
                if (points[o] - points[o - 1] >= dayLength)
                {
+                  double fade = 1.0 - Math.Clamp((points[o] - points[o - 1] - (1.0 * dayLength)) / (2.0 * dayLength), 0.0, 1.0);
+
+                  points.Insert(o, Math.Min(points[o] - (0.3 * dayLength), points[o - 1] + (3.0 * dayLength)));
+                  colors.Insert(o, new Color() { R = colors[o - 1].R, G = colors[o - 1].G, B = colors[o - 1].B, A = (byte)(colors[o - 1].A * fade) });
+                  values.Insert(o, values[o - 1] + (0.2 * (values[o] - values[o - 1])));
+                  fades.Add(o);
+                  o++;
                   points.Insert(o, points[o] - (0.2 * dayLength));
-                  colors.Insert(o, colors[o - 1]);
-                  values.Insert(o, values[o - 1]);
+                  colors.Insert(o, new Color() { R = colors[o].R, G = colors[o].G, B = colors[o].B, A = (byte)(colors[o].A * fade) });
+                  values.Insert(o, values[o]);
+                  fades.Add(o);
                }
 
             PathGeometry geometry = new PathGeometry();
@@ -214,7 +224,11 @@ namespace Tildetool.Time
             brush.StartPoint = new Point(0.0, 0.5);
             brush.EndPoint = new Point(1.0, 0.5);
             for (int o = 0; o < points.Count; o++)
+            {
+               if (o > 0 && points[o] - points[o - 1] >= 0.003 && !fades.Contains(o))
+                  brush.GradientStops.Add(new GradientStop(colors[o - 1], points[o] - 0.002));
                brush.GradientStops.Add(new GradientStop(colors[o], points[o]));
+            }
             pane.IndicatorGraphLine.Stroke = brush;
 
             List<int> valuesSet = values.Select(v => (int)Math.Round(v)).Distinct().ToList();

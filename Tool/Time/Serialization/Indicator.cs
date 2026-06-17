@@ -26,6 +26,7 @@ namespace Tildetool.Time.Serialization
       public string Hotkey { get; set; }
       public IndicatorValue[] Values { get; set; }
       public bool Hidden { get; set; }
+      public bool Event { get; set; }
 
       public int MinValue => -Offset;
       public int MaxValue => Values.Length - Offset - 1;

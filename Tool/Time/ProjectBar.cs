@@ -28,16 +28,16 @@ namespace Tildetool.Time
 
       public Project DailyFocus;
 
-      public void SetActiveTime(string key, bool alter)
+      public void SetActiveTime(string key, bool alter, string notes)
       {
          // Make sure we actually changed to a valid project.
          Project? project = null;
          if (!TimeManager.Instance.HotkeyToProject.TryGetValue(key, out project))
             return;
-         SetActiveProject(project, alter);
+         SetActiveProject(project, alter, notes);
       }
 
-      public void SetActiveProject(Project project, bool alter)
+      public void SetActiveProject(Project project, bool alter, string notes)
       {
          if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
          {
@@ -56,9 +56,9 @@ namespace Tildetool.Time
          // Switch
          Project oldProject = TimeManager.Instance.CurrentProject;
          if (alter)
-            TimeManager.Instance.AlterProject(project);
+            TimeManager.Instance.AlterProject(project, notes);
          else
-            TimeManager.Instance.SetProject(project);
+            TimeManager.Instance.SetProject(project, notes);
 
          // Update the display.
          Parent.RefreshTime();
@@ -198,31 +198,31 @@ namespace Tildetool.Time
          // Handle key entry.
          if (e.Key == Key.Insert)
          {
-            Parent.TimekeepTextEditor.Show((text) =>
+            Parent.TimekeepTextEditor.Show("set project", (text, note) =>
             {
                if (TimeManager.Instance.IdentToProject.TryGetValue(text, out Project project))
-                  SetActiveProject(project, alter);
+                  SetActiveProject(project, alter, note);
                else
                {
                   int projectId = TimeManager.Instance.AddProject(text);
-                  SetActiveProject(new Project() { Ident = text, Name = text }, alter);
+                  SetActiveProject(new Project() { Ident = text, Name = text }, alter, note);
                }
             }, TimeManager.Instance.ProjectIdentAutoSuggest);
             return true;
          }
          else if (e.Key >= Key.A && e.Key <= Key.Z)
          {
-            SetActiveTime(e.Key.ToString(), alter);
+            SetActiveTime(e.Key.ToString(), alter, null);
             return true;
          }
          else if (e.Key >= Key.D0 && e.Key <= Key.D9)
          {
-            SetActiveTime((e.Key - Key.D0).ToString(), alter);
+            SetActiveTime((e.Key - Key.D0).ToString(), alter, null);
             return true;
          }
          else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
          {
-            SetActiveTime((e.Key - Key.NumPad0).ToString(), alter);
+            SetActiveTime((e.Key - Key.NumPad0).ToString(), alter, null);
             return true;
          }
 

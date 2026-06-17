@@ -163,6 +163,27 @@ namespace Tildetool.WPF
                grid.InvalidateMeasure();
       }
 
+      protected override Size MeasureOverride(Size constraint)
+      {
+         for (int i = 0; i < InternalChildren.Count; i++)
+         {
+            int index = i;
+            UIElement child = InternalChildren[index];
+
+            double width = GetWidth(child).GetValue(constraint.Width);
+            double height = GetHeight(child).GetValue(constraint.Height);
+            if (width < 0.0)
+               width = 0.0;
+            if (height < 0.0)
+               height = 0.0;
+
+            // Assign the position
+            child.Measure(new Size(width, height));
+         }
+
+         return new Size(0, 0);
+      }
+
       protected override Size ArrangeOverride(Size finalSize)
       {
          for (int i = 0; i < InternalChildren.Count; i++)

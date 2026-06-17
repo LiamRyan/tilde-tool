@@ -51,6 +51,8 @@ namespace Tildetool.Time
       #endregion Singleton
       #region Variables
 
+      public Command OpenDatabase;
+
       public Indicator[] Indicators;
       public Dictionary<string, Indicator> IndicatorByCategory;
       public Dictionary<string, Indicator> IndicatorByHotkey;
@@ -83,6 +85,7 @@ namespace Tildetool.Time
 
       // Raw data
       public static Project IdleProject = new Project { Hotkey = "0", Name = "Idle", Ident = "Idle" };
+      public static Project? TimetrackProject;
       public Project[] Data;
 
       // Processed results
@@ -94,7 +97,10 @@ namespace Tildetool.Time
       public Project? CurrentProject;
       public int CurrentTimePeriod = -1;
       public DateTime CurrentStartTime;
+      public string CurrentNotes;
+
       public Project PausedProject;
+      public string PausedNotes;
 
       #endregion
       #region Active Project
@@ -105,15 +111,20 @@ namespace Tildetool.Time
          if (_Timer != null)
             return;
          _Timer = new Timer { Interval = 60000 };
-         _Timer.Elapsed += (o, e) => { UpdateCurrentTimePeriod(); };
+         _Timer.Elapsed += (o, e) => { UpdateCurrentTimePeriod(DateTime.UtcNow); };
          _Timer.Start();
 
-         SetProject(IdleProject);
+         SetProject(IdleProject, null);
 
          SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
       }
 
-      public void SetProject(Project? project)
+      public void Dispose()
+      {
+         SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+      }
+
+      public void SetProject(Project? project, string notes)
       {
          if (project == CurrentProject)
             return;
@@ -123,7 +134,7 @@ namespace Tildetool.Time
          if (!result)
             SaveCacheLater();
 
-         UpdateCurrentTimePeriod(force: true);
+         UpdateCurrentTimePeriod(DateTime.UtcNow, force: true);
          if (CurrentProject != null)
             CurrentProject.TimeTodaySec += (int)(DateTime.UtcNow - CurrentStartTime).TotalSeconds;
 
@@ -131,9 +142,10 @@ namespace Tildetool.Time
          CurrentProject = project;
          CurrentStartTime = DateTime.UtcNow;
          CurrentTimePeriod = -1;
+         CurrentNotes = notes;
       }
 
-      public void AlterProject(Project project)
+      public void AlterProject(Project project, string notes)
       {
          if (project == CurrentProject)
             return;
@@ -145,7 +157,41 @@ namespace Tildetool.Time
 
          // Force-switch to the new project and update the database accordingly.
          CurrentProject = project;
-         UpdateCurrentTimePeriod();
+         CurrentNotes = notes;
+         UpdateCurrentTimePeriod(DateTime.UtcNow);
+      }
+
+      public void RetroapplyProject(Project project, DateTime from, DateTime to)
+      {
+         Project? originalProject = CurrentProject;
+         string originalNotes = CurrentNotes;
+
+         bool result = SaveCache();
+         if (!result)
+            SaveCacheLater();
+
+         // Write our PREVIOUS project up until from.
+         UpdateCurrentTimePeriod(from, force: true);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(from - CurrentStartTime).TotalSeconds;
+
+         // Write the RETRO project from from until to.
+         CurrentProject = project;
+         CurrentStartTime = from;
+         CurrentTimePeriod = -1;
+         CurrentNotes = null;
+         UpdateCurrentTimePeriod(to, force: true);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(to - CurrentStartTime).TotalSeconds;
+
+         // Restart with the previous project going forward.
+         CurrentProject = originalProject;
+         CurrentStartTime = to;
+         CurrentTimePeriod = -1;
+         CurrentNotes = originalNotes;
+         UpdateCurrentTimePeriod(DateTime.UtcNow);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(DateTime.UtcNow - CurrentStartTime).TotalSeconds;
       }
 
       private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
@@ -156,12 +202,13 @@ namespace Tildetool.Time
             case SessionSwitchReason.SessionLock:
                App.WriteLog("Screen locked at " + DateTime.UtcNow.ToString() + (CurrentProject != null ? (", pausing " + CurrentProject.Name) : ""));
                PausedProject = CurrentProject;
-               SetProject(null);
+               PausedNotes = CurrentNotes;
+               SetProject(null, null);
                break;
 
             case SessionSwitchReason.SessionUnlock:
                App.WriteLog("Screen unlocked at " + DateTime.UtcNow.ToString() + (PausedProject != null ? (", resuming " + PausedProject.Name) : ""));
-               SetProject(PausedProject);
+               SetProject(PausedProject, PausedNotes);
                break;
          }
       }
@@ -202,9 +249,14 @@ namespace Tildetool.Time
 
          // Process it.
          if (cacheData.Project != null)
+         {
             Data = cacheData.Project.Append(IdleProject).ToArray();
+            TimetrackProject = Data.FirstOrDefault(p => string.Compare(p.Name, "Time tracking") == 0);
+         }
          HotkeyToProject = Data.ToDictionary(p => p.Hotkey);
          IdentToProject = Data.ToDictionary(p => p.Ident);
+
+         OpenDatabase = cacheData.OpenDatabase;
 
          Indicators = (cacheData.Indicator ?? new Indicator[0]).ToArray();
          IndicatorByCategory = Indicators.ToDictionary(k => k.Name);
@@ -403,11 +455,16 @@ namespace Tildetool.Time
       public int AddHistoryLine(TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer) VALUES ($project_id, $start_time, $end_time, $on_computer); SELECT last_insert_rowid();";
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer, notes) VALUES ($project_id, $start_time, $end_time, $on_computer, $notes); SELECT last_insert_rowid();";
+         else
+            command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer) VALUES ($project_id, $start_time, $end_time, $on_computer); SELECT last_insert_rowid();";
          command.Parameters.AddWithValue("$project_id", ProjectIdentToId[period.Ident]);
          command.Parameters.AddWithValue("$start_time", period.StartTime);
          command.Parameters.AddWithValue("$end_time", period.EndTime);
          command.Parameters.AddWithValue("$on_computer", period.OnComputer);
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.Parameters.AddWithValue("$notes", period.Notes);
          int rowId = Convert.ToInt32(command.ExecuteScalar());
          command.Dispose();
 
@@ -417,11 +474,16 @@ namespace Tildetool.Time
       void UpdateHistoryLine(int id, TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end WHERE id = $id;";
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end, notes = $notes WHERE id = $id;";
+         else
+            command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end, notes = null WHERE id = $id;";
          command.Parameters.AddWithValue("$id", id);
          command.Parameters.AddWithValue("$project_id", ProjectIdentToId[period.Ident]);
          command.Parameters.AddWithValue("$start", period.StartTime);
          command.Parameters.AddWithValue("$end", period.EndTime);
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.Parameters.AddWithValue("notes", period.Notes);
          command.ExecuteNonQuery();
          command.Dispose();
       }
@@ -435,7 +497,7 @@ namespace Tildetool.Time
          command.Dispose();
       }
 
-      void UpdateCurrentTimePeriod(bool force = false)
+      public void UpdateCurrentTimePeriod(DateTime timeUntil, bool force = false)
       {
          // If we have no project, nothing to do.
          if (CurrentProject == null)
@@ -444,7 +506,7 @@ namespace Tildetool.Time
             return;
          }
          // If it is too short right now, don't add (or remove if necessary)
-         if ((DateTime.UtcNow - CurrentStartTime).TotalMinutes < 1.0f && !force)
+         if ((timeUntil - CurrentStartTime).TotalMinutes < 1.0f && !force)
          {
             if (CurrentTimePeriod != -1)
                RemoveHistoryLine(CurrentTimePeriod);
@@ -454,9 +516,41 @@ namespace Tildetool.Time
 
          // Either add or update.
          if (CurrentTimePeriod == -1)
-            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow, OnComputer = true });
+            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = timeUntil, OnComputer = true, Notes = CurrentNotes });
          else
-            UpdateHistoryLine(CurrentTimePeriod, new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow });
+            UpdateHistoryLine(CurrentTimePeriod, new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = timeUntil, Notes = CurrentNotes });
+      }
+
+      public void CarveHistory(DateTime minTimeUtc, DateTime maxTimeUtc)
+      {
+         List<TimePeriod> periods = QueryTimePeriod(minTimeUtc, maxTimeUtc);
+         foreach (TimePeriod period in periods)
+         {
+            // if the carve period (expanded one second each way) totally covers us, then we delete altogether.
+            if (minTimeUtc.AddSeconds(-1) <= period.StartTime && period.EndTime <= maxTimeUtc.AddSeconds(1))
+               RemoveHistoryLine((int)period.DbId);
+            else
+            {
+               // if this period (shrunk one second each way) totally covers the carve period, we split in two
+               //  on each end.
+               if (period.StartTime.AddSeconds(1) < minTimeUtc && maxTimeUtc < period.EndTime.AddSeconds(-1))
+               {
+                  TimePeriod period2 = period.Clone();
+                  period2.StartTime = maxTimeUtc;
+                  AddHistoryLine(period2);
+
+                  period.EndTime = minTimeUtc;
+               }
+               // otherwise we clip at either one end or the other
+               else if (period.StartTime.AddSeconds(1) <= minTimeUtc)
+                  period.EndTime = minTimeUtc;
+               else
+                  period.StartTime = maxTimeUtc;
+
+               // done
+               UpdateHistoryLine((int)period.DbId, period);
+            }
+         }
       }
 
       void RefreshTodayTime()
@@ -482,7 +576,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
+         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time,on_computer,notes FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
 
@@ -495,7 +589,8 @@ namespace Tildetool.Time
                DateTime startTime = reader.GetDateTime(2);
                DateTime endTime = reader.GetDateTime(3);
                bool onComputer = reader.GetBoolean(4);
-               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
+               string notes = reader.IsDBNull(5) ? null : reader.GetString(5);
+               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime, OnComputer = onComputer, Notes = notes });
             }
          command.Dispose();
 
@@ -505,7 +600,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(Project project, DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
+         command.CommandText = "SELECT time_period.id,start_time,end_time,on_computer,notes FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
          command.Parameters.AddWithValue("$ident", project.Ident);
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
@@ -518,11 +613,22 @@ namespace Tildetool.Time
                DateTime startTime = reader.GetDateTime(1);
                DateTime endTime = reader.GetDateTime(2);
                bool onComputer = reader.GetBoolean(3);
-               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
+               string notes = reader.IsDBNull(4) ? null : reader.GetString(4);
+               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime, OnComputer = onComputer, Notes = notes });
             }
          command.Dispose();
 
          return result;
+      }
+
+      public void QueryDayPeriod(DateTime day, out DateTime dayBegin, out DateTime dayEnd)
+      {
+         DateTime dayStrip = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
+         DateTime dayStripUtc = dayStrip.ToUniversalTime();
+
+         // TODO: implement;
+         dayBegin = dayStrip;
+         dayEnd = dayStrip.AddDays(1);
       }
 
       public double QueryNightLength(DateTime beforeDay)

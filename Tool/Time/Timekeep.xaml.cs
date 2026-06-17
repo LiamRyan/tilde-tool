@@ -30,6 +30,9 @@ namespace Tildetool.Time
       public SummaryPane SummaryPane;
       public TimekeepTextEditor TimekeepTextEditor;
 
+      static DateTime? LastOpenTime = null;
+      static DateTime? LastCloseTime = null;
+
       public Timekeep()
       {
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
@@ -56,6 +59,11 @@ namespace Tildetool.Time
          _AnimateIn();
 
          StartTick();
+
+         CancelTimekeepTime();
+         DateTime utcNow = DateTime.UtcNow;
+         if (LastOpenTime == null || LastCloseTime == null || (utcNow - LastCloseTime.Value).TotalSeconds > 10.0f)
+            LastOpenTime = utcNow;
       }
 
       protected override void OnClosing(CancelEventArgs e)
@@ -64,6 +72,13 @@ namespace Tildetool.Time
 
          StopTick();
          UnscheduleCancel();
+
+         DateTime utcNow = DateTime.UtcNow;
+         if (LastOpenTime != null && (utcNow - LastOpenTime.Value).TotalSeconds > 10.0f)
+         {
+            LastCloseTime = utcNow;
+            PendTimekeepTime();
+         }
       }
 
       void OnLoaded(object sender, RoutedEventArgs args)
@@ -71,6 +86,40 @@ namespace Tildetool.Time
          App.PreventAltTab(this);
       }
 
+      #region Save
+
+      Timer? SaveTimer = null;
+      void PendTimekeepTime()
+      {
+         if (SaveTimer != null)
+            return;
+         SaveTimer = new Timer();
+         SaveTimer.Interval = 10 * 1000;
+         SaveTimer.Elapsed += (s, e) =>
+         {
+            SaveTimer.Stop();
+            TimekeepTime();
+            SaveTimer.Dispose();
+            SaveTimer = null;
+         };
+         SaveTimer.Start();
+      }
+
+      void CancelTimekeepTime()
+      {
+         if (SaveTimer == null)
+            return;
+         SaveTimer.Stop();
+         SaveTimer.Dispose();
+         SaveTimer = null;
+      }
+
+      void TimekeepTime()
+      {
+         //TimeManager.Instance.RetroapplyProject(TimeManager.TimetrackProject, LastOpenTime.Value, LastCloseTime.Value);
+      }
+
+      #endregion
       #region Second Ticker
 
       Timer? _Timer;
@@ -143,6 +192,11 @@ namespace Tildetool.Time
             e.Handled = true;
             return;
          }
+         if (TimeBar?.HandleKeyDown(sender, e) ?? false)
+         {
+            e.Handled = true;
+            return;
+         }
 
          // Handle escape
          switch (e.Key)
@@ -153,19 +207,35 @@ namespace Tildetool.Time
                return;
 
             case Key.Return:
-               string target;
-               if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
-                  target = "TimekeepCache.json";
-               else
-                  target = "TimekeepHistory.db";
+               string target = null;
                try
                {
-                  Process process = new Process();
-                  ProcessStartInfo startInfo = new ProcessStartInfo();
-                  startInfo.FileName = $"{System.IO.Directory.GetCurrentDirectory()}\\{target}";
-                  startInfo.UseShellExecute = true;
-                  process.StartInfo = startInfo;
-                  process.Start();
+                  if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                     target = "TimekeepCache.json";
+                  else if (TimeManager.Instance.OpenDatabase != null)
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = TimeManager.Instance.OpenDatabase.FileName;
+                     if (TimeManager.Instance.OpenDatabase.ArgumentList != null && TimeManager.Instance.OpenDatabase.ArgumentList.Length > 0)
+                        foreach (string argument in TimeManager.Instance.OpenDatabase.ArgumentList)
+                           startInfo.ArgumentList.Add(argument);
+                     startInfo.WorkingDirectory = TimeManager.Instance.OpenDatabase.WorkingDirectory;
+
+                     process.StartInfo = startInfo;
+                     process.Start();
+                  }
+                  else
+                     target = "TimekeepHistory.db";
+                  if (target != null)
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = $"{System.IO.Directory.GetCurrentDirectory()}\\{target}";
+                     startInfo.UseShellExecute = true;
+                     process.StartInfo = startInfo;
+                     process.Start();
+                  }
                }
                catch (Exception ex)
                {
@@ -184,6 +254,8 @@ namespace Tildetool.Time
 
             case Key.Right:
                DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? 1 : 7);
+               //if (DailyDay > DateTime.Now.AddDays(7))
+               //   DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
                Refresh();
                e.Handled = true;
                return;
@@ -196,6 +268,8 @@ namespace Tildetool.Time
 
             case Key.Down:
                DailyDay = DailyDay.AddDays(7 * (CurDailyMode == Timekeep.DailyMode.Summary ? -1 : 1));
+               //if (DailyDay > DateTime.Now.AddDays(7))
+               //   DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
                Refresh();
                e.Handled = true;
                return;
@@ -469,6 +543,11 @@ namespace Tildetool.Time
          => TimeBar?.TimeAreaHotspot_MouseLeftButtonDown(sender, e);
       private void TimeAreaHotspot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
          => TimeBar?.TimeAreaHotspot_MouseLeftButtonUp(sender, e);
+
+      private void DailyCell_MouseEnter(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseEnter(sender, e);
+      private void DailyCell_MouseLeave(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseLeave(sender, e);
 
       private void TextEditor_KeyDown(object sender, KeyEventArgs e)
          => TimekeepTextEditor.TextEditor_KeyDown(sender, e);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,25 +21,40 @@ namespace Tildetool.Time
       public bool IsTextEditor => _TextEditorCallback != null;
 
       public string Text => Parent.TextEditor.Text;
+      public string Note => Parent.TextEditorNote.Text;
 
-      System.Action<string>? _TextEditorCallback;
+      System.Action<string, string>? _TextEditorCallback;
+      System.Action? _FnCancel;
+
+      string Title;
       List<string> Options;
       bool EatEvent = false;
       TextBlock[] TextOptions;
-      public void Show(System.Action<string> callback, List<string> options)
+
+      public void Show(string title, System.Action<string, string> callback, System.Action? fnCancel, List<string>? options = null)
       {
          _TextEditorCallback = callback;
-         Options = options;
+         _FnCancel = fnCancel;
+
+         Title = title;
+         Options = options ?? new();
          Options.Sort();
          Parent.TextEditorPane.Visibility = Visibility.Visible;
+         Parent.TextEditorNote.Text = "";
+         Parent.TextEditorNote.Visibility = Visibility.Collapsed;
          Parent.TextEditor.Text = "";
          Parent.TextEditor.Focus();
 
+         Parent.TextEditorTitle.Text = title;
          TextOptions = new[] { Parent.TextOption0, Parent.TextOption1, Parent.TextOption2, Parent.TextOption3, Parent.TextOption4, Parent.TextOption5,
             Parent.TextOption6, Parent.TextOption7, Parent.TextOption8 };
          foreach (var opt in TextOptions)
             opt.Visibility = Visibility.Collapsed;
       }
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public void Show(string title, System.Action<string, string> callback, List<string>? options = null)
+         => Show(title, callback, null, options);
 
       public bool HandleKeyDown(object sender, KeyEventArgs e)
       {
@@ -59,16 +75,35 @@ namespace Tildetool.Time
             string text = Parent.TextEditor.Text;
             var callback = _TextEditorCallback;
             _TextEditorCallback = null;
+            _FnCancel = null;
             Parent.TextEditorPane.Visibility = Visibility.Collapsed;
             EatEvent = true;
 
             if (!string.IsNullOrEmpty(text))
-               callback(text);
+               callback(text, Parent.TextEditorNote.Text);
          }
          else if (e.Key == Key.Escape)
          {
             _TextEditorCallback = null;
+            var callback = _FnCancel;
+            _FnCancel = null;
             Parent.TextEditorPane.Visibility = Visibility.Collapsed;
+            EatEvent = true;
+
+            callback?.Invoke();
+         }
+         else if (e.Key == Key.Tab)
+         {
+            if (Parent.TextEditor.IsFocused)
+            {
+               Parent.TextEditorNote.Visibility = Visibility.Visible;
+               Parent.TextEditorNote.Focus();
+            }
+            else
+            {
+               Parent.TextEditor.Focus();
+               Parent.TextEditorNote.Visibility = !string.IsNullOrEmpty(Parent.TextEditorNote.Text) ? Visibility.Visible : Visibility.Collapsed;
+            }
             EatEvent = true;
          }
       }

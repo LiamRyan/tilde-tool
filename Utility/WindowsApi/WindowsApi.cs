@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Tildetool
 {
-   public static class WindowsApi
+   public static partial class WindowsApi
    {
       public const int WH_JOURNALRECORD = 0;
       public const int WH_JOURNALPLAYBACK = 1;

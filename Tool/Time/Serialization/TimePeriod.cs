@@ -10,5 +10,8 @@ namespace Tildetool.Time.Serialization
       public DateTime StartTime { get; set; } //utc
       public DateTime EndTime { get; set; } //utc
       public bool OnComputer;
+      public string Notes { get; set; }
+
+      public TimePeriod Clone() => (TimePeriod)MemberwiseClone();
    }
 }

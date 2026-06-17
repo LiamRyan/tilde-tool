@@ -38,7 +38,7 @@
         </DataTemplate>
         <DataTemplate x:Key="ScheduleEntry">
             <Grid Background="#20A8611F" Margin="1,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <TextBlock x:Name="ScheduleText" Text="Sketch" Margin="-20,0,-20,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFA8611F" FontSize="12" TextWrapping="Wrap"/>
+                <TextBlock x:Name="ScheduleText" Text="Sketching Really Long Text" Margin="-20,0,-20,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="#FFA8611F" FontSize="12" TextWrapping="Wrap"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="Indicator">
@@ -90,7 +90,7 @@
             <Grid x:Name="RowLine" Background="#A0ABE2A3" Height="12" Margin="0,3,0,3"/>
         </DataTemplate>
         <DataTemplate x:Key="DailyCell">
-            <Grid Height="20" Background="#FF0D211D" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <Grid Height="20" Background="#FF0D211D" HorizontalAlignment="Stretch" VerticalAlignment="Center" MouseEnter="DailyCell_MouseEnter" MouseLeave="DailyCell_MouseLeave">
                 <Grid x:Name="ActiveGlow" Width="14" HorizontalAlignment="Right" VerticalAlignment="Stretch">
                     <Grid.Background>
                         <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
@@ -108,6 +108,8 @@
                 </StackPanel>
                 <TextBlock x:Name="EndTime" Text="0100" Margin="2,2,2,0" HorizontalAlignment="Right" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
                 <TextBlock x:Name="ProjectName" Text="Morning" Margin="-40,0,-40,-12" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="10"/>
+                <TextBlock x:Name="NoteIcon" Text="🎞" Margin="-40,-6,-40,0" TextAlignment="Center" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8"/>
+                <TextBlock x:Name="NoteText" Text="beef stew" Margin="-200,-6,-200,0" TextAlignment="Center" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8"/>
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="DailyRow">
@@ -118,9 +120,9 @@
                     <TextBlock x:Name="HeaderNightM" Text="01" Margin="2,0,0,0.5" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="8"/>
                 </StackPanel>
                 <TextBlock x:Name="HeaderName" Text="Free Time" Width="150" HorizontalAlignment="Left" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="16"/>
-                <Grid x:Name="DailyCells" Margin="160,0,60,0">
-                    <ContentControl ContentTemplate="{StaticResource DailyCell}"></ContentControl>
-                </Grid>
+                <tildetool:FreeGrid x:Name="DailyCells" Margin="160,0,60,0">
+                    <ContentControl ContentTemplate="{StaticResource DailyCell}" tildetool:FreeGrid.LeftPct="0.25" tildetool:FreeGrid.WidthPct="0.33"></ContentControl>
+                </tildetool:FreeGrid>
                 <TextBlock x:Name="HeaderNameR" Text="Free Time" Margin="0,0,70,0" HorizontalAlignment="Right" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="#FF416F55" FontSize="12"/>
                 <StackPanel Width="50" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
                     <TextBlock x:Name="HeaderTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextFore}}" FontSize="16" VerticalAlignment="Bottom"/>
@@ -198,9 +200,9 @@
                     <Grid x:Name="DailyDividers" Margin="160,16,60,17" HorizontalAlignment="Stretch">
                         <ContentControl ContentTemplate="{StaticResource DailyDivider}"></ContentControl>
                     </Grid>
-                    <Grid x:Name="ScheduleGrid" Margin="160,20,60,0" HorizontalAlignment="Stretch">
-                        <ContentControl ContentTemplate="{StaticResource ScheduleEntry}"></ContentControl>
-                    </Grid>
+                    <tildetool:FreeGrid x:Name="ScheduleGrid" Margin="160,20,60,0" HorizontalAlignment="Stretch">
+                        <ContentControl tildetool:FreeGrid.Left="20%" tildetool:FreeGrid.Width="5%" ContentTemplate="{StaticResource ScheduleEntry}"></ContentControl>
+                    </tildetool:FreeGrid>
                     <StackPanel Orientation="Vertical" Margin="0,20,0,0">
                         <StackPanel x:Name="DailyRows" Orientation="Vertical" Margin="0,0,0,0">
                             <ContentControl ContentTemplate="{StaticResource DailyRow}"></ContentControl>
@@ -378,8 +380,13 @@
                         </StackPanel>
                     </StackPanel>
                 </Grid>
-                <StackPanel x:Name="IndicatorPane" Orientation="Horizontal" Margin="20,10,20,0">
-                    <Grid x:Name="IndicatorSlider" Width="200"  MouseEnter="IndicatorSlider_MouseEnter" MouseLeave="IndicatorSlider_MouseLeave" MouseMove="IndicatorSlider_MouseMove" MouseLeftButtonDown="IndicatorSlider_MouseLeftButtonDown">
+                <Grid x:Name="IndicatorPane" HorizontalAlignment="Stretch" Margin="20,10,20,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid x:Name="IndicatorSlider" Width="200" Grid.Column="0" MouseEnter="IndicatorSlider_MouseEnter" MouseLeave="IndicatorSlider_MouseLeave" MouseMove="IndicatorSlider_MouseMove" MouseLeftButtonDown="IndicatorSlider_MouseLeftButtonDown">
                         <Frame x:Name="SliderBackfill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#40449637"></Frame>
                         <Grid Margin="4,0,4,0" VerticalAlignment="Top">
                             <tildetool:FreeGrid>
@@ -403,10 +410,13 @@
                             </tildetool:FreeGrid>
                         </Grid>
                     </Grid>
-                    <StackPanel x:Name="IndicatorPanes" Orientation="Horizontal" Margin="0,0,0,0">
+                    <StackPanel x:Name="IndicatorPanes" Grid.Column="1" HorizontalAlignment="Left" Orientation="Horizontal" Margin="0,0,0,0">
                         <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
                     </StackPanel>
-                </StackPanel>
+                    <StackPanel x:Name="IndicatorPanes2" Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,0,0,0">
+                        <ContentControl ContentTemplate="{StaticResource IndicatorPane}"></ContentControl>
+                    </StackPanel>
+                </Grid>
                 <Grid Height="20"></Grid>
             </StackPanel>
 
@@ -430,7 +440,9 @@
             <Grid x:Name="TextEditorPane" Background="#80044004" Margin="6,6,6,6" Visibility="Collapsed">
                 <Grid Background="#FF044004" Width="400" VerticalAlignment="Center">
                     <StackPanel Orientation="Vertical" Margin="10,10,10,10">
+                        <TextBlock x:Name="TextEditorTitle" Margin="0,0,0,5" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
                         <TextBox x:Name="TextEditor" Margin="0,0,0,10" KeyDown="TextEditor_KeyDown" TextChanged="TextEditor_TextChanged"/>
+                        <TextBox x:Name="TextEditorNote" Margin="0,-5,0,10" KeyDown="TextEditor_KeyDown" TextChanged="TextEditor_TextChanged"/>
                         <TextBlock x:Name="TextOption0" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
                         <TextBlock x:Name="TextOption1" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>
                         <TextBlock x:Name="TextOption2" Padding="0,0,0,0" Text="Value" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorTextBack}}" FontSize="12"/>

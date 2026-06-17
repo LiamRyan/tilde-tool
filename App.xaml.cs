@@ -87,6 +87,7 @@ namespace Tildetool
       private void Close(object target, ExecutedRoutedEventArgs e)
       {
          Shutdown();
+         TimeManager.Instance.Dispose();
       }
 
       private TaskbarIcon? AppNotifyIcon;
