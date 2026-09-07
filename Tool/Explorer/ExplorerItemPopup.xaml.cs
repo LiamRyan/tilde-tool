@@ -1,22 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
-using System.Runtime.InteropServices;
-using System.Windows.Media.Animation;
-using System.Diagnostics;
-using System.Timers;
-using Tildetool.Explorer.Serialization;
-using System.Threading;
-using Windows.Storage;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using Tildetool.Explorer.Serialization;
 
 namespace Tildetool.Explorer
 {
