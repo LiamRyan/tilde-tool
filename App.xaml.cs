@@ -128,7 +128,7 @@ namespace Tildetool
                {
                   if (_StatusBar == null)
                   {
-                     _StatusBar = new StatusBar(true);
+                     _StatusBar = new Status.StatusBar(true);
                      _StatusBar.Closing += (sender, e) => { if (sender != _StatusBar) return; StatusBarAwake?.Invoke(_StatusBar, false); _StatusBar = null; };
 
                      _StatusBar.Show();
@@ -172,18 +172,18 @@ namespace Tildetool
       }
 
       public delegate void PanelAwake(Window window, bool awake);
-      public static StatusBar? StatusBar { get { return _StatusBar; } }
+      public static Status.StatusBar? StatusBar { get { return _StatusBar; } }
       public static event PanelAwake? StatusBarAwake;
 
 
       StatusProgress? _StatusProgress = null;
 
-      static StatusBar? _StatusBar = null;
+      static Status.StatusBar? _StatusBar = null;
       public void HotkeyStatus(Keys keys = Keys.None)
       {
          if (_StatusBar == null)
          {
-            _StatusBar = new StatusBar(false);
+            _StatusBar = new Status.StatusBar(false);
             _StatusBar.Closing += (sender, e) => { if (sender != _StatusBar) return; StatusBarAwake?.Invoke(_StatusBar, false); _StatusBar = null; };
 
             _StatusBar.Show();
