@@ -592,7 +592,7 @@ namespace Tildetool.Explorer
                      if (action.InWorkingDir)
                         startInfo.WorkingDirectory = path;
                      else
-                        startInfo.Arguments = path;
+                        startInfo.Arguments = "\"" + path + "\"";
                      ResultProcess.StartInfo = startInfo;
                      ResultProcess.Start();
                   }
