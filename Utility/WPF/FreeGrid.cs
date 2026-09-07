@@ -17,6 +17,7 @@ namespace Tildetool.WPF
    {
       public enum ModeType
       {
+         None,
          Pixel,
          Percent
       }
@@ -30,12 +31,13 @@ namespace Tildetool.WPF
          Value = value;
       }
 
-      public double GetValue(double parentSize)
+      public double GetValue(double elementSize, double parentSize)
       {
          switch (Mode)
          {
             case ModeType.Pixel: return Value;
             case ModeType.Percent: return Value * parentSize;
+            case ModeType.None: return elementSize;
          }
          return double.NaN;
       }
@@ -44,6 +46,7 @@ namespace Tildetool.WPF
       {
          switch (Mode)
          {
+            case ModeType.None: return "";
             case ModeType.Pixel: return Value.ToString();
             case ModeType.Percent: return $"{Value * 100.0}%";
          }
@@ -62,6 +65,8 @@ namespace Tildetool.WPF
       {
          if (value is string valueAsString)
          {
+            //if (string.IsNullOrEmpty(valueAsString.Trim()))
+            //   return new PercentValue(PercentValue.ModeType.None, 0);
             if (valueAsString.EndsWith('%'))
             {
                if (double.TryParse(valueAsString.TrimEnd('%'), out double result))
@@ -163,6 +168,32 @@ namespace Tildetool.WPF
                grid.InvalidateMeasure();
       }
 
+      protected override Size MeasureOverride(Size constraint)
+      {
+         Size ourSize = new(0, 0);
+         for (int i = 0; i < InternalChildren.Count; i++)
+         {
+            int index = i;
+            UIElement child = InternalChildren[index];
+
+            double width = GetWidth(child).GetValue((child as FrameworkElement)?.Width ?? 0, constraint.Width);
+            double height = GetHeight(child).GetValue((child as FrameworkElement)?.Height ?? 0, constraint.Height);
+            if (width < 0.0)
+               width = 0.0;
+            if (height < 0.0)
+               height = 0.0;
+
+            // Assign the position
+            child.Measure(new Size(width, height));
+
+            //
+            ourSize = new(Math.Max(ourSize.Width, child.DesiredSize.Height),
+                        Math.Max(ourSize.Height, child.DesiredSize.Height));
+         }
+
+         return ourSize;
+      }
+
       protected override Size ArrangeOverride(Size finalSize)
       {
          for (int i = 0; i < InternalChildren.Count; i++)
@@ -170,10 +201,10 @@ namespace Tildetool.WPF
             int index = i;
             UIElement child = InternalChildren[index];
 
-            double left = GetLeft(child).GetValue(finalSize.Width);
-            double top = GetTop(child).GetValue(finalSize.Height);
-            double width = GetWidth(child).GetValue(finalSize.Width);
-            double height = GetHeight(child).GetValue(finalSize.Height);
+            double left = GetLeft(child).GetValue(0, finalSize.Width);
+            double top = GetTop(child).GetValue(0, finalSize.Height);
+            double width = GetWidth(child).GetValue((child as FrameworkElement)?.Width ?? 0, finalSize.Width);
+            double height = GetHeight(child).GetValue((child as FrameworkElement)?.Height ?? 0, finalSize.Height);
             if (width < 0.0)
                width = 0.0;
             if (height < 0.0)
@@ -187,6 +218,28 @@ namespace Tildetool.WPF
          }
 
          return finalSize;
+      }
+
+      public static void AssignDayTime(UIElement block, double frameBegin, double frameEnd, double blockBegin, double blockEnd)
+      {
+         double blockBeginClamp = Math.Clamp(blockBegin, frameBegin, frameEnd);
+         double blockEndClamp = Math.Clamp(blockEnd, frameBegin, frameEnd);
+         if (blockEndClamp <= blockBeginClamp)
+         {
+            FreeGrid.SetWidth(block, new PercentValue(PercentValue.ModeType.Percent, 0));
+            return;
+         }
+
+         FreeGrid.SetLeft(block, new PercentValue(PercentValue.ModeType.Percent, (blockBeginClamp - frameBegin) / (frameEnd - frameBegin)));
+         FreeGrid.SetWidth(block, new PercentValue(PercentValue.ModeType.Percent, (blockEndClamp - blockBeginClamp) / (frameEnd - frameBegin)));
+      }
+
+      public static void AssignDayTime(UIElement block, DateTime frameBegin, DateTime frameEnd, DateTime blockBegin, DateTime blockEnd)
+      {
+         double hourBegin = (blockBegin - frameBegin).TotalHours;
+         double hourEnd = (blockEnd - frameBegin).TotalHours;
+         double totalHours = (frameEnd - frameBegin).TotalHours;
+         AssignDayTime(block, 0, totalHours, hourBegin, hourEnd);
       }
    }
 }

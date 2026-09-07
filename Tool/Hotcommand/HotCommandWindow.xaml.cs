@@ -36,8 +36,12 @@ namespace Tildetool
 
       #endregion
 
+      public Dictionary<Key, HotcommandManager.Chord> CurrentClipkey;
+
       public HotCommandWindow()
       {
+         CurrentClipkey = HotcommandManager.Instance.ClipkeyByKey;
+
          Width = System.Windows.SystemParameters.PrimaryScreenWidth;
          InitializeComponent();
          Top = App.GetBarTop(Height);
@@ -58,6 +62,7 @@ namespace Tildetool
          //
          App.PlayBeep(App.BeepSound.Wake);
       }
+
       void OnLoaded(object sender, RoutedEventArgs args)
       {
          App.PreventAltTab(this);
@@ -65,6 +70,7 @@ namespace Tildetool
          RefreshDisplay();
          _AnimateIn();
       }
+
       IntPtr hKeyboardHook = IntPtr.Zero;
       HookProc KeyboardHook;
       public override void EndInit()
@@ -77,13 +83,18 @@ namespace Tildetool
             hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, GetModuleHandle(curModule.ModuleName), 0);
          }
       }
+
       protected override void OnClosed(EventArgs e)
       {
          base.OnClosed(e);
 
          if (hKeyboardHook != IntPtr.Zero)
+         {
             UnhookWindowsHookEx(hKeyboardHook);
+            hKeyboardHook = IntPtr.Zero;
+         }
       }
+
       protected override void OnLostFocus(RoutedEventArgs e)
       {
          base.OnLostFocus(e);
@@ -99,6 +110,19 @@ namespace Tildetool
             App.PlayBeep(App.BeepSound.Cancel);
          _Finished = true;
          OnFinish?.Invoke(this);
+
+         App.Clickthrough(this);
+         if (hKeyboardHook != IntPtr.Zero)
+         {
+            UnhookWindowsHookEx(hKeyboardHook);
+            hKeyboardHook = IntPtr.Zero;
+         }
+         Focusable = false;
+
+         Window? candidate = Application.Current.Windows
+             .OfType<Window>()
+             .FirstOrDefault(w => w != this && w.IsVisible);
+         candidate?.Activate();
       }
 
       bool _IsHotkey = true;
@@ -420,6 +444,25 @@ namespace Tildetool
                   Cancel();
                   (App.Current as App).HotkeyLookup();
                   return true;
+            }
+
+            //
+            if (CurrentClipkey.TryGetValue(key, out HotcommandManager.Chord clipValue))
+            {
+               CurrentClipkey = clipValue.NextKey;
+
+               _AnyCommand = true;
+               if (!string.IsNullOrEmpty(clipValue.Value))
+               {
+                  Clipboard.SetText(clipValue.Value);
+                  System.Windows.Forms.SendKeys.Send(clipValue.Value);
+
+                  // TODO: Cancel instead (this delays focus though)
+                  _Finished = true;
+                  OnFinish?.Invoke(this);
+                  Dispatcher.Invoke(Close);
+               }
+               return true;
             }
 
             if (key >= Key.A && key <= Key.Z)

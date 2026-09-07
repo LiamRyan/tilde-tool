@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
-using Tildetool.Time.Serialization;
 
 namespace Tildetool.Time
 {
@@ -15,6 +13,7 @@ namespace Tildetool.Time
       public override void SubRefresh()
       {
          Parent.DailyDate.Text = "Progress";
+         Parent.DayTaskPane.Visibility = Visibility.Collapsed;
       }
 
       public override List<TimeBlockRow> CollectTimeBlocks()

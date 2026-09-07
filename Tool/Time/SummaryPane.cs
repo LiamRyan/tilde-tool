@@ -103,6 +103,7 @@ namespace Tildetool.Time
          Parent.Summary.Visibility = (Parent.CurDailyMode == Timekeep.DailyMode.Summary) ? Visibility.Visible : Visibility.Collapsed;
          if (Parent.CurDailyMode != Timekeep.DailyMode.Summary)
             return;
+         Parent.DayTaskPane.Visibility = Visibility.Collapsed;
 
          // Make sure our project data is up-to-date.
          TimeManager.Instance.UpdateProjectData();
@@ -310,22 +311,21 @@ namespace Tildetool.Time
          });
       }
 
-      public void SummaryBlockT_MouseEnter(object sender, MouseEventArgs e)
-      {
-         if (sender is FrameworkElement element)
-            if (CategoryByRoot.TryGetValue(element, out FocusCategory))
-               Refresh(Parent.DailyDay);
-      }
-
-      public void SummaryBlockT_MouseLeave(object sender, MouseEventArgs e)
+      public void SummaryBlockT_MouseDown(object sender, MouseEventArgs e)
       {
          if (sender is FrameworkElement element)
             if (CategoryByRoot.TryGetValue(element, out string focusCategory))
+            {
                if (FocusCategory == focusCategory)
-               {
                   FocusCategory = null;
-                  Refresh(Parent.DailyDay);
-               }
+               else
+                  FocusCategory = focusCategory;
+               Refresh(Parent.DailyDay);
+            }
+      }
+
+      public void SummaryBlockT_MouseUp(object sender, MouseEventArgs e)
+      {
       }
    }
 }

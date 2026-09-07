@@ -82,11 +82,14 @@ namespace Tildetool
 
       private void OnStartup(object sender, StartupEventArgs e)
       {
+         this.Exit += new System.Windows.ExitEventHandler(this.OnExit);
          OnStartup(e);
       }
+
       private void Close(object target, ExecutedRoutedEventArgs e)
       {
          Shutdown();
+         TimeManager.Instance.Dispose();
       }
 
       private TaskbarIcon? AppNotifyIcon;
@@ -169,6 +172,16 @@ namespace Tildetool
          StartWindow window = new StartWindow();
          window.Show();
          window.Topmost = true;
+      }
+
+      private void OnExit(object sender, ExitEventArgs e)
+      {
+         OnExit(null, e);
+      }
+
+      protected override void OnExit(ExitEventArgs e)
+      {
+         TimeManager.Instance.Dispose();
       }
 
       public delegate void PanelAwake(Window window, bool awake);

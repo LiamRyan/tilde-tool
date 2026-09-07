@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -96,6 +97,51 @@ namespace Tildetool
                                (byte)(((1.0f - pct) * (float)colorA.R) + (pct * (float)colorB.R)),
                                (byte)(((1.0f - pct) * (float)colorA.G) + (pct * (float)colorB.G)),
                                (byte)(((1.0f - pct) * (float)colorA.B) + (pct * (float)colorB.B)));
+      }
+   }
+
+   public struct RGB
+   {
+      uint RGBA;
+      public RGB(int rgb)
+      {
+         if (rgb >= (1 << 24))
+            RGBA = (uint)rgb;
+         else
+            RGBA = (0xFFu << 24) | ((uint)rgb);
+      }
+      public RGB(uint rgba)
+      {
+         RGBA = rgba;
+      }
+      public RGB(byte r, byte g, byte b)
+      {
+         RGBA = ((0xFFu << 24) | ((uint)r) << 16) | (((uint)g) << 8) | (((uint)b) << 0);
+      }
+      public RGB(byte r, byte g, byte b, float af)
+      {
+         byte a = (byte)(af * 255.0f);
+         RGBA = (((uint)a) << 24) | (((uint)r) << 16) | (((uint)g) << 8) | (((uint)b) << 0);
+      }
+
+      public static implicit operator Color(RGB colorRGB)
+      {
+         float a = (colorRGB.RGBA & 0xFF000000) >> 24;
+         float r = (colorRGB.RGBA & 0x00FF0000) >> 16;
+         float g = (colorRGB.RGBA & 0x0000FF00) >> 8;
+         float b = (colorRGB.RGBA & 0x000000FF);
+         return Color.FromArgb((byte)a, (byte)r, (byte)g, (byte)b);
+      }
+
+      public static explicit operator RGB(int rgb) => new RGB(rgb);
+
+      public static explicit operator RGB(uint rgb) => new RGB(rgb);
+
+      public override string ToString()
+      {
+         if ((RGBA & 0xFF) != 0xFF)
+            return $"{RGBA:X8}";
+         return $"{RGBA >> 8:X6}";
       }
    }
 }

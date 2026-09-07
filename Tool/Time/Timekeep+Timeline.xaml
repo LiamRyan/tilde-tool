@@ -1,0 +1,98 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Tildetool.Time"
+                    xmlns:Shape="clr-namespace:Tildetool.Shape"
+                    xmlns:tildetool="clr-namespace:Tildetool.WPF"
+                    >
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Tool/Time/Timekeep+XSS.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <SolidColorBrush x:Key="ColorTopbarBackfill" Color="#0A0A14"/>
+    <SolidColorBrush x:Key="ColorTopbarOptionBack" Color="#042508"/>
+
+    <SolidColorBrush x:Key="ColorBackfill" Color="#05050C"/>
+    <SolidColorBrush x:Key="ColorBackground" Color="#FF042508"/>
+    <SolidColorBrush x:Key="ColorBackgroundAlpha" Color="#50042508"/>
+
+    <SolidColorBrush x:Key="ColorCellBackground" Color="#FF0D211D"/>
+    <SolidColorBrush x:Key="ColorCellText" Color="#FF517F65"/>
+    <SolidColorBrush x:Key="ColorCellText2" Color="#FF69A582"/>
+    <SolidColorBrush x:Key="ColorCellText3" Color="#FFC3F1AF"/>
+    <SolidColorBrush x:Key="ColorCellText4" Color="#FF416F55"/>
+    <SolidColorBrush x:Key="ColorCellTextBack" Color="#FF449637"/>
+
+    <SolidColorBrush x:Key="ColorNow" Color="#FFABE2A3"/>
+    <SolidColorBrush x:Key="ColorNowAlpha1" Color="#A0ABE2A3"/>
+    <SolidColorBrush x:Key="ColorNowAlpha2" Color="#01ABE2A3"/>
+
+    <SolidColorBrush x:Key="ColorTextFore" Color="#FFC3F1AF"/>
+    <SolidColorBrush x:Key="ColorTextBack" Color="#FF449637"/>
+    <SolidColorBrush x:Key="ColorDivider" Color="#FF449637"/>
+    <SolidColorBrush x:Key="ColorDividerAlpha" Color="#40449637"/>
+    <SolidColorBrush x:Key="ColorSchedule" Color="#FFA8611F"/>
+    <SolidColorBrush x:Key="ColorScheduleAlpha" Color="#20A8611F"/>
+    <SolidColorBrush x:Key="ColorDayBorderAlpha" Color="#20A811AF"/>
+
+    <DataTemplate x:Key="DailyHeaderCell">
+        <TextBlock Text="0900" Margin="-50,0,0,0" Width="100" HorizontalAlignment="Left" TextAlignment="Center" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorTextBack}" FontSize="16"/>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DailyDivider">
+        <Grid Background="{StaticResource ColorDivider}" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch"/>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ScheduleEntry">
+        <Grid Background="{StaticResource ColorScheduleAlpha}" Margin="1,0,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid Background="{StaticResource ColorSchedule}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,-5" Width="1" Height="10"></Grid>
+            <Grid Background="{StaticResource ColorSchedule}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,-5" Width="1" Height="10"></Grid>
+            <TextBlock x:Name="ScheduleText" Text="Sketching Really Long Text" Margin="-20,0,-20,6" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorSchedule}" FontSize="12" TextWrapping="Wrap"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DailyCell">
+        <Grid Height="20" Background="{StaticResource ColorCellBackground}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <Grid x:Name="ActiveGlow" Width="14" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+                <Grid.Background>
+                    <LinearGradientBrush EndPoint="1,0.5" StartPoint="0,0.5">
+                        <GradientStop Color="#00042508"/>
+                        <GradientStop Color="#FF24751F" Offset="0.85"/>
+                        <GradientStop Color="#FF66C657" Offset="0.95"/>
+                        <GradientStop Color="#FFF0FFF0" Offset="1"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+            </Grid>
+            <TextBlock x:Name="StartTime" Text="0900" Margin="2,2,2,0" HorizontalAlignment="Left" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText}" FontSize="10"/>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
+                <TextBlock x:Name="CellTimeH" Text="8" Margin="-4,0,6,0" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText2}" FontSize="12"/>
+                <TextBlock x:Name="CellTimeM" Text="01" Margin="-4,0,-4,-4" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText3}" FontSize="8"/>
+            </StackPanel>
+            <TextBlock x:Name="EndTime" Text="0100" Margin="2,2,2,0" HorizontalAlignment="Right" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="10"/>
+            <TextBlock x:Name="ProjectName" Text="Morning" Margin="-40,0,-40,-12" TextAlignment="Center" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="10"/>
+            <TextBlock x:Name="NoteIcon" Text="🎞" Margin="-40,-6,-40,0" TextAlignment="Center" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="8"/>
+            <TextBlock x:Name="NoteText" Text="beef stew" Margin="-200,-6,-200,0" TextAlignment="Center" VerticalAlignment="Top" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="8"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="DailyRow">
+        <Grid Height="35" Background="{StaticResource ColorBackgroundAlpha}">
+            <StackPanel Margin="0,3,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+                <TextBlock x:Name="HeaderDate" Text="22/10/25" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="12"/>
+                <TextBlock x:Name="HeaderNightH" Text="8" Margin="12,0,0,0" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="10"/>
+                <TextBlock x:Name="HeaderNightM" Text="01" Margin="2,0,0,0.5" HorizontalAlignment="Left" TextAlignment="Left" VerticalAlignment="Bottom" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="8"/>
+            </StackPanel>
+            <TextBlock x:Name="HeaderName" Text="Free Time" Width="150" HorizontalAlignment="Left" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellTextBack}" FontSize="16"/>
+            <tildetool:FreeGrid x:Name="DailyCells" Margin="160,0,60,0">
+                <ContentControl ContentTemplate="{StaticResource DailyCell}" tildetool:FreeGrid.LeftPct="0.25" tildetool:FreeGrid.WidthPct="0.33"></ContentControl>
+            </tildetool:FreeGrid>
+            <TextBlock x:Name="HeaderNameR" Text="Free Time" Margin="0,0,70,0" HorizontalAlignment="Right" TextAlignment="Right" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText4}" FontSize="12"/>
+            <StackPanel Width="50" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                <TextBlock x:Name="HeaderTimeH" Text="8" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText3}" FontSize="16" VerticalAlignment="Bottom"/>
+                <TextBlock x:Name="HeaderTimeM" Text="01" Margin="4,0,0,1" TextAlignment="Left" FontFamily="Cascadia Code Light" Foreground="{StaticResource ColorCellText3}" FontSize="12" VerticalAlignment="Bottom"/>
+            </StackPanel>
+            <Grid x:Name="RowNowGrid" Margin="160,0,60,0">
+                <Grid x:Name="RowNow" Margin="0,2,0,2" Background="{StaticResource ColorNow}" Width="1" HorizontalAlignment="Left" VerticalAlignment="Stretch" Grid.Column="1" IsHitTestVisible="False"/>
+            </Grid>
+        </Grid>
+    </DataTemplate>
+</ResourceDictionary>

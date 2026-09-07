@@ -10,6 +10,8 @@ namespace Tildetool.Hotcommand.Serialization
    {
       public string DictionaryURL { get; set; }
 
+      public Cliphotkey[] Cliphotkey { get; set; }
+
       public Context[] Context { get; set; }
 
       public Command[] Hotcommand { get; set; }

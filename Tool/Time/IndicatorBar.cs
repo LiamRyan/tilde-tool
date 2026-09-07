@@ -19,7 +19,7 @@ namespace Tildetool.Time
       {
          Parent = parent;
 
-         TimeManager.Instance.QueryLastTimeIndicators(out double[] values, out DateTime[] dates);
+         SQL.TimeIndicator.SelectMostRecent(out double[] values, out DateTime[] dates);
          IndicatorLastValue = Enumerable.Range(0, TimeManager.Instance.Indicators.Length).ToDictionary(i => TimeManager.Instance.Indicators[i], i => values[i]);
          IndicatorLastDateUtc = Enumerable.Range(0, TimeManager.Instance.Indicators.Length).ToDictionary(i => TimeManager.Instance.Indicators[i], i => dates[i]);
       }
@@ -44,9 +44,13 @@ namespace Tildetool.Time
             return;
 
          Indicator[] indicators = FocusCategory == null ? TimeManager.Instance.Indicators : new Indicator[] { FocusCategory };
+         Parent.IndicatorPanes2.HorizontalAlignment = FocusCategory == null ? HorizontalAlignment.Right : HorizontalAlignment.Left;
 
          DataTemplate? templatePane = Parent.Resources["IndicatorPane"] as DataTemplate;
-         DataTemplater.Populate(Parent.IndicatorPanes, templatePane, indicators, (content, root, _, data) =>
+         DataTemplater.Populate(Parent.IndicatorPanes, templatePane, indicators.Where(i => !i.Event), _populateIndicator);
+         DataTemplater.Populate(Parent.IndicatorPanes2, templatePane, indicators.Where(i => i.Event), _populateIndicator);
+
+         void _populateIndicator(ContentControl content, FrameworkElement root, int i, Indicator data)
          {
             IndicatorPane pane = new IndicatorPane(root);
             root.Height = 42;
@@ -118,7 +122,7 @@ namespace Tildetool.Time
                pane.Text.Visibility = Visibility.Collapsed;
                pane.Date.Visibility = Visibility.Collapsed;
             }
-         });
+         };
 
          Parent.IndicatorSlider.Visibility = FocusCategory != null ? Visibility.Visible : Visibility.Collapsed;
          if (FocusCategory != null)
@@ -282,7 +286,7 @@ namespace Tildetool.Time
       {
          if (FocusCategory == null)
             return;
-         TimeManager.Instance.AddTimeIndicator(new TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = timeUtc });
+         new SQL.TimeIndicator() { Category = FocusCategory.Name, Value = FocusCategoryValue, Time = timeUtc }.Add();
          if (!IndicatorLastDateUtc.TryGetValue(FocusCategory, out DateTime lastTime) || timeUtc > lastTime)
          {
             IndicatorLastValue[FocusCategory] = FocusCategoryValue;

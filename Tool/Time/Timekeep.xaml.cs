@@ -6,6 +6,7 @@ using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 
@@ -29,6 +30,9 @@ namespace Tildetool.Time
       public IndicatorGraphPane IndicatorGraphPane;
       public SummaryPane SummaryPane;
       public TimekeepTextEditor TimekeepTextEditor;
+
+      static DateTime? LastOpenTime = null;
+      static DateTime? LastCloseTime = null;
 
       public Timekeep()
       {
@@ -56,6 +60,11 @@ namespace Tildetool.Time
          _AnimateIn();
 
          StartTick();
+
+         CancelTimekeepTime();
+         DateTime utcNow = DateTime.UtcNow;
+         if (LastOpenTime == null || LastCloseTime == null || (utcNow - LastCloseTime.Value).TotalSeconds > 10.0f)
+            LastOpenTime = utcNow;
       }
 
       protected override void OnClosing(CancelEventArgs e)
@@ -64,6 +73,13 @@ namespace Tildetool.Time
 
          StopTick();
          UnscheduleCancel();
+
+         DateTime utcNow = DateTime.UtcNow;
+         if (LastOpenTime != null && (utcNow - LastOpenTime.Value).TotalSeconds > 10.0f)
+         {
+            LastCloseTime = utcNow;
+            PendTimekeepTime();
+         }
       }
 
       void OnLoaded(object sender, RoutedEventArgs args)
@@ -71,6 +87,40 @@ namespace Tildetool.Time
          App.PreventAltTab(this);
       }
 
+      #region Save
+
+      Timer? SaveTimer = null;
+      void PendTimekeepTime()
+      {
+         if (SaveTimer != null)
+            return;
+         SaveTimer = new Timer();
+         SaveTimer.Interval = 10 * 1000;
+         SaveTimer.Elapsed += (s, e) =>
+         {
+            SaveTimer.Stop();
+            TimekeepTime();
+            SaveTimer.Dispose();
+            SaveTimer = null;
+         };
+         SaveTimer.Start();
+      }
+
+      void CancelTimekeepTime()
+      {
+         if (SaveTimer == null)
+            return;
+         SaveTimer.Stop();
+         SaveTimer.Dispose();
+         SaveTimer = null;
+      }
+
+      void TimekeepTime()
+      {
+         //TimeManager.Instance.RetroapplyProject(TimeManager.TimetrackProject, LastOpenTime.Value, LastCloseTime.Value);
+      }
+
+      #endregion
       #region Second Ticker
 
       Timer? _Timer;
@@ -143,6 +193,11 @@ namespace Tildetool.Time
             e.Handled = true;
             return;
          }
+         if (TimeBar?.HandleKeyDown(sender, e) ?? false)
+         {
+            e.Handled = true;
+            return;
+         }
 
          // Handle escape
          switch (e.Key)
@@ -153,19 +208,35 @@ namespace Tildetool.Time
                return;
 
             case Key.Return:
-               string target;
-               if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
-                  target = "TimekeepCache.json";
-               else
-                  target = "TimekeepHistory.db";
+               string target = null;
                try
                {
-                  Process process = new Process();
-                  ProcessStartInfo startInfo = new ProcessStartInfo();
-                  startInfo.FileName = $"{System.IO.Directory.GetCurrentDirectory()}\\{target}";
-                  startInfo.UseShellExecute = true;
-                  process.StartInfo = startInfo;
-                  process.Start();
+                  if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                     target = "TimekeepCache.json";
+                  else if (TimeManager.Instance.OpenDatabase != null)
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = TimeManager.Instance.OpenDatabase.FileName;
+                     if (TimeManager.Instance.OpenDatabase.ArgumentList != null && TimeManager.Instance.OpenDatabase.ArgumentList.Length > 0)
+                        foreach (string argument in TimeManager.Instance.OpenDatabase.ArgumentList)
+                           startInfo.ArgumentList.Add(argument);
+                     startInfo.WorkingDirectory = TimeManager.Instance.OpenDatabase.WorkingDirectory;
+
+                     process.StartInfo = startInfo;
+                     process.Start();
+                  }
+                  else
+                     target = "TimekeepHistory.db";
+                  if (target != null)
+                  {
+                     Process process = new Process();
+                     ProcessStartInfo startInfo = new ProcessStartInfo();
+                     startInfo.FileName = $"{System.IO.Directory.GetCurrentDirectory()}\\{target}";
+                     startInfo.UseShellExecute = true;
+                     process.StartInfo = startInfo;
+                     process.Start();
+                  }
                }
                catch (Exception ex)
                {
@@ -184,6 +255,8 @@ namespace Tildetool.Time
 
             case Key.Right:
                DailyDay = DailyDay.AddDays(CurDailyMode == DailyMode.Today ? 1 : 7);
+               //if (DailyDay > DateTime.Now.AddDays(7))
+               //   DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
                Refresh();
                e.Handled = true;
                return;
@@ -196,12 +269,17 @@ namespace Tildetool.Time
 
             case Key.Down:
                DailyDay = DailyDay.AddDays(7 * (CurDailyMode == Timekeep.DailyMode.Summary ? -1 : 1));
+               //if (DailyDay > DateTime.Now.AddDays(7))
+               //   DailyDay = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddDays(7);
                Refresh();
                e.Handled = true;
                return;
 
             case Key.Tab:
-               CurDailyMode = (DailyMode)((int)(CurDailyMode + 1) % (int)DailyMode.COUNT);
+               if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+                  CurDailyMode = (DailyMode)((int)(CurDailyMode + (int)DailyMode.COUNT - 1) % (int)DailyMode.COUNT);
+               else
+                  CurDailyMode = (DailyMode)((int)(CurDailyMode + 1) % (int)DailyMode.COUNT);
                Refresh();
                e.Handled = true;
                return;
@@ -235,8 +313,8 @@ namespace Tildetool.Time
          {
             int mins = (int)(DateTime.UtcNow - TimeManager.Instance.CurrentStartTime).TotalMinutes;
             int hours = mins / 60;
-            CurrentTimeH.Text = hours.ToString();
-            CurrentTimeM.Text = String.Format("{0:00}", mins % 60);
+            TopbarOptionCurrentTimeH.Text = hours.ToString();
+            TopbarOptionCurrentTimeM.Text = String.Format("{0:00}", mins % 60);
          }
       }
 
@@ -290,27 +368,29 @@ namespace Tildetool.Time
             animation.To = new Thickness(-10, 0, -10, 0);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseIn };
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTarget(animation, TopbarBackfill);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          {
             var animation = new ColorAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.0f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.To = Extension.FromArgb(0xFF021204);
+            animation.From = (RGB)0xF1F7E5;
+            animation.To = (TopbarBackfill.Fill as SolidColorBrush).Color;
             animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTarget(animation, TopbarBackfill);
             Storyboard.SetTargetProperty(animation, new PropertyPath("Fill.Color"));
          }
          {
             var animation = new ColorAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.0f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            animation.To = Extension.FromArgb(0xFF021204);
+            animation.From = (RGB)0xF1F7E5;
+            animation.To = (BodyBackfill.Background as SolidColorBrush).Color;
             animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseInOut };
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, BackfillDaily);
+            Storyboard.SetTarget(animation, BodyBackfill);
             Storyboard.SetTargetProperty(animation, new PropertyPath("Background.Color"));
          }
          {
@@ -334,32 +414,32 @@ namespace Tildetool.Time
          {
             var animation = new DoubleAnimationUsingKeyFrames();
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.33f));
-            Content.Height = 6.0f;
+            Topbar.Height = 6.0f;
             animation.KeyFrames.Add(new EasingDoubleKeyFrame(6.0f, TimeSpan.FromSeconds(0)));
             //animation.KeyFrames.Add(new EasingDoubleKeyFrame(Height / 2, TimeSpan.FromSeconds(0.2f), new ExponentialEase { Exponent = 2.0, EasingMode = EasingMode.EaseIn }));
             animation.KeyFrames.Add(new EasingDoubleKeyFrame(124.0f, TimeSpan.FromSeconds(0.33f), new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut }));
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTarget(animation, Topbar);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
             var animation = new DoubleAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.2f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
-            Daily.Opacity = 0.0f;
+            Body.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, Daily);
+            Storyboard.SetTarget(animation, Body);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          {
             var animation = new DoubleAnimation();
             animation.BeginTime = TimeSpan.FromSeconds(0.2f);
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.13f));
-            Border.Opacity = 0.0f;
+            TopbarBorder.Opacity = 0.0f;
             animation.To = 1.0f;
             _StoryboardAppear.Children.Add(animation);
-            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTarget(animation, TopbarBorder);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
 
@@ -380,7 +460,7 @@ namespace Tildetool.Time
             animation.To = new Thickness(-10, 10, -10, 10);
             animation.EasingFunction = new ExponentialEase { Exponent = 3.0, EasingMode = EasingMode.EaseOut };
             _StoryboardCancel.Children.Add(animation);
-            Storyboard.SetTarget(animation, Backfill);
+            Storyboard.SetTarget(animation, TopbarBackfill);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.MarginProperty));
          }
          {
@@ -388,7 +468,7 @@ namespace Tildetool.Time
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardCancel.Children.Add(animation);
-            Storyboard.SetTarget(animation, Border);
+            Storyboard.SetTarget(animation, TopbarBorder);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          {
@@ -396,7 +476,7 @@ namespace Tildetool.Time
             animation.Duration = new Duration(TimeSpan.FromSeconds(0.15f));
             animation.To = 0.0f;
             _StoryboardCancel.Children.Add(animation);
-            Storyboard.SetTarget(animation, Daily);
+            Storyboard.SetTarget(animation, Body);
             Storyboard.SetTargetProperty(animation, new PropertyPath(StackPanel.OpacityProperty));
          }
          {
@@ -421,7 +501,7 @@ namespace Tildetool.Time
             animation.To = 6.0f;
             animation.EasingFunction = new ExponentialEase { Exponent = 4.0, EasingMode = EasingMode.EaseOut };
             _StoryboardCancel.Children.Add(animation);
-            Storyboard.SetTarget(animation, Content);
+            Storyboard.SetTarget(animation, Topbar);
             Storyboard.SetTargetProperty(animation, new PropertyPath(Grid.HeightProperty));
          }
          {
@@ -470,15 +550,24 @@ namespace Tildetool.Time
       private void TimeAreaHotspot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
          => TimeBar?.TimeAreaHotspot_MouseLeftButtonUp(sender, e);
 
+      private void DailyCell_MouseEnter(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseEnter(sender, e);
+      private void DailyCell_MouseLeave(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseLeave(sender, e);
+      private void DailyCell_MouseLeftButtonDown(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseLeftButtonDown(sender, e);
+      private void DailyCell_MouseRightButtonDown(object sender, MouseEventArgs e)
+         => TimeBar?.DailyCell_MouseRightButtonDown(sender, e);
+
       private void TextEditor_KeyDown(object sender, KeyEventArgs e)
          => TimekeepTextEditor.TextEditor_KeyDown(sender, e);
       private void TextEditor_TextChanged(object sender, TextChangedEventArgs e)
          => TimekeepTextEditor.TextEditor_TextChanged(sender, e);
 
-      private void SummaryBlockT_MouseEnter(object sender, MouseEventArgs e)
-         => SummaryPane?.SummaryBlockT_MouseEnter(sender, e);
-      private void SummaryBlockT_MouseLeave(object sender, MouseEventArgs e)
-         => SummaryPane?.SummaryBlockT_MouseLeave(sender, e);
+      private void SummaryBlockT_MouseDown(object sender, MouseEventArgs e)
+         => SummaryPane?.SummaryBlockT_MouseDown(sender, e);
+      private void SummaryBlockT_MouseUp(object sender, MouseEventArgs e)
+         => SummaryPane?.SummaryBlockT_MouseUp(sender, e);
 
       #endregion
    }

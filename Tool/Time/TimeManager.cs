@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,23 +24,6 @@ namespace Tildetool.Time
       public float HourBegin { get; }
       public float HourEnd { get; }
    }
-   public class TimeEvent : ISchedule
-   {
-      public string Description;
-      public DateTime StartTime;  //local
-      public DateTime EndTime;  //local
-
-      public string Name => Description;
-      public float HourBegin => (float)StartTime.ToLocalTime().TimeOfDay.TotalHours;
-      public float HourEnd => (float)EndTime.ToLocalTime().TimeOfDay.TotalHours;
-   }
-   public class TimeIndicator
-   {
-      public string Category;
-      public double Value;
-      public DateTime Time;  //utc
-      public float Hour => (float)Time.ToLocalTime().TimeOfDay.TotalHours;
-   }
 
    public class TimeManager
    {
@@ -50,6 +34,11 @@ namespace Tildetool.Time
 
       #endregion Singleton
       #region Variables
+
+      public Command OpenDatabase;
+
+      public double DayBeginHour;
+      public double DayEndHour;
 
       public Indicator[] Indicators;
       public Dictionary<string, Indicator> IndicatorByCategory;
@@ -83,18 +72,23 @@ namespace Tildetool.Time
 
       // Raw data
       public static Project IdleProject = new Project { Hotkey = "0", Name = "Idle", Ident = "Idle" };
+      public static Project? TimetrackProject;
       public Project[] Data;
 
       // Processed results
       public Dictionary<string, Project> HotkeyToProject;
       public Dictionary<string, Project> IdentToProject;
       public WeeklySchedule[][] ScheduleByDayOfWeek = Enumerable.Range(0, 7).Select(s => new WeeklySchedule[0]).ToArray();
+      public DayTask[][] TaskByDayOfWeek = Enumerable.Range(0, 7).Select(s => Array.Empty<DayTask>()).ToArray();
 
       // State
       public Project? CurrentProject;
-      public int CurrentTimePeriod = -1;
+      public long CurrentTimePeriod = -1;
       public DateTime CurrentStartTime;
+      public string CurrentNotes;
+
       public Project PausedProject;
+      public string PausedNotes;
 
       #endregion
       #region Active Project
@@ -105,15 +99,20 @@ namespace Tildetool.Time
          if (_Timer != null)
             return;
          _Timer = new Timer { Interval = 60000 };
-         _Timer.Elapsed += (o, e) => { UpdateCurrentTimePeriod(); };
+         _Timer.Elapsed += (o, e) => { UpdateCurrentTimePeriod(DateTime.UtcNow); };
          _Timer.Start();
 
-         SetProject(IdleProject);
+         SetProject(IdleProject, null);
 
          SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
       }
 
-      public void SetProject(Project? project)
+      public void Dispose()
+      {
+         SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+      }
+
+      public void SetProject(Project? project, string notes)
       {
          if (project == CurrentProject)
             return;
@@ -123,7 +122,7 @@ namespace Tildetool.Time
          if (!result)
             SaveCacheLater();
 
-         UpdateCurrentTimePeriod(force: true);
+         UpdateCurrentTimePeriod(DateTime.UtcNow, force: true);
          if (CurrentProject != null)
             CurrentProject.TimeTodaySec += (int)(DateTime.UtcNow - CurrentStartTime).TotalSeconds;
 
@@ -131,9 +130,10 @@ namespace Tildetool.Time
          CurrentProject = project;
          CurrentStartTime = DateTime.UtcNow;
          CurrentTimePeriod = -1;
+         CurrentNotes = notes;
       }
 
-      public void AlterProject(Project project)
+      public void AlterProject(Project project, string notes)
       {
          if (project == CurrentProject)
             return;
@@ -145,7 +145,41 @@ namespace Tildetool.Time
 
          // Force-switch to the new project and update the database accordingly.
          CurrentProject = project;
-         UpdateCurrentTimePeriod();
+         CurrentNotes = notes;
+         UpdateCurrentTimePeriod(DateTime.UtcNow);
+      }
+
+      public void RetroapplyProject(Project project, DateTime from, DateTime to)
+      {
+         Project? originalProject = CurrentProject;
+         string originalNotes = CurrentNotes;
+
+         bool result = SaveCache();
+         if (!result)
+            SaveCacheLater();
+
+         // Write our PREVIOUS project up until from.
+         UpdateCurrentTimePeriod(from, force: true);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(from - CurrentStartTime).TotalSeconds;
+
+         // Write the RETRO project from from until to.
+         CurrentProject = project;
+         CurrentStartTime = from;
+         CurrentTimePeriod = -1;
+         CurrentNotes = null;
+         UpdateCurrentTimePeriod(to, force: true);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(to - CurrentStartTime).TotalSeconds;
+
+         // Restart with the previous project going forward.
+         CurrentProject = originalProject;
+         CurrentStartTime = to;
+         CurrentTimePeriod = -1;
+         CurrentNotes = originalNotes;
+         UpdateCurrentTimePeriod(DateTime.UtcNow);
+         if (CurrentProject != null)
+            CurrentProject.TimeTodaySec += (int)(DateTime.UtcNow - CurrentStartTime).TotalSeconds;
       }
 
       private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
@@ -156,12 +190,13 @@ namespace Tildetool.Time
             case SessionSwitchReason.SessionLock:
                App.WriteLog("Screen locked at " + DateTime.UtcNow.ToString() + (CurrentProject != null ? (", pausing " + CurrentProject.Name) : ""));
                PausedProject = CurrentProject;
-               SetProject(null);
+               PausedNotes = CurrentNotes;
+               SetProject(null, null);
                break;
 
             case SessionSwitchReason.SessionUnlock:
                App.WriteLog("Screen unlocked at " + DateTime.UtcNow.ToString() + (PausedProject != null ? (", resuming " + PausedProject.Name) : ""));
-               SetProject(PausedProject);
+               SetProject(PausedProject, PausedNotes);
                break;
          }
       }
@@ -202,15 +237,22 @@ namespace Tildetool.Time
 
          // Process it.
          if (cacheData.Project != null)
+         {
             Data = cacheData.Project.Append(IdleProject).ToArray();
+            TimetrackProject = Data.FirstOrDefault(p => string.Compare(p.Name, "Time tracking") == 0);
+         }
          HotkeyToProject = Data.ToDictionary(p => p.Hotkey);
          IdentToProject = Data.ToDictionary(p => p.Ident);
+
+         OpenDatabase = cacheData.OpenDatabase;
+         DayBeginHour = cacheData.DayBeginHour;
+         DayEndHour = cacheData.DayEndHour;
 
          Indicators = (cacheData.Indicator ?? new Indicator[0]).ToArray();
          IndicatorByCategory = Indicators.ToDictionary(k => k.Name);
          IndicatorByHotkey = Indicators.ToDictionary(k => k.Hotkey);
 
-         if (cacheData.WeeklyDay != null)
+         cacheData.WeeklyDay ??= new();
          {
             ScheduleByDayOfWeek[(int)DayOfWeek.Sunday] = cacheData.WeeklyDay.Sun ?? new WeeklySchedule[0];
             ScheduleByDayOfWeek[(int)DayOfWeek.Monday] = cacheData.WeeklyDay.Mon ?? new WeeklySchedule[0];
@@ -219,6 +261,17 @@ namespace Tildetool.Time
             ScheduleByDayOfWeek[(int)DayOfWeek.Thursday] = cacheData.WeeklyDay.Thu ?? new WeeklySchedule[0];
             ScheduleByDayOfWeek[(int)DayOfWeek.Friday] = cacheData.WeeklyDay.Fri ?? new WeeklySchedule[0];
             ScheduleByDayOfWeek[(int)DayOfWeek.Saturday] = cacheData.WeeklyDay.Sat ?? new WeeklySchedule[0];
+         }
+
+         cacheData.WeeklyTask ??= new();
+         {
+            TaskByDayOfWeek[(int)DayOfWeek.Sunday] = cacheData.WeeklyTask.Sun ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Monday] = cacheData.WeeklyTask.Mon ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Tuesday] = cacheData.WeeklyTask.Tue ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Wednesday] = cacheData.WeeklyTask.Wed ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Thursday] = cacheData.WeeklyTask.Thu ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Friday] = cacheData.WeeklyTask.Fri ?? Array.Empty<DayTask>();
+            TaskByDayOfWeek[(int)DayOfWeek.Saturday] = cacheData.WeeklyTask.Sat ?? Array.Empty<DayTask>();
          }
 
          RefreshTodayTime();
@@ -287,6 +340,12 @@ namespace Tildetool.Time
       #endregion
       #region SQLite
 
+      SqliteConnection _Sqlite;
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining), System.Diagnostics.DebuggerStepThrough]
+      public SqliteConnection GetConn()
+         => _Sqlite;
+
       void Query(string commandText)
       {
          using (SqliteCommand command = _Sqlite.CreateCommand())
@@ -295,7 +354,6 @@ namespace Tildetool.Time
             command.ExecuteNonQuery();
          }
       }
-      SqliteConnection _Sqlite;
       public Dictionary<string, int> ProjectIdentToId = new();
       public Dictionary<string, string> ProjectIdentToCategory = new();
       public Dictionary<string, int> ProjectIdentToOrder = new();
@@ -400,33 +458,43 @@ namespace Tildetool.Time
          return value;
       }
 
-      public int AddHistoryLine(TimePeriod period)
+      public long AddHistoryLine(TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer) VALUES ($project_id, $start_time, $end_time, $on_computer); SELECT last_insert_rowid();";
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer, notes) VALUES ($project_id, $start_time, $end_time, $on_computer, $notes); SELECT last_insert_rowid();";
+         else
+            command.CommandText = "INSERT INTO time_period (project_id, start_time, end_time, on_computer) VALUES ($project_id, $start_time, $end_time, $on_computer); SELECT last_insert_rowid();";
          command.Parameters.AddWithValue("$project_id", ProjectIdentToId[period.Ident]);
          command.Parameters.AddWithValue("$start_time", period.StartTime);
          command.Parameters.AddWithValue("$end_time", period.EndTime);
          command.Parameters.AddWithValue("$on_computer", period.OnComputer);
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.Parameters.AddWithValue("$notes", period.Notes);
          int rowId = Convert.ToInt32(command.ExecuteScalar());
          command.Dispose();
 
          return rowId;
       }
 
-      void UpdateHistoryLine(int id, TimePeriod period)
+      public void UpdateHistoryLine(long id, TimePeriod period)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end WHERE id = $id;";
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end, notes = $notes WHERE id = $id;";
+         else
+            command.CommandText = "UPDATE time_period SET project_id = $project_id, start_time = $start, end_time = $end, notes = null WHERE id = $id;";
          command.Parameters.AddWithValue("$id", id);
          command.Parameters.AddWithValue("$project_id", ProjectIdentToId[period.Ident]);
          command.Parameters.AddWithValue("$start", period.StartTime);
          command.Parameters.AddWithValue("$end", period.EndTime);
+         if (!string.IsNullOrEmpty(period.Notes))
+            command.Parameters.AddWithValue("notes", period.Notes);
          command.ExecuteNonQuery();
          command.Dispose();
       }
 
-      void RemoveHistoryLine(int id)
+      public void RemoveHistoryLine(long id)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
          command.CommandText = "DELETE FROM time_period WHERE id = $id;";
@@ -435,7 +503,7 @@ namespace Tildetool.Time
          command.Dispose();
       }
 
-      void UpdateCurrentTimePeriod(bool force = false)
+      public void UpdateCurrentTimePeriod(DateTime timeUntil, bool force = false)
       {
          // If we have no project, nothing to do.
          if (CurrentProject == null)
@@ -444,7 +512,7 @@ namespace Tildetool.Time
             return;
          }
          // If it is too short right now, don't add (or remove if necessary)
-         if ((DateTime.UtcNow - CurrentStartTime).TotalMinutes < 1.0f && !force)
+         if ((timeUntil - CurrentStartTime).TotalMinutes < 1.0f && !force)
          {
             if (CurrentTimePeriod != -1)
                RemoveHistoryLine(CurrentTimePeriod);
@@ -452,11 +520,59 @@ namespace Tildetool.Time
             return;
          }
 
+         // If we overlap with previous time periods, respect them.
+         //List<TimePeriod> periods = QueryTimePeriod(CurrentStartTime, timeUntil);
+         //foreach (TimePeriod period in periods)
+         //{
+         //   if (period.DbId == CurrentTimePeriod)
+         //      continue;
+         //   if (period.EndTime > CurrentStartTime)
+         //      CurrentStartTime = period.EndTime;
+         //}
+
+         // If we overlap with previous time periods, carve them out.
+         CarveHistory(CurrentStartTime, timeUntil, excludeDbid: CurrentTimePeriod);
+
          // Either add or update.
          if (CurrentTimePeriod == -1)
-            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow, OnComputer = true });
+            CurrentTimePeriod = AddHistoryLine(new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = timeUntil, OnComputer = true, Notes = CurrentNotes });
          else
-            UpdateHistoryLine(CurrentTimePeriod, new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = DateTime.UtcNow });
+            UpdateHistoryLine(CurrentTimePeriod, new TimePeriod { Ident = CurrentProject.Ident, StartTime = CurrentStartTime, EndTime = timeUntil, Notes = CurrentNotes });
+      }
+
+      public void CarveHistory(DateTime minTimeUtc, DateTime maxTimeUtc, long excludeDbid = -1)
+      {
+         List<TimePeriod> periods = QueryTimePeriod(minTimeUtc, maxTimeUtc);
+         foreach (TimePeriod period in periods)
+         {
+            if (period.DbId == excludeDbid)
+               continue;
+
+            // if the carve period (expanded one second each way) totally covers us, then we delete altogether.
+            if (minTimeUtc.AddSeconds(-1) <= period.StartTime && period.EndTime <= maxTimeUtc.AddSeconds(1))
+               RemoveHistoryLine((int)period.DbId);
+            else
+            {
+               // if this period (shrunk one second each way) totally covers the carve period, we split in two
+               //  on each end.
+               if (period.StartTime.AddSeconds(1) < minTimeUtc && maxTimeUtc < period.EndTime.AddSeconds(-1))
+               {
+                  TimePeriod period2 = period.Clone();
+                  period2.StartTime = maxTimeUtc;
+                  AddHistoryLine(period2);
+
+                  period.EndTime = minTimeUtc;
+               }
+               // otherwise we clip at either one end or the other
+               else if (period.StartTime.AddSeconds(1) <= minTimeUtc)
+                  period.EndTime = minTimeUtc;
+               else
+                  period.StartTime = maxTimeUtc;
+
+               // done
+               UpdateHistoryLine((int)period.DbId, period);
+            }
+         }
       }
 
       void RefreshTodayTime()
@@ -482,7 +598,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
+         command.CommandText = "SELECT time_period.id,project.ident,start_time,end_time,on_computer,notes FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime;";
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
 
@@ -495,7 +611,8 @@ namespace Tildetool.Time
                DateTime startTime = reader.GetDateTime(2);
                DateTime endTime = reader.GetDateTime(3);
                bool onComputer = reader.GetBoolean(4);
-               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
+               string notes = reader.IsDBNull(5) ? null : reader.GetString(5);
+               result.Add(new TimePeriod { DbId = dbid, Ident = projectIdent, StartTime = startTime, EndTime = endTime, OnComputer = onComputer, Notes = notes });
             }
          command.Dispose();
 
@@ -505,7 +622,7 @@ namespace Tildetool.Time
       public List<TimePeriod> QueryTimePeriod(Project project, DateTime minTimeUtc, DateTime maxTimeUtc)
       {
          SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT time_period.id,start_time,end_time,on_computer FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
+         command.CommandText = "SELECT time_period.id,start_time,end_time,on_computer,notes FROM time_period INNER JOIN project ON project.id = project_id WHERE end_time >= $minTime AND start_time <= $maxTime AND project.ident = $ident;";
          command.Parameters.AddWithValue("$ident", project.Ident);
          command.Parameters.AddWithValue("$minTime", minTimeUtc);
          command.Parameters.AddWithValue("$maxTime", maxTimeUtc);
@@ -518,11 +635,22 @@ namespace Tildetool.Time
                DateTime startTime = reader.GetDateTime(1);
                DateTime endTime = reader.GetDateTime(2);
                bool onComputer = reader.GetBoolean(3);
-               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime, OnComputer = onComputer });
+               string notes = reader.IsDBNull(4) ? null : reader.GetString(4);
+               result.Add(new TimePeriod { DbId = dbid, Ident = project.Ident, StartTime = startTime, EndTime = endTime, OnComputer = onComputer, Notes = notes });
             }
          command.Dispose();
 
          return result;
+      }
+
+      public void QueryDayPeriod(DateTime day, out DateTime dayBegin, out DateTime dayEnd)
+      {
+         DateTime dayStrip = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0);
+         DateTime dayStripUtc = dayStrip.ToUniversalTime();
+
+         // TODO: implement;
+         dayBegin = dayStrip;
+         dayEnd = dayStrip.AddDays(1);
       }
 
       public double QueryNightLength(DateTime beforeDay)
@@ -571,169 +699,6 @@ namespace Tildetool.Time
          }
 
          return (earliest - latest).TotalHours;
-      }
-
-      public int AddTimeEvent(TimeEvent evt)
-      {
-         SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "INSERT INTO time_event (description, start_time, end_time) VALUES ($description, $startTime, $endTime); SELECT last_insert_rowid();";
-         command.Parameters.AddWithValue("$description", evt.Description);
-         command.Parameters.AddWithValue("$startTime", evt.StartTime);
-         command.Parameters.AddWithValue("endTime", evt.EndTime);
-         int rowId = Convert.ToInt32(command.ExecuteScalar());
-         command.Dispose();
-
-         return rowId;
-      }
-
-      public List<TimeEvent> QueryTimeEvent(DateTime minTimeLocal, DateTime maxTimeLocal)
-      {
-         SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT description,start_time,end_time FROM time_event WHERE end_time >= $minTime AND start_time <= $maxTime;";
-         command.Parameters.AddWithValue("$minTime", minTimeLocal);
-         command.Parameters.AddWithValue("$maxTime", maxTimeLocal);
-
-         List<TimeEvent> result = new List<TimeEvent>();
-         using (var reader = command.ExecuteReader())
-            while (reader.Read())
-            {
-               string desc = reader.GetString(0);
-               DateTime startTime = reader.GetDateTime(1).ToUniversalTime();
-               DateTime endTime = reader.GetDateTime(2).ToUniversalTime();
-               result.Add(new TimeEvent { Description = desc, StartTime = startTime, EndTime = endTime });
-            }
-         command.Dispose();
-
-         return result;
-      }
-
-      public int AddTimeIndicator(TimeIndicator indicator)
-      {
-         SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "INSERT INTO time_indicator (category, value, time) VALUES ($category, $value, $time); SELECT last_insert_rowid();";
-         command.Parameters.AddWithValue("$category", indicator.Category);
-         command.Parameters.AddWithValue("$value", indicator.Value);
-         command.Parameters.AddWithValue("$time", indicator.Time);
-         int rowId = Convert.ToInt32(command.ExecuteScalar());
-         command.Dispose();
-
-         return rowId;
-      }
-
-      public List<TimeIndicator> QueryTimeIndicator(DateTime minTimeLocal, DateTime maxTimeLocal)
-      {
-         SqliteCommand command = _Sqlite.CreateCommand();
-         command.CommandText = "SELECT category,value,time FROM time_indicator WHERE time >= $minTime AND time <= $maxTime ORDER BY time;";
-         command.Parameters.AddWithValue("$minTime", minTimeLocal);
-         command.Parameters.AddWithValue("$maxTime", maxTimeLocal);
-
-         List<TimeIndicator> result = new List<TimeIndicator>();
-         using (var reader = command.ExecuteReader())
-            while (reader.Read())
-            {
-               string category = reader.GetString(0);
-               double value = reader.GetDouble(1);
-               DateTime time = reader.GetDateTime(2);
-               result.Add(new TimeIndicator { Category = category, Value = value, Time = time });
-            }
-         command.Dispose();
-
-         return result;
-      }
-
-      public void QueryLastTimeIndicators(out double[] values, out DateTime[] datesUtc)
-      {
-         Dictionary<int, int> idToIndex = new Dictionary<int, int>();
-         using (SqliteCommand command = _Sqlite.CreateCommand())
-         {
-            Dictionary<string, int> indicatorIndex = new Dictionary<string, int>();
-            for (int i = 0; i < Indicators.Length; i++)
-               indicatorIndex[Indicators[i].Name] = i;
-
-            command.CommandText = "SELECT category,MAX(id) FROM time_indicator WHERE time >= (SELECT MAX(subsel.time) FROM time_indicator as subsel WHERE subsel.category = time_indicator.category) GROUP BY category;";
-            using (var reader = command.ExecuteReader())
-               while (reader.Read())
-               {
-                  string category = reader.GetString(0);
-                  int id = reader.GetInt32(1);
-                  if (indicatorIndex.TryGetValue(category, out int index))
-                     idToIndex[id] = index;
-               }
-         }
-
-         values = new double[Indicators.Length];
-         datesUtc = new DateTime[Indicators.Length];
-         for (int i = 0; i < values.Length; i++)
-         {
-            values[i] = double.MinValue;
-            datesUtc[i] = DateTime.MinValue;
-         }
-         using (SqliteCommand command = _Sqlite.CreateCommand())
-         {
-            int[] ids = idToIndex.Keys.ToArray();
-            string idnames = string.Join(",", Enumerable.Range(0, ids.Length).Select(i => $"$id{i}"));
-            command.CommandText = $"SELECT id,value,time FROM time_indicator WHERE id IN ({idnames});";
-            for (int i = 0; i < ids.Length; i++)
-               command.Parameters.AddWithValue($"$id{i}", ids[i]);
-
-            using (var reader = command.ExecuteReader())
-               while (reader.Read())
-               {
-                  int id = reader.GetInt32(0);
-                  double value = reader.GetDouble(1);
-                  DateTime date = reader.GetDateTime(2);
-                  int index = idToIndex[id];
-                  values[index] = value;
-                  datesUtc[index] = date;
-               }
-         }
-      }
-
-      public void QueryAdjacentTimeIndicators(string category, DateTime minTimeLocal, DateTime maxTimeLocal, out double prevValue, out double nextValue)
-      {
-         int minId = -1;
-         using (SqliteCommand command = _Sqlite.CreateCommand())
-         {
-            command.CommandText = "SELECT MAX(id) FROM time_indicator WHERE category = $category AND time <= $minTime AND time >= (SELECT MAX(subsel.time) FROM time_indicator as subsel WHERE subsel.time <= $minTime AND subsel.category = $category);";
-            command.Parameters.AddWithValue("category", category);
-            command.Parameters.AddWithValue("minTime", minTimeLocal);
-            using (var reader = command.ExecuteReader())
-               while (reader.Read())
-                  if (!reader.IsDBNull(0))
-                     minId = reader.GetInt32(0);
-         }
-
-         int maxId = -1;
-         using (SqliteCommand command = _Sqlite.CreateCommand())
-         {
-            command.CommandText = "SELECT MIN(id) FROM time_indicator WHERE category = $category AND time >= $maxTime AND time <= (SELECT MIN(subsel.time) FROM time_indicator as subsel WHERE subsel.time >= $maxTime AND subsel.category = $category);";
-            command.Parameters.AddWithValue("category", category);
-            command.Parameters.AddWithValue("maxTime", maxTimeLocal);
-            using (var reader = command.ExecuteReader())
-               while (reader.Read())
-                  if (!reader.IsDBNull(0))
-                     maxId = reader.GetInt32(0);
-         }
-
-         prevValue = double.MinValue;
-         nextValue = double.MinValue;
-         using (SqliteCommand command = _Sqlite.CreateCommand())
-         {
-            command.CommandText = $"SELECT id,value FROM time_indicator WHERE id IN ($minId, $maxId);";
-            command.Parameters.AddWithValue($"$minId", minId);
-            command.Parameters.AddWithValue($"$maxId", maxId);
-
-            using (var reader = command.ExecuteReader())
-               while (reader.Read())
-               {
-                  int id = reader.GetInt32(0);
-                  double value = reader.GetDouble(1);
-                  if (id == minId)
-                     prevValue = value;
-                  else
-                     nextValue = value;
-               }
-         }
       }
 
       #endregion

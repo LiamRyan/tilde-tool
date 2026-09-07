@@ -1,0 +1,32 @@
+﻿<UserControl x:Class="Tildetool.Time.Timekeep_TaskBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+            xmlns:local="clr-namespace:Tildetool.Time"
+            xmlns:Shape="clr-namespace:Tildetool.Shape"
+            xmlns:tildetool="clr-namespace:Tildetool.WPF"
+             mc:Ignorable="d" 
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Timekeep+XSS.xaml"/>
+                <ResourceDictionary>
+                    <DataTemplate x:Key="Task">
+                        <StackPanel x:Name="Background" Orientation="Horizontal" Background="{Binding Mode=OneWay, Source={StaticResource ColorScheduleAlpha}}" Height="12" Margin="2,2,0,1" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                            <TextBlock x:Name="Text" Text="Slow" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorSchedule}}" FontSize="12" Margin="4,0,3,0"/>
+                            <TextBlock x:Name="Duration" Text="5m" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" FontFamily="Cascadia Code Light" Foreground="{Binding Mode=OneWay, Source={StaticResource ColorScheduleBack}}" FontSize="10" Margin="0,0,3,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid x:Name="Pane" Background="#011201" HorizontalAlignment="Stretch">
+        <WrapPanel x:Name="Tasks" Orientation="Horizontal" HorizontalAlignment="Stretch" MinHeight="12" Margin="0,1,0,2">
+            <ContentControl ContentTemplate="{StaticResource Task}"></ContentControl>
+        </WrapPanel>
+    </Grid>
+</UserControl>

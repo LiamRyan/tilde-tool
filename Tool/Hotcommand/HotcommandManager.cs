@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using Tildetool.Hotcommand.Serialization;
 
@@ -45,6 +46,13 @@ namespace Tildetool.Hotcommand
       // Processed results
       public Dictionary<string, HmContext> ContextByTag = new Dictionary<string, HmContext>();
       public Dictionary<string, HmContext> ContextTag = new Dictionary<string, HmContext>();
+
+      public class Chord
+      {
+         public string Value;
+         public Dictionary<Key, Chord> NextKey = new();
+      }
+      public Dictionary<Key, Chord> ClipkeyByKey = new();
 
       // State
       public HmContext CurrentContext;
@@ -232,6 +240,40 @@ namespace Tildetool.Hotcommand
 
          if (!ContextByTag.TryGetValue(contextName, out CurrentContext))
             CurrentContext = context;
+
+         ClipkeyByKey = new();
+         if (Data.Cliphotkey != null)
+            foreach (Cliphotkey key in Data.Cliphotkey)
+            {
+               if (key.Chord == null || key.Chord.Length == 0)
+                  continue;
+
+               Key[] keys = new Key[key.Chord.Length];
+               for (int i = 0; i < key.Chord.Length; i++)
+               {
+                  if (Enum.TryParse(key.Chord[i], out Key outkey))
+                     keys[i] = outkey;
+                  else
+                  {
+                     MessageBox.Show($"Invalid hotkey \"{key.Chord[i]}\" (bound to {key.Value})");
+                     keys = null;
+                     break;
+                  }
+               }
+               if (keys == null)
+                  continue;
+
+               Chord chord;
+               if (!ClipkeyByKey.TryGetValue(keys[0], out chord))
+                  chord = ClipkeyByKey[keys[0]] = new();
+               for (int i = 1; i < keys.Length; i++)
+               {
+                  if (!chord.NextKey.TryGetValue(keys[i], out Chord nextChord))
+                     nextChord = chord.NextKey[keys[i]] = new();
+                  chord = nextChord;
+               }
+               chord.Value = key.Value;
+            }
 
          return result;
       }

@@ -1,0 +1,36 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Tildetool.Time"
+                    xmlns:Shape="clr-namespace:Tildetool.Shape"
+                    xmlns:tildetool="clr-namespace:Tildetool.WPF"
+                    >
+    <SolidColorBrush x:Key="ColorTopbarBackfill" Color="#0A0A14"/>
+    <SolidColorBrush x:Key="ColorTopbarOptionBack" Color="#042508"/>
+
+    <SolidColorBrush x:Key="ColorBackfill" Color="#05050C"/>
+    <SolidColorBrush x:Key="ColorBackground" Color="#FF042508"/>
+    <SolidColorBrush x:Key="ColorBackgroundAlpha" Color="#50042508"/>
+
+    <SolidColorBrush x:Key="ColorCellBackground" Color="#FF0D211D"/>
+    <SolidColorBrush x:Key="ColorCellText" Color="#FF517F65"/>
+    <SolidColorBrush x:Key="ColorCellText2" Color="#FF69A582"/>
+    <SolidColorBrush x:Key="ColorCellText3" Color="#FFC3F1AF"/>
+    <SolidColorBrush x:Key="ColorCellText4" Color="#FF416F55"/>
+    <SolidColorBrush x:Key="ColorCellTextBack" Color="#FF449637"/>
+
+    <SolidColorBrush x:Key="ColorNow" Color="#FFABE2A3"/>
+    <SolidColorBrush x:Key="ColorNowAlpha1" Color="#A0ABE2A3"/>
+    <SolidColorBrush x:Key="ColorNowAlpha2" Color="#01ABE2A3"/>
+
+    <SolidColorBrush x:Key="ColorTextFore" Color="#FFC3F1AF"/>
+    <SolidColorBrush x:Key="ColorTextBack" Color="#FF449637"/>
+    <SolidColorBrush x:Key="ColorDivider" Color="#FF449637"/>
+    <SolidColorBrush x:Key="ColorDividerAlpha" Color="#40449637"/>
+    <SolidColorBrush x:Key="ColorSchedule" Color="#FFA8611F"/>
+    <SolidColorBrush x:Key="ColorScheduleBack" Color="#FF71400A"/>
+    <SolidColorBrush x:Key="ColorScheduleAlpha" Color="#20A8611F"/>
+    <SolidColorBrush x:Key="ColorDayBorderAlpha" Color="#20A811AF"/>
+
+    <Color x:Key="ColorGlow1">#FFDEEFBA</Color>
+    <Color x:Key="ColorGlow2">#FFAAF99D</Color>
+</ResourceDictionary>

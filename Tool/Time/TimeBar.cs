@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Documents;
 using Tildetool.Time.Serialization;
 using Tildetool.WPF;
+using System.Runtime.InteropServices;
 
 namespace Tildetool.Time
 {
@@ -59,6 +60,7 @@ namespace Tildetool.Time
          public DateTime StartTime; //utc
          public DateTime EndTime; //utc
          public bool OnComputer;
+         public string Notes;
          public Color Color;
          public Style CurStyle;
          public int Priority;
@@ -75,6 +77,7 @@ namespace Tildetool.Time
 
          public double PeriodMinutes => (EndTime - StartTime).TotalMinutes;
 
+         public List<TimePeriod> FromTimePeriods = new();
          public static TimeBlock FromTimePeriod(TimePeriod period)
          {
             Project? project;
@@ -87,16 +90,18 @@ namespace Tildetool.Time
                StartTime = period.StartTime,
                EndTime = period.EndTime,
                OnComputer = period.OnComputer,
+               Notes = period.Notes,
                Color = project != null ? Extension.FromArgb(0xFF143518) : Extension.FromArgb(0xFF0D211D),
                Project = project,
-               DbId = period.DbId
+               DbId = period.DbId,
+               FromTimePeriods = new() { period }
             };
          }
          public static TimeBlock FromWeeklySchedule(WeeklySchedule schedule, DateTime today)
          {
             return new TimeBlock { Priority = 1, CurStyle = Style.WeeklySchedule, Name = schedule.Name, StartTime = today.AddHours(schedule.HourBegin), EndTime = today.AddHours(schedule.HourEnd), Color = Extension.FromArgb(0xD0A8611F) };
          }
-         public static TimeBlock FromTimeEvent(TimeEvent evt)
+         public static TimeBlock FromTimeEvent(SQL.TimeEvent evt)
          {
             return new TimeBlock { Priority = 2, CurStyle = Style.TimeEvent, Name = evt.Name, StartTime = evt.StartTime, EndTime = evt.EndTime, Color = Extension.FromArgb(0xD0E0411F) };
          }
@@ -109,6 +114,8 @@ namespace Tildetool.Time
                return false;
             if (Project == null && Name.CompareTo(next.Name) != 0)
                return false;
+            if (!string.Equals(Notes, next.Notes))
+               return false;
 
             if (EndTime < next.StartTime)
                return false;
@@ -119,7 +126,36 @@ namespace Tildetool.Time
             TimeBlock result = (TimeBlock)MemberwiseClone();
             result.EndTime = next.EndTime;
             result.DbId = next.DbId;
+            result.FromTimePeriods = FromTimePeriods.Union(next.FromTimePeriods).ToList();
             return result;
+         }
+
+         public bool IsCutter()
+         {
+            return CurStyle == Style.TimeEvent && string.IsNullOrEmpty(Name);
+         }
+
+         public static void Intersect(TimeBlock cutter, TimeBlock cuttee, List<TimeBlock> periods, int index)
+         {
+            // totally encompassed: delete
+            if (cutter.StartTime <= cuttee.StartTime && cuttee.EndTime <= cutter.EndTime)
+            {
+               cuttee.StartTime = cuttee.EndTime = cutter.StartTime;
+               periods.RemoveAt(index);
+            }
+            // totally encompassing: split
+            else if (cuttee.StartTime <= cutter.StartTime && cutter.EndTime <= cuttee.EndTime)
+            {
+               TimeBlock postBlock = (TimeBlock)cuttee.MemberwiseClone();
+               postBlock.StartTime = cutter.EndTime;
+               cuttee.EndTime = cutter.StartTime;
+               periods.Insert(index + 1, postBlock);
+            }
+            // begin or end: clamp
+            else if (cuttee.StartTime < cutter.StartTime)
+               cuttee.EndTime = cutter.StartTime;
+            else if (cuttee.EndTime > cutter.EndTime)
+               cuttee.StartTime = cutter.EndTime;
          }
       }
 
@@ -128,8 +164,8 @@ namespace Tildetool.Time
 
       List<TimeBlockRow> Populate()
       {
-         MinHour = 7;
-         MaxHour = 22;
+         MinHour = (int)Math.Floor(TimeManager.Instance.DayBeginHour - 0.49);
+         MaxHour = (int)Math.Ceiling(TimeManager.Instance.DayEndHour + 0.49);
 
          List<TimeBlockRow> projectPeriods = CollectTimeBlocks();
          foreach (TimeBlockRow periods in projectPeriods)
@@ -145,27 +181,24 @@ namespace Tildetool.Time
          // Sort by time.
          periods.Sort((a, b) => a.StartTime != b.StartTime ? a.StartTime.CompareTo(b.StartTime) : a.EndTime.CompareTo(b.EndTime));
 
-         // Handle time periods
-         TimeBlock? prevPeriod = null;
+         // Increase or decrease our total time range.
          foreach (TimeBlock period in periods)
          {
             double padding = period.CurStyle == TimeBlock.Style.TimePeriod ? 0.5 : 0.0;
-            // Increase or decrease our total time range.
             if (period.StartTime.ToLocalTime().TimeOfDay.TotalHours - padding < MinHour)
                MinHour = Math.Max(0, (int)Math.Floor(period.StartTime.ToLocalTime().Hour - padding));
             if (period.EndTime.ToLocalTime().TimeOfDay.TotalHours + padding > MaxHour)
                MaxHour = Math.Min(24, (int)Math.Ceiling(period.EndTime.ToLocalTime().Hour + 1.0 + padding));
-
-            // check if there's an overlap and shrink the lower priority one
-            if (prevPeriod != null && prevPeriod.EndTime > period.StartTime)
-            {
-               if (period.Priority > prevPeriod.Priority)
-                  prevPeriod.EndTime = period.StartTime;
-               else
-                  period.StartTime = prevPeriod.EndTime;
-            }
-            prevPeriod = period;
          }
+
+         // Find cutters (blank time events) and intersect.
+         List<TimeBlock> cutters = periods.Where(p => p.IsCutter()).ToList();
+         foreach (TimeBlock cutter in cutters)
+            for (int i = periods.Count - 1; i >= 0; i--)
+               if (!periods[i].IsCutter())
+                  if (periods[i].EndTime > cutter.StartTime && periods[i].StartTime < cutter.EndTime)
+                     // note that this may either remove or insert a period; either way, since we're iterating backwards, it won't affect us
+                     TimeBlock.Intersect(cutter, periods[i], periods, i);
 
          // Filter to periods with a new that have a positive period.
          for (int i = periods.Count - 1; i >= 0; i--)
@@ -190,6 +223,7 @@ namespace Tildetool.Time
 
          Parent.IndicatorPanel.Visibility = Visibility.Collapsed;
          Parent.NightLength.Visibility = Visibility.Collapsed;
+         Parent.DayBorder.Visibility = Visibility.Collapsed;
          Parent.ScheduleGrid.Visibility = Visibility.Collapsed;
          Parent.NowDividerGrid.Visibility = Visibility.Collapsed;
          SubRefresh();
@@ -268,7 +302,7 @@ namespace Tildetool.Time
          List<List<TimeBlock>> weeklySchedule = new List<List<TimeBlock>>();
 
          DateTime weekEnd = WeekBegin.AddDays(7);
-         TimeBlock[] weekEvents = TimeManager.Instance.QueryTimeEvent(WeekBegin, weekEnd).Select(s => TimeBlock.FromTimeEvent(s)).ToArray();
+         TimeBlock[] weekEvents = SQL.TimeEvent.Select(WeekBegin, weekEnd).Select(s => TimeBlock.FromTimeEvent(s)).ToArray();
 
          for (int i = 0; i < 7; i++)
          {
@@ -293,6 +327,8 @@ namespace Tildetool.Time
 
       protected void RefreshPane(List<TimeBlockRow> projectPeriods)
       {
+         TimeBlockByCell.Clear();
+
          // Fill in rows
          DataTemplate? templateRow = Parent.Resources["DailyRow"] as DataTemplate;
          DataTemplater.Populate<TimeBlockRow, TimeRow>(Parent.DailyRows, templateRow, projectPeriods, RefreshRow);
@@ -304,6 +340,7 @@ namespace Tildetool.Time
 
       protected class TimeRow : DataTemplater
       {
+         public Grid Background;
          public TextBlock HeaderName;
          public TextBlock HeaderNameR;
          public TextBlock HeaderDate;
@@ -319,6 +356,8 @@ namespace Tildetool.Time
          public TimeRow(FrameworkElement root) : base(root) { }
       }
 
+      readonly Dictionary<FrameworkElement, TimeBlock> TimeBlockByCell = new();
+
       void RefreshRow(TimeRow ui, int index, TimeBlockRow row)
       {
          DateTime thisDateBeginLocal = row.Day.ToDateTime(new TimeOnly(MinHour, 0));
@@ -331,7 +370,7 @@ namespace Tildetool.Time
 
          // Set to defaults
          {
-            (ui.Root as Grid).Height = 35;
+            ui.Root.Height = 35;
             ui.HeaderName.FontSize = 16;
             ui.HeaderTimeH.FontSize = 16;
             ui.HeaderTimeM.FontSize = 12;
@@ -366,30 +405,28 @@ namespace Tildetool.Time
          }
 
          // Populate
-         DateTime lastDate = thisDateBegin;
-         ui.DailyCells.ColumnDefinitions.Clear();
+         double totalHours = (thisDateEnd - thisDateBegin).TotalHours;
 
          DataTemplate? templateCell = Parent.Resources["DailyCell"] as DataTemplate;
          DataTemplater.Populate<TimeBlock, TimeCell>(ui.DailyCells, templateCell, periodsFilter, (subui, subindex, subdata) =>
          {
-            (subui.Root as Grid).Height = 20;
+            TimeBlockByCell[subui.Root] = subdata;
+
+            subui.Root.Height = 20;
 
             RefreshCell(subui, subindex, subdata);
 
             // Show the current time.
-            DateTime periodStartTime = subdata.StartTime > lastDate ? subdata.StartTime : lastDate;
+            DateTime periodStartTime = subdata.StartTime > thisDateBegin ? subdata.StartTime : thisDateBegin;
             DateTime periodEndTime = subdata.EndTime < thisDateEnd ? subdata.EndTime : thisDateEnd;
             if (periodEndTime > periodStartTime)
             {
-               ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodStartTime - lastDate).TotalHours, GridUnitType.Star) });
-               ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((periodEndTime - periodStartTime).TotalHours, GridUnitType.Star) });
-               lastDate = periodEndTime;
-               Grid.SetColumn(subui.Content, (subindex * 2) + 1);
+               FreeGrid.SetLeftPct(subui.Content, (periodStartTime - thisDateBegin).TotalHours / totalHours);
+               FreeGrid.SetWidthPct(subui.Content, (periodEndTime - periodStartTime).TotalHours / totalHours);
             }
 
             _RefreshCell(subui, subindex, subdata);
          });
-         ui.DailyCells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((thisDateEnd - lastDate).TotalHours, GridUnitType.Star) });
       }
 
       protected virtual void _RefreshRow(TimeRow ui, int index, TimeBlockRow row) { }
@@ -424,22 +461,21 @@ namespace Tildetool.Time
          }
 
          // Update the text
-         Grid grid = ui.Root as Grid;
          if (row.IsHighlight)
          {
-            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
+            ui.Background.Background = new SolidColorBrush(Extension.FromArgb((uint)0x404A6030));
             ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
             ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFFC3F1AF));
          }
          else if (row.IsGray)
          {
-            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x80202020 : 0x80282828)));
+            ui.Background.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x80202020 : 0x80282828)));
             ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
             ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF606060));
          }
          else
          {
-            grid.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x00042508 : 0x60042508)));
+            ui.Background.Background = new SolidColorBrush(Extension.FromArgb((uint)((index % 2) == 0 ? 0x00042508 : 0x60042508)));
             ui.HeaderName.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
             ui.HeaderDate.Foreground = new SolidColorBrush(Extension.FromArgb(0xFF449637));
          }
@@ -472,6 +508,8 @@ namespace Tildetool.Time
          public TextBlock CellTimeH;
          public TextBlock CellTimeM;
          public TextBlock ProjectName;
+         public TextBlock NoteIcon;
+         public TextBlock NoteText;
          public Grid ActiveGlow;
 
          public TimeCell(FrameworkElement root) : base(root) { }
@@ -483,6 +521,15 @@ namespace Tildetool.Time
          grid.Background = subdata.ColorGrid;
 
          subui.ActiveGlow.Visibility = subdata.IsActiveCell ? Visibility.Visible : Visibility.Collapsed;
+
+         subui.NoteIcon.Visibility = Visibility.Collapsed;//!string.IsNullOrEmpty(subdata.Notes) ? Visibility.Visible : Visibility.Collapsed;
+         subui.NoteText.Visibility = !string.IsNullOrEmpty(subdata.Notes) ? Visibility.Visible : Visibility.Collapsed;
+         if (!string.IsNullOrEmpty(subdata.Notes))
+         {
+            subui.NoteIcon.Foreground = subdata.ColorFore;
+            subui.NoteText.Foreground = subdata.ColorFore;
+            subui.NoteText.Text = subdata.Notes;
+         }
 
          subui.ProjectName.Visibility = !string.IsNullOrEmpty(subdata.CellProject) && !subdata.OnComputer ? Visibility.Visible : Visibility.Collapsed;
          if (!string.IsNullOrEmpty(subdata.CellProject) && !subdata.OnComputer)
@@ -527,27 +574,134 @@ namespace Tildetool.Time
       #endregion
       #region Mouse Input
 
-      double? DailyRow_Pct1 = null;
+      public void DailyCell_MouseEnter(object sender, MouseEventArgs e)
+      {
+         Grid grid = (Grid)sender;
+         Grid hilite = grid.FindElementByName<Grid>("Hilite");
+         hilite.Visibility = Visibility.Visible;
+
+         TextBlock noteIcon = grid.FindElementByName<TextBlock>("NoteIcon");
+         TextBlock noteText = grid.FindElementByName<TextBlock>("NoteText");
+         if (noteIcon.Visibility != Visibility.Visible && noteText.Visibility != Visibility.Visible)
+            return;
+         noteIcon.Visibility = Visibility.Collapsed;
+         noteText.Visibility = Visibility.Visible;
+      }
+
+      public void DailyCell_MouseLeave(object sender, MouseEventArgs e)
+      {
+         Grid grid = (Grid)sender;
+         Grid hilite = grid.FindElementByName<Grid>("Hilite");
+         hilite.Visibility = Visibility.Collapsed;
+
+         TextBlock noteIcon = grid.FindElementByName<TextBlock>("NoteIcon");
+         TextBlock noteText = grid.FindElementByName<TextBlock>("NoteText");
+         if (noteIcon.Visibility != Visibility.Visible && noteText.Visibility != Visibility.Visible)
+            return;
+         noteIcon.Visibility = Visibility.Visible;
+         noteText.Visibility = Visibility.Collapsed;
+      }
+
+      public void DailyCell_MouseLeftButtonDown(object sender, MouseEventArgs e)
+      {
+         Grid grid = (Grid)sender;
+         if (!TimeBlockByCell.TryGetValue(grid, out TimeBlock timeBlock))
+            return;
+         if (timeBlock.DbId <= 0)
+            return;
+
+         Parent.TimekeepTextEditor.Show("alter project", (text, note) =>
+         {
+            Parent.TimekeepTextEditor.ConfirmAddProject(text,
+               (projectId) =>
+               {
+                  TimePeriod subperiod = timeBlock.FromTimePeriods[0].Clone();
+                  subperiod.Ident = text;
+                  subperiod.Notes = note;
+                  TimeManager.Instance.UpdateHistoryLine(subperiod.DbId, subperiod);
+                  Refresh();
+               });
+         },
+         options: TimeManager.Instance.ProjectIdentAutoSuggest);
+
+         if (string.Compare(timeBlock.Name, TimeManager.IdleProject.Ident) == 0 && !string.IsNullOrEmpty(timeBlock.Notes))
+            Parent.TextEditor.Text = timeBlock.Notes;
+         else
+         {
+            Parent.TextEditorNote.Text = timeBlock.Notes;
+            Parent.TextEditor.Text = timeBlock.Name;
+         }
+      }
+
+      public void DailyCell_MouseRightButtonDown(object sender, MouseEventArgs e)
+      {
+         Grid grid = (Grid)sender;
+         if (!TimeBlockByCell.TryGetValue(grid, out TimeBlock timeBlock))
+            return;
+         if (timeBlock.DbId <= 0)
+            return;
+
+         Parent.TimekeepTextEditor.Show("confirm delete?", (text, note) =>
+         {
+            TimeManager.Instance.RemoveHistoryLine(timeBlock.DbId);
+            Refresh();
+         });
+         Parent.TextEditor.Text = "y";
+      }
+
+      protected double? DailyRow_Pct1 = null;
+      protected double DailyRow_Pct2;
       public void TimeAreaHotspot_MouseEnter(object sender, MouseEventArgs e)
       {
+         if (Parent.TimekeepTextEditor.IsTextEditor)
+            return;
+
          DailyRow_Pct1 = null;
          TimeAreaHotspot_MouseMove(sender, e);
       }
 
       public void TimeAreaHotspot_MouseLeave(object sender, MouseEventArgs e)
       {
+         if (Parent.TimekeepTextEditor.IsTextEditor)
+            return;
+
          Parent.DailyRowHover.Visibility = Visibility.Collapsed;
          Parent.DailyRowHoverL.Visibility = Visibility.Collapsed;
          Parent.DailyRowHoverM.Visibility = Visibility.Collapsed;
          Parent.DailyRowHoverR.Visibility = Visibility.Collapsed;
       }
 
+      [DllImport("User32.dll")]
+      private static extern bool SetCursorPos(int X, int Y);
+
+      [StructLayout(LayoutKind.Sequential)]
+      private struct POINT
+      {
+         public int X; // X coordinate (pixels)  
+         public int Y; // Y coordinate (pixels)  
+      }
+
+      [DllImport("user32.dll")]
+      private static extern bool GetCursorPos(ref POINT lpPoint);
+
+      public bool Carve;
+
       public void TimeAreaHotspot_MouseMove(object sender, MouseEventArgs e)
       {
-         Point pos = e.GetPosition(Parent.TimeAreaHotspot);
-         double pctX = pos.X / Parent.TimeAreaHotspot.RenderSize.Width;
+         Carve = false;
+         if (Parent.TimekeepTextEditor.IsTextEditor)
+            return;
+
          if (DailyRow_Pct1 == null)
          {
+            if (e == null)
+            {
+               TimeAreaHotspot_MouseLeave(sender, e);
+               return;
+            }
+            Point pos = e.GetPosition(Parent.TimeAreaHotspot);
+            double pctX = pos.X / Parent.TimeAreaHotspot.RenderSize.Width;
+
             FreeGrid.SetLeft(Parent.DailyRowHover, new PercentValue(PercentValue.ModeType.Percent, pctX));
             FreeGrid.SetWidth(Parent.DailyRowHover, new PercentValue(PercentValue.ModeType.Pixel, 1));
 
@@ -568,7 +722,16 @@ namespace Tildetool.Time
          }
          else
          {
-            GetDragTime(DailyRow_Pct1.Value, pctX, out DateTime periodBegin, out DateTime periodEnd);
+            if (e != null)
+            {
+               POINT capturePt = new();
+               GetCursorPos(ref capturePt);
+               Vector delta = new(capturePt.X - CapturePoint.X, capturePt.Y - CapturePoint.Y);
+               SetCursorPos(CapturePoint.X, CapturePoint.Y);
+               DailyRow_Pct2 += 0.1 * (Math.Pow(Math.Abs(delta.X), 1.5) * (delta.X >= 0 ? 1 : -1)) / Parent.TimeAreaHotspot.RenderSize.Width;
+            }
+
+            GetDragTime(DailyRow_Pct1.Value, ref DailyRow_Pct2, out DateTime periodBegin, out DateTime periodEnd);
             DateTime dayBegin = new DateTime(Parent.DailyDay.Year, Parent.DailyDay.Month, Parent.DailyDay.Day, 0, 0, 0);
             double pctA = ((periodBegin.ToLocalTime() - dayBegin).TotalHours - Parent.TimeBar.MinHour) / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
             double pctB = ((periodEnd.ToLocalTime() - dayBegin).TotalHours - Parent.TimeBar.MinHour) / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
@@ -611,21 +774,20 @@ namespace Tildetool.Time
          }
       }
 
-      List<DateTime> GapsBegin;
-      List<DateTime> GapsEnd;
-      void GetDragTime(double pct1, double pct2, out DateTime periodBegin, out DateTime periodEnd)
+      protected List<DateTime> GapsBegin; // including begin-of-day to first period
+      protected List<DateTime> GapsEnd; // include last period to end-of-day
+      protected bool Smooth = true;
+      protected int SuppressDisplay = 0;
+      void GetDragTime(double pct1, ref double dpct, out DateTime periodBegin, out DateTime periodEnd)
       {
+         double pct2 = pct1 + dpct;
          bool isDownward = pct2 < pct1;
-         if (isDownward)
-         {
-            double pct = pct2;
-            pct2 = pct1;
-            pct1 = pct;
-         }
+         double pctLo = isDownward ? pct2 : pct1;
+         double pctHi = isDownward ? pct1 : pct2;
 
          DateTime dayBegin = new DateTime(Parent.DailyDay.Year, Parent.DailyDay.Month, Parent.DailyDay.Day, 0, 0, 0);
-         periodBegin = dayBegin.AddHours(Parent.TimeBar.MinHour + (pct1 * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
-         periodEnd = dayBegin.AddHours(Parent.TimeBar.MinHour + (pct2 * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
+         periodBegin = dayBegin.AddHours(Parent.TimeBar.MinHour + (pctLo * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
+         periodEnd = dayBegin.AddHours(Parent.TimeBar.MinHour + (pctHi * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour))).ToUniversalTime();
 
          // In schedule mode, that's all we need to do!  No need for clamping to present or avoiding overlaps.
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
@@ -669,30 +831,60 @@ namespace Tildetool.Time
          if (gapEnd > utcNow)
             gapEnd = utcNow;
 
-         //
-         if (isDownward)
+         // Smoothing
+         if (Smooth)
          {
-            periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
-            double dpct = -(pct2 - pct1) * (pct2 - pct1) / pct2;
-            periodBegin = periodEnd.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
-            periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
-         }
-         else
-         {
-            periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
-            double dpct = (pct2 - pct1) * (pct2 - pct1) / (1.0 - pct1);
-            periodEnd = periodBegin.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
-            periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
+            if (isDownward)
+            {
+               periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
+               periodBegin = periodEnd.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+               periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
+               if (periodEnd > periodBegin)
+                  dpct = Math.Max(dpct, (periodBegin - periodEnd).TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+               else
+                  dpct = Math.Max(dpct, 0.0);
+               //dpct = (periodBegin - periodEnd).TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+               //pct2 = ((periodBegin.ToLocalTime() - dayBegin).TotalHours - Parent.TimeBar.MinHour) / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+            }
+            else
+            {
+               periodBegin = periodBegin < gapBegin ? gapBegin : periodBegin;
+               periodEnd = periodBegin.AddHours(dpct * (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+               periodEnd = periodEnd > gapEnd ? gapEnd : periodEnd;
+               if (periodEnd > periodBegin)
+                  dpct = Math.Min(dpct, (periodEnd - periodBegin).TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour));
+               else
+                  dpct = Math.Min(dpct, 0.0);
+               //dpct = (periodEnd - periodBegin).TotalHours / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+               //pct2 = ((periodEnd.ToLocalTime() - dayBegin).TotalHours - Parent.TimeBar.MinHour) / (Parent.TimeBar.MaxHour - Parent.TimeBar.MinHour);
+            }
          }
       }
 
       const double MinMinutes = 0.25;
 
-      public void TimeAreaHotspot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      POINT CapturePoint;
+      UIElement Captured = null;
+
+      void SetCaptured(UIElement captured, MouseEventArgs e)
       {
-         if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
+         if (Captured == captured)
             return;
 
+         if (Captured != null)
+            Captured.ReleaseMouseCapture();
+
+         Captured = captured;
+
+         if (Captured != null)
+         {
+            Captured.CaptureMouse();
+            GetCursorPos(ref CapturePoint);
+         }
+      }
+
+      protected void FindGaps()
+      {
          DateTime dayBeginUtc = new DateTime(Parent.DailyDay.Year, Parent.DailyDay.Month, Parent.DailyDay.Day, 0, 0, 0).ToUniversalTime();
 
          GapsBegin = new();
@@ -725,45 +917,99 @@ namespace Tildetool.Time
             GapsBegin.Add(lastEnd);
             GapsEnd.Add(dayBeginUtc.AddDays(1));
          }
+         else
+         {
+            // no periods, so the whole day is a gap
+            GapsBegin.Add(dayBeginUtc);
+            GapsEnd.Add(dayBeginUtc.AddDays(1));
+         }
+      }
+
+      public void TimeAreaHotspot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      {
+         if (Parent.TimekeepTextEditor.IsTextEditor)
+            return;
+         if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
+            return;
+
+         SetCaptured(sender as UIElement, e);
+
+         FindGaps();
 
          Point pos = e.GetPosition(Parent.TimeAreaHotspot);
          DailyRow_Pct1 = pos.X / Parent.TimeAreaHotspot.RenderSize.Width;
+         DailyRow_Pct2 = 0.0;
          TimeAreaHotspot_MouseMove(sender, e);
       }
 
       public void TimeAreaHotspot_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
       {
+         if (Parent.TimekeepTextEditor.IsTextEditor)
+            return;
+
+         if (e != null)
+            SetCaptured(null, e);
+
          if (Parent.CurDailyMode != Timekeep.DailyMode.Today)
             return;
          if (DailyRow_Pct1 == null)
             return;
 
          double pct1 = DailyRow_Pct1.Value;
-         Point pos = e.GetPosition(Parent.TimeAreaHotspot);
-         double pct2 = pos.X / Parent.TimeAreaHotspot.RenderSize.Width;
-         GetDragTime(pct1, pct2, out DateTime periodBegin, out DateTime periodEnd);
+         double pct2 = DailyRow_Pct2;
+         GetDragTime(pct1, ref pct2, out DateTime periodBegin, out DateTime periodEnd);
 
-         DailyRow_Pct1 = null;
          GapsBegin = null;
          GapsEnd = null;
-         TimeAreaHotspot_MouseMove(sender, e);
 
          if ((periodEnd - periodBegin).TotalMinutes < MinMinutes)
+         {
+            DailyRow_Pct1 = null;
+            TimeAreaHotspot_MouseMove(sender, e);
             return;
+         }
 
          bool isSchedule = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
-         Parent.TimekeepTextEditor.Show((text) =>
+         Parent.TimekeepTextEditor.Show(isSchedule ? "add event" : "set project", (text, note) =>
+         {
+            bool wasCarve = Carve;
+            DailyRow_Pct1 = null;
+            TimeAreaHotspot_MouseMove(sender, e);
+
+            if (isSchedule)
+            {
+               new SQL.TimeEvent() { Description = text, StartTime = periodBegin.ToLocalTime(), EndTime = periodEnd.ToLocalTime() }.Add();
+               Refresh();
+            }
+            else
+               Parent.TimekeepTextEditor.ConfirmAddProject(text,
+                  (projectId) =>
+                  {
+                     if (wasCarve)
+                        TimeManager.Instance.CarveHistory(periodBegin, periodEnd);
+
+                     TimeManager.Instance.AddHistoryLine(new TimePeriod() { Ident = text, StartTime = periodBegin, EndTime = periodEnd, OnComputer = false, Notes = note });
+                     Refresh();
+                  });
+         },
+         fnUpdate: (text, note) =>
          {
             if (isSchedule)
-               TimeManager.Instance.AddTimeEvent(new() { Description = text, StartTime = periodBegin.ToLocalTime(), EndTime = periodEnd.ToLocalTime() });
+               return;
+            if (Parent.TimekeepTextEditor.FoundOptions.Length > 0 && TimeManager.Instance.ProjectIdentToId.TryGetValue(Parent.TimekeepTextEditor.FoundOptions[0], out int projectId))
+               Parent.TextEditorTitle.Text = $"set project - {projectId}";
             else
-            {
-               int projectId = TimeManager.Instance.AddProject(text);
-               TimeManager.Instance.AddHistoryLine(new TimePeriod() { DbId = projectId, Ident = text, StartTime = periodBegin, EndTime = periodEnd, OnComputer = false });
-            }
+               Parent.TextEditorTitle.Text = "set project";
+         },
+         options: TimeManager.Instance.ProjectIdentAutoSuggest);
+      }
 
-            Refresh();
-         }, TimeManager.Instance.ProjectIdentAutoSuggest);
+      #endregion
+      #region Keyboard input
+
+      public virtual bool HandleKeyDown(object sender, KeyEventArgs e)
+      {
+         return false;
       }
 
       #endregion

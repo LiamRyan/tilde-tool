@@ -23,6 +23,7 @@ namespace Tildetool.Hotcommand
       Process? _Process;
       System.Timers.Timer? _Timer;
       bool _DidSpawn = false;
+      int _WaitCount = 0;
       public CommandRun(CommandSpawn spawn, Dispatcher dispatcher)
       {
          Dispatcher = dispatcher;
@@ -61,7 +62,7 @@ namespace Tildetool.Hotcommand
 
       void Execute(CommandSpawn spawn)
       {
-         bool wantSpawn = spawn.HasWindowParameter;
+         bool wantSpawn = true;// spawn.HasWindowParameter;
          Thread trd = new Thread(new ThreadStart(() =>
          {
             try
@@ -123,6 +124,17 @@ namespace Tildetool.Hotcommand
 
       void Reposition()
       {
+         // In case it never happens, give up after 30 seconds.
+         _WaitCount++;
+         if (_WaitCount > 30 * 1000 / 50)
+         {
+            _Timer.Stop();
+            _Timer.Dispose();
+            _Timer = null;
+            App.WriteLog($"App took to long to start: {_Spawn.FileName} / {_Spawn.ShellOpen}");
+            return;
+         }
+
          // We start the timer while the thread is running, so wait until the thread reaches
          //  the point of actually having created the.
          if (!_DidSpawn)
@@ -169,8 +181,9 @@ namespace Tildetool.Hotcommand
                   windowHandle = _Process.MainWindowHandle;
                else
                {
-                  App.WriteLog($"App exited before move: {_Spawn.FileName}");
-                  MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exited before move: {_Spawn.FileName}");
+                  App.WriteLog($"App exited before move: {_Spawn.FileName} / {_Spawn.ShellOpen}");
+                  if (_Spawn.HasWindowParameter)
+                     MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exited before move: {_Spawn.FileName}");
                }
             }
             catch (Exception e)
@@ -196,27 +209,35 @@ namespace Tildetool.Hotcommand
                int baseX = 0, baseY = 0;
                if (_Spawn.Monitor != null)
                {
-                  // Translate out of its current screen space.
-                  RECT rect;
-                  GetWindowRect(windowHandle, out rect);
-                  System.Windows.Forms.Screen curScreen = null;
-                  try
+                  if (_Spawn.Monitor.Value < System.Windows.Forms.Screen.AllScreens.Length)
                   {
-                     curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
-                  }
-                  catch (Exception ex) { }
-                  if (curScreen != null)
-                  {
-                     if (_Spawn.WindowX == null)
-                        baseX = rect.left - curScreen.WorkingArea.X;
-                     if (_Spawn.WindowY == null)
-                        baseY = rect.top - curScreen.WorkingArea.Y;
-                  }
+                     // Translate out of its current screen space.
+                     RECT rect;
+                     GetWindowRect(windowHandle, out rect);
+                     System.Windows.Forms.Screen curScreen = null;
+                     try
+                     {
+                        curScreen = System.Windows.Forms.Screen.AllScreens.Where(s => s.Bounds.Contains(rect.left, rect.top)).First();
+                     }
+                     catch (Exception ex) { }
+                     if (curScreen != null)
+                     {
+                        if (_Spawn.WindowX == null)
+                           baseX = rect.left - curScreen.WorkingArea.X;
+                        if (_Spawn.WindowY == null)
+                           baseY = rect.top - curScreen.WorkingArea.Y;
+                     }
 
-                  // Translate into the new screen space.
-                  System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[_Spawn.Monitor.Value];
-                  baseX += targetScreen.WorkingArea.X;
-                  baseY += targetScreen.WorkingArea.Y;
+                     // Translate into the new screen space.
+                     System.Windows.Forms.Screen targetScreen = System.Windows.Forms.Screen.AllScreens[_Spawn.Monitor.Value];
+                     baseX += targetScreen.WorkingArea.X;
+                     baseY += targetScreen.WorkingArea.Y;
+                  }
+                  else
+                  {
+                     App.WriteLog($"Invalid window number: {_Spawn.Monitor.Value} / {System.Windows.Forms.Screen.AllScreens.Length}");
+                     MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nInvalid window number: {_Spawn.Monitor.Value} / {System.Windows.Forms.Screen.AllScreens.Length}");
+                  }
                }
 
                // Move and resize.
@@ -257,11 +278,16 @@ namespace Tildetool.Hotcommand
                      VirtualDesktop desktop = VirtualDesktop.FromIndex(desktopIndex);
                      desktop.MoveWindow(windowHandle);
                   }
+                  else
+                  {
+                     App.WriteLog($"Invalid virtual desktop: {_Spawn.VirtualDesktop}");
+                     MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nInvalid virtual desktop: {_Spawn.VirtualDesktop}");
+                  }
                }
             }
             catch (Exception e)
             {
-               App.WriteLog("App exception");
+               App.WriteLog($"App exception {_Spawn.FileName} / {_Spawn.ShellOpen}");
                App.WriteLog(e.ToString());
                MessageBox.Show($"Unable to manage process {_Spawn.FileName} / {_Spawn.ShellOpen}.\n\nApp exception: {e.ToString()}");
             }
